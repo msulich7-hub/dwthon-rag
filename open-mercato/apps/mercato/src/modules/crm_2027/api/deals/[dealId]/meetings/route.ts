@@ -51,7 +51,8 @@ export async function POST(
   ctx: { params: { dealId: string } },
 ) {
   try {
-    const { tenantId, organizationId, em, container } = await resolveCrm2027RequestContext(request)
+    const { tenantId, organizationId, em, container, commandBus, commandContext } =
+      await resolveCrm2027RequestContext(request)
     const dealId = ctx.params?.dealId?.trim()
     if (!dealId) {
       return NextResponse.json({ error: 'Missing deal id' }, { status: 400 })
@@ -63,9 +64,12 @@ export async function POST(
     const result = await ingestDealMeeting(
       em,
       container,
+      commandBus,
+      commandContext,
       { tenantId, organizationId },
       dealId,
       body,
+      { preferLlmSentiment: true },
     )
 
     return NextResponse.json({
@@ -73,6 +77,7 @@ export async function POST(
       meeting: result.meeting,
       risk: result.risk,
       alerts: result.alerts,
+      interactionId: result.interactionId,
     })
   } catch (error) {
     if (error instanceof Error && error.message === 'DEAL_NOT_FOUND') {

@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { defineAiTool } from '@open-mercato/ai-assistant'
 import { loadDealContext } from './lib/deal-context'
 import { scanAtRiskDeals } from './lib/at-risk-scan'
-import { analyzeSentiment } from './lib/sentiment'
+import { analyzeSentimentSmart } from './lib/sentiment-analyze'
 import { suggestDealProgression } from './lib/deal-progression'
 import { executeVoiceIntent } from './lib/voice-execute'
 import { assertCrm2027Scope, resolveEm, type Crm2027ToolContext } from './lib/tool-context'
@@ -21,7 +21,8 @@ const analyzeTextSentiment = defineAiTool({
     text: z.string().min(1).describe('Raw communication text to analyze.'),
   }),
   async handler(input) {
-    return analyzeSentiment(input.text)
+    const result = await analyzeSentimentSmart(input.text, { preferLlm: true })
+    return result
   },
 })
 

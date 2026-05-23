@@ -3,6 +3,7 @@ export const CRM_ROUTES = {
   hub: '/backend/crm_2027',
   search: '/backend/crm_2027/search',
   atRisk: '/backend/crm_2027/at-risk',
+  calendar: '/backend/crm_2027/calendar',
   dashboard: '/backend/crm_2027/dashboard',
   peopleShell: '/backend/crm_2027/people',
   companiesShell: '/backend/crm_2027/companies',

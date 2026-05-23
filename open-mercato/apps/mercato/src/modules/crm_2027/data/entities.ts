@@ -60,6 +60,12 @@ export class Crm2027DealMeeting {
   @Property({ type: 'text', nullable: true })
   source?: string | null
 
+  @Property({ name: 'external_id', type: 'text', nullable: true })
+  externalId?: string | null
+
+  @Property({ name: 'interaction_id', type: 'uuid', nullable: true })
+  interactionId?: string | null
+
   @Property({ type: 'text' })
   transcript!: string
 

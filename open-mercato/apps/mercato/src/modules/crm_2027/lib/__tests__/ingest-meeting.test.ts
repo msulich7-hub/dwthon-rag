@@ -1,5 +1,6 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
+import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import { analyzeSentiment } from '../sentiment'
 import {
   buildAtRiskItemFromMeetingAnalysis,
@@ -19,13 +20,34 @@ jest.mock('../emit-high-risk-events', () => ({
   emitHighRiskDealEvents: jest.fn(),
 }))
 
+jest.mock('../meeting-interaction', () => ({
+  resolveEntityIdForDeal: jest.fn(),
+  createMeetingInteraction: jest.fn(),
+}))
+
+jest.mock('../sentiment-analyze', () => ({
+  analyzeSentimentSmart: jest.fn((text: string) =>
+    Promise.resolve({ ...analyzeSentiment(text), engine: 'heuristic' as const }),
+  ),
+}))
+
+jest.mock('../../events', () => ({
+  emitCrm2027Event: jest.fn(),
+}))
+
 import { loadDealContext } from '../deal-context'
 import { persistAtRiskFlags } from '../persist-risk-flags'
 import { emitHighRiskDealEvents } from '../emit-high-risk-events'
+import { resolveEntityIdForDeal, createMeetingInteraction } from '../meeting-interaction'
 
 const loadDealContextMock = loadDealContext as jest.MockedFunction<typeof loadDealContext>
 const persistAtRiskFlagsMock = persistAtRiskFlags as jest.MockedFunction<typeof persistAtRiskFlags>
 const emitHighRiskDealEventsMock = emitHighRiskDealEvents as jest.MockedFunction<typeof emitHighRiskDealEvents>
+const resolveEntityIdForDealMock = resolveEntityIdForDeal as jest.MockedFunction<typeof resolveEntityIdForDeal>
+const createMeetingInteractionMock = createMeetingInteraction as jest.MockedFunction<typeof createMeetingInteraction>
+
+const commandBus = { execute: jest.fn() } as unknown as CommandBus
+const commandContext = { container: {} } as CommandBus extends never ? never : Parameters<typeof ingestDealMeeting>[3]
 
 describe('buildAtRiskItemFromMeetingAnalysis', () => {
   it('flags negative meeting sentiment as high risk', () => {
@@ -77,13 +99,14 @@ describe('ingestDealMeeting', () => {
     })
     persistAtRiskFlagsMock.mockResolvedValue({ count: 1, newHighRiskAlerts: [] })
     emitHighRiskDealEventsMock.mockResolvedValue(undefined)
+    resolveEntityIdForDealMock.mockResolvedValue('person-1')
+    createMeetingInteractionMock.mockResolvedValue('interaction-1')
   })
 
-  it('persists meeting and refreshes risk flags for negative transcript', async () => {
-    const persisted: unknown[] = []
+  it('persists meeting, interaction, and refreshes risk flags', async () => {
     const em = {
       create: jest.fn((_entity, data) => ({ ...data, id: 'meeting-1' })),
-      persist: jest.fn((record) => persisted.push(record)),
+      persist: jest.fn(),
       flush: jest.fn().mockResolvedValue(undefined),
       findOne: jest.fn().mockResolvedValue({
         riskLevel: 'high',
@@ -95,18 +118,18 @@ describe('ingestDealMeeting', () => {
     const result = await ingestDealMeeting(
       em,
       {} as AwilixContainer,
+      commandBus,
+      commandContext as never,
       scope,
       'deal-1',
       { transcript: 'Po raz kolejny proszę o odpowiedź! Problem z dostawą.' },
     )
 
     expect(persistAtRiskFlagsMock).toHaveBeenCalled()
-    expect(emitHighRiskDealEventsMock).toHaveBeenCalled()
-    expect(em.create).toHaveBeenCalled()
-    expect(em.flush).toHaveBeenCalled()
+    expect(createMeetingInteractionMock).toHaveBeenCalled()
     expect(result.meeting.id).toBe('meeting-1')
+    expect(result.interactionId).toBe('interaction-1')
     expect(result.meeting.sentiment.atRisk).toBe(true)
-    expect(result.risk?.atRisk).toBe(true)
   })
 
   it('throws when deal is missing', async () => {
@@ -119,9 +142,15 @@ describe('ingestDealMeeting', () => {
     } as unknown as EntityManager
 
     await expect(
-      ingestDealMeeting(em, {} as AwilixContainer, scope, 'missing', {
-        transcript: 'Hello',
-      }),
+      ingestDealMeeting(
+        em,
+        {} as AwilixContainer,
+        commandBus,
+        commandContext as never,
+        scope,
+        'missing',
+        { transcript: 'Hello' },
+      ),
     ).rejects.toThrow('DEAL_NOT_FOUND')
   })
 })

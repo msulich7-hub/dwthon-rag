@@ -13,6 +13,20 @@ export const CRM_COMMAND_ITEMS: CrmCommandItem[] = [
   { id: 'search', label: 'Search CRM', href: CRM_ROUTES.search, keywords: ['find', 'search'], group: 'Navigate' },
   { id: 'at-risk', label: 'At-risk deals', href: CRM_ROUTES.atRisk, keywords: ['risk', 'danger'], group: 'Navigate' },
   { id: 'dashboard', label: 'CRM Dashboard', href: CRM_ROUTES.dashboard, keywords: ['kpi', 'stats'], group: 'Navigate' },
+  {
+    id: 'forecast',
+    label: 'Pipeline forecast',
+    href: '/backend/crm_2027/dashboard?tab=forecast',
+    keywords: ['forecast', 'weighted', 'pipeline'],
+    group: 'Navigate',
+  },
+  {
+    id: 'calendar',
+    label: 'Upcoming meetings',
+    href: '/backend/crm_2027/calendar',
+    keywords: ['calendar', 'meetings', 'calls'],
+    group: 'Navigate',
+  },
   ...CRM_OBJECTS.map((o) => ({
     id: o.id,
     label: o.label,

@@ -1,18 +1,21 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
+import type { CommandBus, CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { Crm2027DealMeeting, Crm2027DealRiskFlag } from '../data/entities'
 import type { IngestDealMeetingBody } from '../data/validators'
+import { emitCrm2027Event } from '../events'
 import type { AtRiskDealItem } from './at-risk-scan'
 import { loadDealContext } from './deal-context'
 import { suggestDealProgression } from './deal-progression'
 import { emitHighRiskDealEvents } from './emit-high-risk-events'
 import { persistAtRiskFlags } from './persist-risk-flags'
-import { analyzeSentiment, type SentimentAnalysis } from './sentiment'
+import { analyzeSentimentSmart, type SentimentAnalysis } from './sentiment-analyze'
 import type { DealProgressionSuggestion } from './deal-progression'
+import { createMeetingInteraction, resolveEntityIdForDeal } from './meeting-interaction'
 
 const TRANSCRIPT_EXCERPT_LEN = 240
 
-export type MeetingSentimentPayload = SentimentAnalysis
+export type MeetingSentimentPayload = SentimentAnalysis & { engine?: 'heuristic' | 'llm' }
 
 export type MeetingProgressionPayload = Pick<
   DealProgressionSuggestion,
@@ -34,6 +37,7 @@ export type DealMeetingListItem = {
   sentiment: MeetingSentimentPayload
   progression: MeetingProgressionPayload
   risk: MeetingRiskPayload | null
+  interactionId: string | null
   ingestedAt: string
 }
 
@@ -48,6 +52,14 @@ export type IngestDealMeetingResult = {
   meeting: DealMeetingListItem
   risk: DealRiskSummary | null
   alerts: number
+  interactionId: string | null
+}
+
+export type IngestDealMeetingOptions = {
+  externalId?: string
+  occurredAt?: Date
+  preferLlmSentiment?: boolean
+  skipInteraction?: boolean
 }
 
 function excerpt(text: string): string {
@@ -123,6 +135,7 @@ function mapMeetingRecord(record: Crm2027DealMeeting): DealMeetingListItem {
     sentiment,
     progression,
     risk,
+    interactionId: record.interactionId ?? null,
     ingestedAt: record.ingestedAt.toISOString(),
   }
 }
@@ -181,16 +194,40 @@ export async function listDealMeetings(
 export async function ingestDealMeeting(
   em: EntityManager,
   container: AwilixContainer,
+  commandBus: CommandBus,
+  commandContext: CommandRuntimeContext,
   scope: { tenantId: string; organizationId: string },
   dealId: string,
   body: IngestDealMeetingBody,
+  options?: IngestDealMeetingOptions,
 ): Promise<IngestDealMeetingResult> {
   const context = await loadDealContext(em, scope, dealId, 5)
   if (!context.found || !context.deal) {
     throw new Error('DEAL_NOT_FOUND')
   }
 
-  const sentiment = analyzeSentiment(body.transcript)
+  if (options?.externalId) {
+    const existing = await em.findOne(Crm2027DealMeeting, {
+      tenantId: scope.tenantId,
+      organizationId: scope.organizationId,
+      dealId,
+      source: body.source ?? 'manual',
+      externalId: options.externalId,
+    })
+    if (existing) {
+      const risk = await loadDealRiskSummary(em, scope, dealId)
+      return {
+        meeting: mapMeetingRecord(existing),
+        risk,
+        alerts: 0,
+        interactionId: existing.interactionId ?? null,
+      }
+    }
+  }
+
+  const sentiment = await analyzeSentimentSmart(body.transcript, {
+    preferLlm: options?.preferLlmSentiment,
+  })
   const progression = suggestDealProgression({
     dealId: context.deal.id,
     title: context.deal.title,
@@ -218,13 +255,15 @@ export async function ingestDealMeeting(
     alerts = newHighRiskAlerts.length
   }
 
-  const ingestedAt = new Date()
+  const ingestedAt = options?.occurredAt ?? new Date()
+  const source = body.source ?? 'manual'
   const record = em.create(Crm2027DealMeeting, {
     tenantId: scope.tenantId,
     organizationId: scope.organizationId,
     dealId,
     title: body.title ?? null,
-    source: body.source ?? 'manual',
+    source,
+    externalId: options?.externalId ?? null,
     transcript: body.transcript.trim(),
     sentimentJson: JSON.stringify(sentiment),
     progressionJson: JSON.stringify({
@@ -237,13 +276,46 @@ export async function ingestDealMeeting(
     ingestedAt,
   })
   em.persist(record)
+
+  let interactionId: string | null = null
+  if (!options?.skipInteraction) {
+    const entityId = await resolveEntityIdForDeal(em, dealId)
+    if (entityId) {
+      interactionId =
+        (await createMeetingInteraction(commandBus, commandContext, scope, entityId, {
+          dealId,
+          title: body.title?.trim() || `Meeting (${source})`,
+          body: body.transcript.trim(),
+          source,
+          occurredAt: ingestedAt,
+        })) ?? null
+      record.interactionId = interactionId
+    }
+  }
+
   await em.flush()
 
   const risk = await loadDealRiskSummary(em, scope, dealId)
+
+  await emitCrm2027Event(
+    'crm_2027.deal.meeting.ingested',
+    {
+      tenantId: scope.tenantId,
+      organizationId: scope.organizationId,
+      dealId,
+      meetingId: record.id,
+      interactionId,
+      source,
+      sentimentLabel: sentiment.label,
+      atRisk: sentiment.atRisk,
+    },
+    { persistent: true },
+  )
 
   return {
     meeting: mapMeetingRecord(record),
     risk,
     alerts,
+    interactionId,
   }
 }

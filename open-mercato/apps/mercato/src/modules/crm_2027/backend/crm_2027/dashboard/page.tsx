@@ -14,11 +14,22 @@ type DashboardData = {
   topAtRisk: Array<{ dealId: string; title: string; riskLevel: string }>
 }
 
+type ForecastData = {
+  openDeals: number
+  weightedForecast: number
+  atRiskWeighted: number
+  currency: string | null
+}
+
 export default function Crm2027DashboardPage() {
   const [data, setData] = React.useState<DashboardData | null>(null)
+  const [forecast, setForecast] = React.useState<ForecastData | null>(null)
 
   React.useEffect(() => {
     void apiCall<DashboardData>('/api/crm_2027/dashboard').then(setData).catch(() => setData(null))
+    void apiCall<ForecastData>('/api/crm_2027/forecast')
+      .then(setForecast)
+      .catch(() => setForecast(null))
   }, [])
 
   return (
@@ -40,6 +51,27 @@ export default function Crm2027DashboardPage() {
               <div className="text-sm text-muted-foreground">Medium risk</div>
             </div>
           </div>
+          {forecast ? (
+            <section className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-lg border p-4">
+                <div className="text-2xl font-semibold">{forecast.openDeals}</div>
+                <div className="text-sm text-muted-foreground">Open deals in forecast</div>
+              </div>
+              <div className="rounded-lg border p-4">
+                <div className="text-2xl font-semibold">
+                  {forecast.weightedForecast.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  {forecast.currency ? ` ${forecast.currency}` : ''}
+                </div>
+                <div className="text-sm text-muted-foreground">Weighted forecast</div>
+              </div>
+              <div className="rounded-lg border p-4">
+                <div className="text-2xl font-semibold text-amber-700">
+                  {forecast.atRiskWeighted.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </div>
+                <div className="text-sm text-muted-foreground">At-risk weighted value</div>
+              </div>
+            </section>
+          ) : null}
           {data?.topAtRisk?.length ? (
             <section>
               <h2 className="text-sm font-medium mb-2">Top at-risk</h2>

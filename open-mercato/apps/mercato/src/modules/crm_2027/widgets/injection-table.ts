@@ -9,9 +9,13 @@ export const injectionTable: ModuleInjectionTable = {
     widgetId: 'crm_2027.injection.deal-risk-chips',
     priority: 80,
   },
-  'menu:sidebar:main': {
-    widgetId: 'crm_2027.injection.sidebar-nav',
-    priority: 60,
+  'menu:sidebar:main': [
+    { widgetId: 'crm_2027.injection.sidebar-nav', priority: 60 },
+    { widgetId: 'crm_2027.injection.crm-cmdk', priority: 55 },
+  ],
+  'admin.page:backend:crm_2027:before': {
+    widgetId: 'crm_2027.injection.crm-cmdk',
+    priority: 50,
   },
   'data-table:customers.people.list:search-trailing': {
     widgetId: 'crm_2027.injection.list-context-bar',

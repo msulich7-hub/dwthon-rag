@@ -41,6 +41,14 @@ export function slaBadgeClass(slaDueAt: string | null | undefined): string | nul
   return 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-200 border-emerald-500/30'
 }
 
+export function applyCannedTemplate(body: string, vars: Record<string, string>): string {
+  let out = body
+  for (const [key, value] of Object.entries(vars)) {
+    out = out.replaceAll(`{{${key}}}`, value)
+  }
+  return out
+}
+
 export function formatRelativeTime(iso: string): string {
   const then = new Date(iso).getTime()
   const diff = Date.now() - then

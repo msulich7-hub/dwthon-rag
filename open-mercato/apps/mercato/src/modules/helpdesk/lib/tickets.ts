@@ -48,6 +48,8 @@ export type TicketDetail = TicketListItem & {
   description: string
   dealId: string | null
   resolvedAt: string | null
+  csatRating: number | null
+  csatComment: string | null
   comments: Array<{
     id: string
     body: string
@@ -171,6 +173,8 @@ export async function getTicketDetail(
     description: record.description,
     dealId: record.dealId ?? null,
     resolvedAt: record.resolvedAt?.toISOString() ?? null,
+    csatRating: record.csatRating ?? null,
+    csatComment: record.csatComment ?? null,
     comments: comments.map((comment) => ({
       id: comment.id,
       body: comment.body,

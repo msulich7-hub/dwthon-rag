@@ -34,13 +34,22 @@ const widget: InjectionMenuItemWidget = {
       placement: { position: InjectionPosition.After, relativeTo: 'helpdesk-kanban' },
     },
     {
+      id: 'helpdesk-kb',
+      label: 'Knowledge base',
+      icon: 'BookOpen',
+      href: HELPDESK_ROUTES.kb,
+      features: ['helpdesk.agent', 'helpdesk.view'],
+      groupId: 'helpdesk.nav.group',
+      placement: { position: InjectionPosition.After, relativeTo: 'helpdesk-workspace' },
+    },
+    {
       id: 'helpdesk-report',
       label: 'Report issue',
       icon: 'PlusCircle',
       href: HELPDESK_ROUTES.report,
       features: ['helpdesk.submit'],
       groupId: 'helpdesk.nav.group',
-      placement: { position: InjectionPosition.After, relativeTo: 'helpdesk-workspace' },
+      placement: { position: InjectionPosition.After, relativeTo: 'helpdesk-kb' },
     },
   ],
 }

@@ -90,6 +90,15 @@ export class HelpdeskTicket {
   @Property({ name: 'first_responded_at', type: Date, nullable: true })
   firstRespondedAt?: Date | null
 
+  @Property({ name: 'csat_rating', type: 'int', nullable: true })
+  csatRating?: number | null
+
+  @Property({ name: 'csat_comment', type: 'text', nullable: true })
+  csatComment?: string | null
+
+  @Property({ name: 'summary_json', type: 'text', nullable: true })
+  summaryJson?: string | null
+
   @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
   createdAt: Date = new Date()
 
@@ -143,4 +152,147 @@ export class HelpdeskTicketCounter {
 
   @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
   updatedAt: Date = new Date()
+}
+
+@Entity({ tableName: 'helpdesk_canned_responses' })
+export class HelpdeskCannedResponse {
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ type: 'text' })
+  title!: string
+
+  @Property({ type: 'text', nullable: true })
+  shortcut?: string | null
+
+  @Property({ type: 'text' })
+  body!: string
+
+  @Property({ type: 'text', nullable: true })
+  category?: string | null
+
+  @Property({ name: 'is_internal', type: 'boolean', default: false })
+  isInternal: boolean = false
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+
+  @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
+  updatedAt: Date = new Date()
+}
+
+@Entity({ tableName: 'helpdesk_kb_articles' })
+export class HelpdeskKbArticle {
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ type: 'text' })
+  title!: string
+
+  @Property({ type: 'text' })
+  slug!: string
+
+  @Property({ type: 'text' })
+  body!: string
+
+  @Property({ type: 'text', nullable: true })
+  category?: string | null
+
+  @Property({ type: 'text', default: 'internal' })
+  visibility: string = 'internal'
+
+  @Property({ name: 'source_ticket_id', type: 'uuid', nullable: true })
+  sourceTicketId?: string | null
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+
+  @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
+  updatedAt: Date = new Date()
+}
+
+@Entity({ tableName: 'helpdesk_ticket_watchers' })
+export class HelpdeskTicketWatcher {
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ name: 'ticket_id', type: 'uuid' })
+  ticketId!: string
+
+  @Property({ name: 'user_id', type: 'uuid' })
+  userId!: string
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+}
+
+export type HelpdeskTicketLinkType = 'related' | 'duplicate' | 'blocks'
+
+@Entity({ tableName: 'helpdesk_ticket_links' })
+export class HelpdeskTicketLink {
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ name: 'source_ticket_id', type: 'uuid' })
+  sourceTicketId!: string
+
+  @Property({ name: 'target_ticket_id', type: 'uuid' })
+  targetTicketId!: string
+
+  @Property({ name: 'link_type', type: 'text', default: 'related' })
+  linkType: HelpdeskTicketLinkType = 'related'
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+}
+
+@Entity({ tableName: 'helpdesk_time_entries' })
+export class HelpdeskTimeEntry {
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ name: 'ticket_id', type: 'uuid' })
+  ticketId!: string
+
+  @Property({ name: 'user_id', type: 'uuid' })
+  userId!: string
+
+  @Property({ type: 'int' })
+  minutes!: number
+
+  @Property({ type: 'text', nullable: true })
+  note?: string | null
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
 }

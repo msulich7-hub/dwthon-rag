@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@open-mercato/ui/primitives/select'
 import { HelpdeskShell } from '../../../../components/HelpdeskShell'
+import { TicketAgentPanel } from '../../../../components/TicketAgentPanel'
 import { priorityBadgeClass, slaBadgeClass, visibilityBadgeClass } from '../../../../components/ticket-ui'
 import { slaRemainingLabel } from '../../../../lib/sla'
 
@@ -152,6 +153,14 @@ export default function HelpdeskTicketDetailPage() {
         </div>
 
         <div className="rounded-lg border p-4 text-sm whitespace-pre-wrap">{ticket.description}</div>
+
+        <TicketAgentPanel
+          ticketId={ticket.id}
+          ticketKey={ticket.ticketKey}
+          onReload={load}
+          publicReply={publicReply}
+          setPublicReply={setPublicReply}
+        />
 
         <section className="space-y-3">
           <h2 className="text-sm font-medium">

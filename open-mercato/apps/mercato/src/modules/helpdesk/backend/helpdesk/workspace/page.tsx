@@ -13,6 +13,7 @@ import { TicketKanbanBoard } from '../../../components/TicketKanbanBoard'
 import { WorkspaceStatsBar, type WorkspaceStatsPayload } from '../../../components/WorkspaceStatsBar'
 import { TicketCard } from '../../../components/TicketCard'
 import { HELPDESK_ROUTES } from '../../../lib/helpdesk-routes'
+import { VoiceMicButton } from '../../../components/VoiceMicButton'
 import type { BoardTicket } from '../../../components/ticket-ui'
 
 type QueueMeta = {
@@ -37,6 +38,7 @@ export default function HelpdeskWorkspacePage() {
   const [listTickets, setListTickets] = React.useState<BoardTicket[]>([])
   const [stats, setStats] = React.useState<WorkspaceStatsPayload | null>(null)
   const [error, setError] = React.useState<string | null>(null)
+  const [voiceMsg, setVoiceMsg] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     const handle = window.setTimeout(() => setDebouncedSearch(search), 300)
@@ -99,6 +101,11 @@ export default function HelpdeskWorkspacePage() {
       <PageBody>
         <HelpdeskShell>
           <WorkspaceStatsBar stats={stats} />
+
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/20 px-3 py-2">
+            <VoiceMicButton onExecuted={(msg) => setVoiceMsg(msg)} />
+            {voiceMsg ? <span className="text-xs text-muted-foreground">{voiceMsg}</span> : null}
+          </div>
 
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap gap-2">

@@ -19,6 +19,11 @@ export const features = [
     title: 'Ingest customer-channel tickets (email, integrations)',
     module: 'helpdesk',
   },
+  {
+    id: 'helpdesk.voice',
+    title: 'Voice commands for service desk (transcript → action)',
+    module: 'helpdesk',
+  },
   /** @deprecated Use helpdesk.agent — kept for backward compatibility in existing grants */
   {
     id: 'helpdesk.manage',

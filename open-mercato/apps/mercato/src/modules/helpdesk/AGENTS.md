@@ -20,6 +20,7 @@ No edits under `packages/core`, `packages/ui`, `packages/ai-assistant`.
 | `helpdesk.view` | Read queues, internal notes |
 | `helpdesk.submit` | `/backend/helpdesk/report` internal requests |
 | `helpdesk.ingest` | `POST /api/helpdesk/ingest` customer channel |
+| `helpdesk.voice` | Voice intent / execute on workspace and ticket detail |
 
 ## Channels
 
@@ -38,3 +39,21 @@ No edits under `packages/core`, `packages/ui`, `packages/ai-assistant`.
 - Drag-and-drop columns: open → in_progress → waiting → resolved (+ optional closed)
 - `sla_due_at` from priority (urgent 4h, high 24h, medium 72h, low 7d)
 - `GET /api/helpdesk/agent/board`, `GET /api/helpdesk/agent/dashboard`
+
+## Agent extras (v0.4)
+
+| Feature | API / lib |
+|---------|-----------|
+| Canned responses | `GET /api/helpdesk/canned-responses`, `lib/canned-responses.ts` |
+| Knowledge base | `GET/POST /api/helpdesk/kb/articles`, `POST …/kb/from-ticket/[id]` |
+| Voice (browser STT → server intent) | `POST /api/helpdesk/voice-intent`, `voice-execute`, `helpdesk.voice` ACL |
+| Watchers | `…/tickets/[id]/watchers` |
+| Ticket links | `…/tickets/[id]/links` |
+| Time entries | `…/tickets/[id]/time-entries` |
+| CSAT | `…/tickets/[id]/csat` |
+| Summary | `…/tickets/[id]/summary` (`lib/ticket-summary.ts`) |
+| Tone enhance | `…/tickets/[id]/enhance-tone` (`lib/tone-enhance.ts`, rule-based) |
+
+Migration: `Migration20260523200000_helpdesk_extras.ts`
+
+UI: `TicketAgentPanel`, `VoiceMicButton` on ticket detail and workspace; KB page `/backend/helpdesk/kb`.

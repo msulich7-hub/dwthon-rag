@@ -93,5 +93,22 @@
   "helpdesk.sla.dueSoon": "Due soon",
   "helpdesk.sla.onTrack": "On track",
   "helpdesk.card.unassigned": "Unassigned",
-  "helpdesk.widget.openBoard": "Open Kanban board →"
+  "helpdesk.widget.openBoard": "Open Kanban board →",
+  "helpdesk.nav.kb": "Knowledge base",
+  "helpdesk.kb.title": "Knowledge base",
+  "helpdesk.kb.description": "Internal articles for agents. Create from resolved tickets or search while triaging.",
+  "helpdesk.kb.search": "Search articles…",
+  "helpdesk.kb.empty": "No articles yet.",
+  "helpdesk.agent.macros": "Canned responses",
+  "helpdesk.agent.kb": "Knowledge base",
+  "helpdesk.agent.voice": "Voice command",
+  "helpdesk.agent.watchers": "Watchers",
+  "helpdesk.agent.links": "Linked tickets",
+  "helpdesk.agent.time": "Time tracking",
+  "helpdesk.agent.csat": "CSAT",
+  "helpdesk.agent.summary": "AI summary",
+  "helpdesk.agent.tone": "Enhance tone",
+  "helpdesk.voice.listening": "Listening…",
+  "helpdesk.voice.unsupported": "Speech recognition is not supported in this browser.",
+  "helpdesk.voice.error": "Voice command failed"
 }

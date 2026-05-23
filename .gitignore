@@ -1,6 +1,6 @@
 .obsidian/
 .trash/
 
-# Nested Akeneo repo (user pushes from akeneo-pim/)
-akeneo-pim/.git
+# Nested Akeneo repo (user pushes from pim/)
+pim/.git
 

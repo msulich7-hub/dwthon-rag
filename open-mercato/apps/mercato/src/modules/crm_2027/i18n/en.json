@@ -1,0 +1,5 @@
+{
+  "crm_2027.notifications.dealHighRisk.title": "Deal flagged high risk",
+  "crm_2027.notifications.dealHighRisk.body": "{dealTitle} needs attention after the latest CRM 2027 risk scan.",
+  "crm_2027.notifications.dealHighRisk.board": "At-risk board"
+}

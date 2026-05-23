@@ -1,8 +1,10 @@
 import type { JobContext, QueuedJob, WorkerMeta } from '@open-mercato/queue'
 import type { EntityManager } from '@mikro-orm/postgresql'
+import type { AwilixContainer } from 'awilix'
 import { CRM_2027_RISK_SCAN_QUEUE, type Crm2027RiskScanJobPayload } from '../lib/queue'
 import { scanAtRiskDeals } from '../lib/at-risk-scan'
 import { persistAtRiskFlags } from '../lib/persist-risk-flags'
+import { emitHighRiskDealEvents } from '../lib/emit-high-risk-events'
 
 export const metadata: WorkerMeta = {
   queue: CRM_2027_RISK_SCAN_QUEUE,
@@ -19,6 +21,7 @@ export default async function handle(
   ctx: HandlerContext,
 ): Promise<void> {
   const em = ctx.resolve<EntityManager>('em')
+  const container = ctx.resolve<AwilixContainer>('container')
   const { tenantId, organizationId, stallDays } = job.payload
 
   const items = await scanAtRiskDeals(em, {
@@ -28,5 +31,9 @@ export default async function handle(
     limit: 100,
   })
 
-  await persistAtRiskFlags(em, { tenantId, organizationId }, items)
+  const { newHighRiskAlerts } = await persistAtRiskFlags(em, { tenantId, organizationId }, items)
+
+  if (container) {
+    await emitHighRiskDealEvents(container, { tenantId, organizationId }, newHighRiskAlerts)
+  }
 }

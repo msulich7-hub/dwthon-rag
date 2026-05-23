@@ -17,3 +17,10 @@
 ## Reference module
 
 Copy patterns from `apps/mercato/src/modules/example/` (injection, ACL, setup) and consume `customers` / `ai_assistant` as dependencies — same as official-modules consumers.
+
+
+## Phase B+
+
+- `CrmViewsBar` + `/api/crm_2027/views/apply`
+- Deal risk chips (`detail:customers.deal:status-badges`)
+- High-risk notifications + 6h risk-scan schedule

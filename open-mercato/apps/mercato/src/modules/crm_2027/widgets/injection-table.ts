@@ -5,6 +5,10 @@ export const injectionTable: ModuleInjectionTable = {
     { widgetId: 'crm_2027.injection.deal-quick-links', priority: 95 },
     { widgetId: 'crm_2027.injection.deal-copilot', priority: 110 },
   ],
+  'detail:customers.deal:status-badges': {
+    widgetId: 'crm_2027.injection.deal-risk-chips',
+    priority: 80,
+  },
   'menu:sidebar:main': {
     widgetId: 'crm_2027.injection.sidebar-nav',
     priority: 60,

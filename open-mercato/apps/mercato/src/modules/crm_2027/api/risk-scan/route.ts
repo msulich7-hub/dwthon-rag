@@ -4,6 +4,7 @@ import { scanAtRiskDeals } from '../../lib/at-risk-scan'
 import { persistAtRiskFlags } from '../../lib/persist-risk-flags'
 import { resolveCrm2027RequestContext } from '../../lib/request-context'
 import { CRM_2027_RISK_SCAN_QUEUE, getCrm2027Queue } from '../../lib/queue'
+import { emitHighRiskDealEvents } from '../../lib/emit-high-risk-events'
 
 const bodySchema = z.object({
   mode: z.enum(['sync', 'async']).default('async'),
@@ -37,13 +38,18 @@ export async function POST(request: Request) {
       stallDays,
     })
 
-    const flagged = await persistAtRiskFlags(
+    const { count: flagged, newHighRiskAlerts } = await persistAtRiskFlags(
       ctx.em,
       { tenantId: ctx.tenantId, organizationId: ctx.organizationId },
       items,
     )
 
-    return Response.json({ ok: true, mode: 'sync', flagged, items })
+    await emitHighRiskDealEvents(ctx.container, {
+      tenantId: ctx.tenantId,
+      organizationId: ctx.organizationId,
+    }, newHighRiskAlerts)
+
+    return Response.json({ ok: true, mode: 'sync', flagged, alerts: newHighRiskAlerts.length, items })
   } catch (error) {
     if (isCrudHttpError(error)) {
       return Response.json(error.body, { status: error.status })

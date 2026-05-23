@@ -36,6 +36,8 @@ describe('ingestHelpdeskTicket', () => {
       personId: null,
       dealId: null,
       triageJson: JSON.stringify({ priority: 'urgent', category: 'access', labels: [], summary: 'x' }),
+      slaDueAt: new Date('2026-05-23T16:00:00.000Z'),
+      firstRespondedAt: null,
       resolvedAt: null,
       createdAt: now,
       updatedAt: now,

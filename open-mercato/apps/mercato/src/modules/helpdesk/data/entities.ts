@@ -84,6 +84,12 @@ export class HelpdeskTicket {
   @Property({ name: 'resolved_at', type: Date, nullable: true })
   resolvedAt?: Date | null
 
+  @Property({ name: 'sla_due_at', type: Date, nullable: true })
+  slaDueAt?: Date | null
+
+  @Property({ name: 'first_responded_at', type: Date, nullable: true })
+  firstRespondedAt?: Date | null
+
   @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
   createdAt: Date = new Date()
 

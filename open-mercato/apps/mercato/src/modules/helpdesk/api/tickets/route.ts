@@ -26,6 +26,7 @@ export async function GET(request: Request) {
     const queueRaw = url.searchParams.get('queue') ?? 'all'
     const companyId = url.searchParams.get('companyId') ?? undefined
     const personId = url.searchParams.get('personId') ?? undefined
+    const search = url.searchParams.get('search') ?? undefined
     const status = statusRaw ? helpdeskTicketStatusSchema.parse(statusRaw) : undefined
     const queue = helpdeskAgentQueueSchema.parse(queueRaw)
 
@@ -35,6 +36,8 @@ export async function GET(request: Request) {
       personId,
       queue,
       currentUserId: userId,
+      search,
+      limit: 500,
     })
 
     return NextResponse.json({ queue, tickets })

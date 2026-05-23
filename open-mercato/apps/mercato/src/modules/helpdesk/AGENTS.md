@@ -28,6 +28,13 @@ No edits under `packages/core`, `packages/ui`, `packages/ai-assistant`.
 
 ## Surfaces
 
-- `/backend/helpdesk/workspace` — agent queues
+- `/backend/helpdesk/workspace` — Kanban board + list, queue sidebar, SLA stats
 - `/backend/helpdesk/report` — employee self-service
+- Dashboard widget `helpdesk.dashboard.service-desk`
 - CRM tabs — agent-only linked tickets
+
+## Kanban & SLA
+
+- Drag-and-drop columns: open → in_progress → waiting → resolved (+ optional closed)
+- `sla_due_at` from priority (urgent 4h, high 24h, medium 72h, low 7d)
+- `GET /api/helpdesk/agent/board`, `GET /api/helpdesk/agent/dashboard`

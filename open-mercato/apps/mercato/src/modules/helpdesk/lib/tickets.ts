@@ -18,6 +18,7 @@ import { assertCustomerLink } from './customer-context'
 import { allocateTicketKey } from './ticket-key'
 import { buildQueueFilter } from './queues'
 import { triageHelpdeskMessage, type HelpdeskTriageResult } from './triage'
+import { computeSlaDueAt } from './sla'
 
 export type TicketListItem = {
   id: string
@@ -37,6 +38,8 @@ export type TicketListItem = {
   reporterEmail: string | null
   reporterName: string | null
   triage: HelpdeskTriageResult | null
+  slaDueAt: string | null
+  firstRespondedAt: string | null
   createdAt: string
   updatedAt: string
 }
@@ -90,6 +93,8 @@ function mapTicketListItem(record: HelpdeskTicket): TicketListItem {
     reporterEmail: record.reporterEmail ?? null,
     reporterName: record.reporterName ?? null,
     triage: parseTriage(record.triageJson),
+    slaDueAt: record.slaDueAt?.toISOString() ?? null,
+    firstRespondedAt: record.firstRespondedAt?.toISOString() ?? null,
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
   }
@@ -105,6 +110,7 @@ export async function listTickets(
     queue?: AgentQueueId
     currentUserId?: string | null
     limit?: number
+    search?: string
   },
 ): Promise<TicketListItem[]> {
   const where: Record<string, unknown> =
@@ -121,10 +127,21 @@ export async function listTickets(
 
   const records = await em.find(HelpdeskTicket, where, {
     orderBy: { updatedAt: 'DESC' },
-    limit: filters.limit ?? 100,
+    limit: filters.limit ?? 200,
   })
 
-  return records.map(mapTicketListItem)
+  let items = records.map(mapTicketListItem)
+  const search = filters.search?.trim().toLowerCase()
+  if (search) {
+    items = items.filter(
+      (t) =>
+        t.subject.toLowerCase().includes(search) ||
+        t.ticketKey.toLowerCase().includes(search) ||
+        (t.reporterName?.toLowerCase().includes(search) ?? false) ||
+        (t.reporterEmail?.toLowerCase().includes(search) ?? false),
+    )
+  }
+  return items
 }
 
 export async function getTicketDetail(
@@ -202,6 +219,7 @@ export async function createTicket(
   const now = new Date()
   const visibility = body.visibility ?? options?.visibility ?? 'internal'
   const requesterType = body.requesterType ?? options?.requesterType ?? 'staff'
+  const priority = body.priority ?? triage.priority
 
   const record = em.create(HelpdeskTicket, {
     tenantId: scope.tenantId,
@@ -210,7 +228,7 @@ export async function createTicket(
     subject: body.subject.trim(),
     description: body.body.trim(),
     status: body.status ?? options?.initialStatus ?? 'open',
-    priority: body.priority ?? triage.priority,
+    priority,
     category: body.category ?? triage.category,
     source: body.source ?? 'manual',
     visibility,
@@ -224,6 +242,8 @@ export async function createTicket(
     personId: body.personId ?? null,
     dealId: body.dealId ?? null,
     triageJson: JSON.stringify(triage),
+    slaDueAt: computeSlaDueAt(priority, now),
+    firstRespondedAt: null,
     resolvedAt: null,
     createdAt: now,
     updatedAt: now,
@@ -260,7 +280,10 @@ export async function updateTicket(
       record.resolvedAt = null
     }
   }
-  if (body.priority !== undefined) record.priority = body.priority
+  if (body.priority !== undefined) {
+    record.priority = body.priority
+    record.slaDueAt = computeSlaDueAt(body.priority, record.createdAt)
+  }
   if (body.assigneeUserId !== undefined) {
     record.assigneeUserId = body.assigneeUserId
   }
@@ -301,6 +324,9 @@ export async function addTicketComment(
   em.persist(comment)
 
   ticket.updatedAt = new Date()
+  if (!isInternal && !ticket.firstRespondedAt) {
+    ticket.firstRespondedAt = new Date()
+  }
   if (ticket.status === 'waiting' && !isInternal) {
     ticket.status = 'open'
   }

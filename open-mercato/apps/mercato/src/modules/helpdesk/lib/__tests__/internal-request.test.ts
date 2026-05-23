@@ -32,6 +32,8 @@ describe('submitInternalHelpdeskRequest', () => {
       personId: null,
       dealId: null,
       triageJson: '{}',
+      slaDueAt: new Date('2026-05-24T12:00:00.000Z'),
+      firstRespondedAt: null,
       resolvedAt: null,
       createdAt: now,
       updatedAt: now,

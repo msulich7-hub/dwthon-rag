@@ -15,6 +15,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@open-mercato/ui/primitives/select'
+import { HelpdeskShell } from '../../../../components/HelpdeskShell'
+import { priorityBadgeClass, slaBadgeClass, visibilityBadgeClass } from '../../../../components/ticket-ui'
+import { slaRemainingLabel } from '../../../../lib/sla'
 
 type TicketDetail = {
   id: string
@@ -26,6 +29,8 @@ type TicketDetail = {
   visibility: string
   requesterType: string
   teamQueue: string
+  slaDueAt: string | null
+  firstRespondedAt: string | null
   reporterName: string | null
   reporterEmail: string | null
   comments: Array<{
@@ -92,13 +97,36 @@ export default function HelpdeskTicketDetailPage() {
   const publicComments = ticket.comments.filter((c) => !c.isInternal)
   const internalComments = ticket.comments.filter((c) => c.isInternal)
 
+  const slaState = slaRemainingLabel(ticket.slaDueAt)
+  const slaClass = slaBadgeClass(ticket.slaDueAt)
+
   return (
     <Page>
       <PageHeader
         title={`${ticket.ticketKey} — ${ticket.subject}`}
         description={`${ticket.visibility === 'customer' ? t('helpdesk.visibility.customer', 'Customer') : t('helpdesk.visibility.internal', 'Internal')} · ${ticket.teamQueue}`}
       />
-      <PageBody className="space-y-6">
+      <PageBody>
+        <HelpdeskShell>
+        <div className="space-y-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`text-xs rounded-full border px-2 py-0.5 ${priorityBadgeClass(ticket.priority)}`}>
+            {ticket.priority}
+          </span>
+          <span className={`text-xs rounded-full border px-2 py-0.5 ${visibilityBadgeClass(ticket.visibility)}`}>
+            {ticket.visibility}
+          </span>
+          {slaClass && slaState ? (
+            <span className={`text-xs rounded-full border px-2 py-0.5 ${slaClass}`}>
+              {slaState === 'breached'
+                ? t('helpdesk.sla.breached', 'SLA breached')
+                : slaState === 'due_soon'
+                  ? t('helpdesk.sla.dueSoon', 'Due soon')
+                  : t('helpdesk.sla.onTrack', 'On track')}
+              {ticket.slaDueAt ? ` · ${new Date(ticket.slaDueAt).toLocaleString()}` : ''}
+            </span>
+          ) : null}
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-sm text-muted-foreground">{t('helpdesk.ticket.status', 'Status')}</span>
           <Select value={ticket.status} onValueChange={(value) => void updateStatus(value)}>
@@ -178,6 +206,8 @@ export default function HelpdeskTicketDetailPage() {
             {t('helpdesk.ticket.addInternalNote', 'Add internal note')}
           </Button>
         </section>
+        </div>
+        </HelpdeskShell>
       </PageBody>
     </Page>
   )

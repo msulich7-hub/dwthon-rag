@@ -16,13 +16,22 @@ const widget: InjectionMenuItemWidget = {
       placement: { position: InjectionPosition.First },
     },
     {
+      id: 'helpdesk-kanban',
+      label: 'Kanban board',
+      icon: 'Kanban',
+      href: HELPDESK_ROUTES.kanban,
+      features: ['helpdesk.agent', 'helpdesk.view'],
+      groupId: 'helpdesk.nav.group',
+      placement: { position: InjectionPosition.After, relativeTo: 'helpdesk-home' },
+    },
+    {
       id: 'helpdesk-workspace',
       label: 'Agent workspace',
       icon: 'LayoutGrid',
       href: HELPDESK_ROUTES.workspace,
       features: ['helpdesk.agent', 'helpdesk.view'],
       groupId: 'helpdesk.nav.group',
-      placement: { position: InjectionPosition.After, relativeTo: 'helpdesk-home' },
+      placement: { position: InjectionPosition.After, relativeTo: 'helpdesk-kanban' },
     },
     {
       id: 'helpdesk-report',

@@ -1,0 +1,28 @@
+akeneo_connectivity_connection_manage_settings:
+    type: action
+    label: akeneo_connectivity.connection.acl.manage_settings
+    group_name: oro_config_system
+    order: -20
+
+akeneo_connectivity_connection_manage_apps:
+    type: action
+    label: akeneo_connectivity.connection.acl.manage_apps
+    group_name: oro_config_system
+    enabled_at_creation: false
+    order: -10
+    feature: marketplace_activate
+
+akeneo_connectivity_connection_open_apps:
+    type: action
+    label: akeneo_connectivity.connection.acl.open_apps
+    group_name: oro_config_system
+    enabled_at_creation: false
+    order: -10
+    feature: marketplace_activate
+
+akeneo_connectivity_connection_manage_test_apps:
+    type: action
+    label: akeneo_connectivity.connection.acl.manage_test_apps
+    group_name: pim_system.acl_group.developer_mode
+    enabled_at_creation: false
+    feature: app_developer_mode

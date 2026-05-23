@@ -1,0 +1,39 @@
+<div class="AknFieldContainer-header">
+    <label class="AknFieldContainer-label control-label">
+        <%- label %>
+        <span class="label-elements-container"></span>
+    </label>
+    <div class="after-label-elements-container"></div>
+</div>
+<div class="AknFieldContainer-inputContainer">
+    <div class="filter-input"></div>
+    <span class="after-input-elements-container"></span>
+    <% if (removable && editable) { %>
+        <div class="AknFieldContainer-iconsContainer icons-container"><i class="AknIconButton remove icon-trash"></i></div>
+    <% } %>
+</div>
+<div class="AknFieldContainer-footer">
+    <span class="below-input-elements-container">
+        <% if (typeof warnings !== "undefined" && warnings.length > 0) { %>
+            <span class="validation-container">
+                <% _.each(warnings, function (warning) { %>
+                    <span class="AknFieldContainer-multilineValidationWarning">
+                        <i class="AknFieldContainer-iconValidationWarning"></i>
+                        <span class="AknFieldContainer-validationWarningMessage"><%- warning %></span>
+                    </span>
+                <% }); %>
+            </span>
+        <% } %>
+        <% if (typeof errors !== "undefined" && errors.length > 0) { %>
+            <span class="validation-container">
+                <span class="AknFieldContainer-validationErrors validation-errors">
+                    <% _.each(errors, function (error) { %>
+                        <span class="AknFieldContainer-validationError">
+                            <span class="error-message"><%- error %></span>
+                        </span>
+                    <% }); %>
+                </span>
+            </span>
+        <% } %>
+    </span>
+</div>

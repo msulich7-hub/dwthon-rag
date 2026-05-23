@@ -1,0 +1,18 @@
+services:
+  # Context
+  Akeneo\Test\Pim\Automation\IdentifierGenerator\Acceptance\Context\CreateIdentifierGeneratorContext:
+    public: true
+    arguments:
+      - '@Akeneo\Pim\Automation\IdentifierGenerator\Application\Create\CreateGeneratorHandler'
+      - '@Akeneo\Pim\Automation\IdentifierGenerator\Domain\Repository\IdentifierGeneratorRepository'
+      - '@pim_catalog.repository.attribute'
+
+  Akeneo\Test\Pim\Automation\IdentifierGenerator\Acceptance\Context\UpdateIdentifierGeneratorContext:
+    public: true
+    arguments:
+      - '@Akeneo\Pim\Automation\IdentifierGenerator\Application\Update\UpdateGeneratorHandler'
+      - '@Akeneo\Pim\Automation\IdentifierGenerator\Domain\Repository\IdentifierGeneratorRepository'
+
+  # Persistence
+  Akeneo\Pim\Automation\IdentifierGenerator\Domain\Repository\IdentifierGeneratorRepository:
+    class: 'Akeneo\Pim\Automation\IdentifierGenerator\Infrastructure\Repository\InMemoryIdentifierGeneratorRepository'

@@ -1,0 +1,15 @@
+services:
+    Akeneo\Tool\Bundle\VersioningBundle\Command\PurgeCommand:
+        arguments:
+            - '@logger'
+            - '@Akeneo\Tool\Bundle\BatchBundle\JobExecution\ExecuteJobExecutionHandlerInterface'
+            - '@Akeneo\Tool\Bundle\BatchBundle\JobExecution\CreateJobExecutionHandlerInterface'
+        tags:
+            - { name: console.command }
+
+    Akeneo\Tool\Bundle\VersioningBundle\Command\RefreshCommand:
+        arguments:
+            - '@Akeneo\Tool\Bundle\BatchBundle\JobExecution\ExecuteJobExecutionHandlerInterface'
+            - '@Akeneo\Tool\Bundle\BatchBundle\JobExecution\CreateJobExecutionHandlerInterface'
+        tags:
+            - { name: console.command }

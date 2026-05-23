@@ -1,0 +1,19 @@
+Akeneo PIM Community Edition — własne repozytorium GitHub
+============================================================
+
+Kod pochodzi z: https://github.com/akeneo/pim-community-dev
+Historia oryginalnego repozytorium została usunięta (świeży projekt).
+
+Aby wypchnąć kod na SWOJE puste repozytorium GitHub:
+
+  cd akeneo-pim
+  git init -b main
+  git remote add origin https://github.com/TWOJ_USER/TWOJE_REPO.git
+  git add .
+  git commit -m "Initial commit - Akeneo PIM base"
+  git push -u origin main
+
+(Użyj SSH zamiast HTTPS, jeśli wolisz: git@github.com:TWOJ_USER/TWOJE_REPO.git)
+
+Uwaga: jeśli katalog już zawiera folder .git z wcześniejszej inicjalizacji,
+pomiń „git init” i od razu dodaj remote.

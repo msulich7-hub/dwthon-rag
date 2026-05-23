@@ -1,0 +1,30 @@
+services:
+    Akeneo\Platform\Job\Application\SearchJobExecution\SearchJobExecutionHandler:
+        arguments:
+            - '@Akeneo\Platform\Job\Application\SearchJobExecution\SearchJobExecutionInterface'
+
+    Akeneo\Platform\Job\Application\SearchJobUser\SearchJobUserHandler:
+        arguments:
+            - '@Akeneo\Platform\Job\Application\SearchJobUser\SearchJobUserInterface'
+
+    Akeneo\Platform\Job\Application\FindJobType\FindJobTypeHandler:
+        arguments:
+            - '@Akeneo\Platform\Job\Application\FindJobType\FindJobTypeInterface'
+
+    Akeneo\Platform\Job\Application\CreateJobInstanceHandler:
+        public: true
+        arguments:
+            - '@akeneo_batch.job_instance_factory'
+            - '@akeneo_batch.job.job_registry'
+            - '@akeneo_batch.job_parameters_factory'
+            - '@akeneo_batch.job.job_parameters_validator'
+            - '@validator'
+            - '@akeneo_platform.saver.job_instance'
+
+    Akeneo\Platform\Job\Application\LaunchJobInstance\LaunchJobInstanceHandler:
+        public: true
+        arguments:
+            - '@Akeneo\Platform\Job\Application\LaunchJobInstance\JobFileStorerInterface'
+            - '@Akeneo\Platform\Job\Application\LaunchJobInstance\GenerateJobExecutionUrlInterface'
+            - '@security.token_storage'
+            - '@akeneo_batch_queue.queue.publish_job_to_queue'

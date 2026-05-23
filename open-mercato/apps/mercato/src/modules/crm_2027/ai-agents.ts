@@ -14,7 +14,7 @@ const READ_TOOLS = [
   'search.hybrid_search',
 ] as const
 
-const MUTATION_TOOLS = ['customers.update_deal_stage'] as const
+const MUTATION_TOOLS = ['customers.update_deal_stage', 'crm_2027.execute_voice_intent'] as const
 
 const basePrompt = [
   'You are a CRM 2027 assistant on Open Mercato.',

@@ -1,14 +1,12 @@
 import { z } from 'zod'
 import { defineAiTool } from '@open-mercato/ai-assistant'
-import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
-import {
-  CustomerActivity,
-  CustomerDeal,
-} from '@open-mercato/core/modules/customers/data/entities'
 import { loadDealContext } from './lib/deal-context'
+import { scanAtRiskDeals } from './lib/at-risk-scan'
 import { analyzeSentiment } from './lib/sentiment'
 import { suggestDealProgression } from './lib/deal-progression'
-import { assertCrm2027Scope, daysSince, resolveEm, type Crm2027ToolContext } from './lib/tool-context'
+import { executeVoiceIntent } from './lib/voice-execute'
+import { assertCrm2027Scope, resolveEm, type Crm2027ToolContext } from './lib/tool-context'
+import type { CommandBus } from '@open-mercato/shared/lib/commands'
 
 const analyzeTextSentiment = defineAiTool({
   name: 'crm_2027.analyze_text_sentiment',
@@ -107,76 +105,35 @@ const listAtRiskDeals = defineAiTool({
   }),
   async handler(input, ctx) {
     assertCrm2027Scope(ctx as Crm2027ToolContext)
-    const em = resolveEm(ctx as Crm2027ToolContext)
     const scope = ctx as Crm2027ToolContext
-
-    const deals = await findWithDecryption(em, CustomerDeal, {
+    const em = resolveEm(scope)
+    const items = await scanAtRiskDeals(em, {
       tenantId: scope.tenantId,
       organizationId: scope.organizationId,
-      status: 'open',
-      deletedAt: null,
+      limit: input.limit,
+      stallDays: input.stallDays,
     })
+    return { items, total: items.length }
+  },
+})
 
-    const ranked: Array<{
-      dealId: string
-      title: string
-      riskLevel: 'medium' | 'high'
-      reasons: string[]
-      daysSinceLastActivity: number | null
-      sentimentLabel: string | null
-    }> = []
-
-    for (const deal of deals.slice(0, 200)) {
-      const activities = await em.find(
-        CustomerActivity,
-        {
-          deal: deal.id,
-          tenantId: scope.tenantId,
-          organizationId: scope.organizationId,
-        },
-        { orderBy: { occurredAt: 'DESC' }, limit: 3 },
-      )
-
-      const textBlob = activities
-        .map((a) => [a.subject, a.body].filter(Boolean).join(' '))
-        .join('\n')
-      const sentiment = textBlob ? analyzeSentiment(textBlob) : null
-      const lastAt = activities[0]?.occurredAt ?? activities[0]?.createdAt ?? null
-      const idleDays = daysSince(lastAt)
-
-      const reasons: string[] = []
-      let riskLevel: 'medium' | 'high' | null = null
-
-      if (sentiment?.atRisk) {
-        reasons.push(`negative_sentiment:${sentiment.label}`)
-        riskLevel = 'high'
-      }
-      if (idleDays != null && idleDays >= input.stallDays) {
-        reasons.push(`stalled:${idleDays}d`)
-        riskLevel = riskLevel ?? 'medium'
-      }
-
-      if (riskLevel) {
-        ranked.push({
-          dealId: deal.id,
-          title: deal.title,
-          riskLevel,
-          reasons,
-          daysSinceLastActivity: idleDays,
-          sentimentLabel: sentiment?.label ?? null,
-        })
-      }
-    }
-
-    ranked.sort((a, b) => {
-      const weight = (r: (typeof ranked)[number]) => (r.riskLevel === 'high' ? 2 : 1)
-      return weight(b) - weight(a)
-    })
-
-    return {
-      items: ranked.slice(0, input.limit),
-      total: ranked.length,
-    }
+const executeVoiceIntentTool = defineAiTool({
+  name: 'crm_2027.execute_voice_intent',
+  description:
+    'Execute a voice or natural-language command: create task/note interactions. Deal stage changes still require approval flow.',
+  isMutation: true,
+  requiredFeatures: ['crm_2027.voice', 'customers.interactions.manage'],
+  inputSchema: z.object({
+    transcript: z.string().min(1),
+    dealId: z.string().uuid().optional(),
+    entityId: z.string().uuid().optional(),
+  }),
+  async handler(input, ctx) {
+    assertCrm2027Scope(ctx as Crm2027ToolContext)
+    const scope = ctx as Crm2027ToolContext
+    const em = resolveEm(scope)
+    const commandBus = ctx.container.resolve('commandBus') as CommandBus
+    return executeVoiceIntent(em, commandBus, ctx, scope, input)
   },
 })
 
@@ -185,6 +142,7 @@ export const aiTools = [
   getDealContext,
   suggestDealUpdates,
   listAtRiskDeals,
+  executeVoiceIntentTool,
 ]
 
 export default aiTools

@@ -1,0 +1,128 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
+from uuid import uuid4
+
+import pytest
+from fastapi.testclient import TestClient
+
+from app.main import app
+from app.schemas import ProductionOperation, ProductionOrder, ScheduleRequest
+from app.solver.scheduler import solve_schedule
+
+
+def _sample_order(*, wc_a: str = "WC-CUT", wc_b: str = "WC-ASM") -> ProductionOrder:
+    order_id = uuid4()
+    return ProductionOrder(
+        id=order_id,
+        code="PO-00001",
+        title="Widget batch",
+        status="planned",
+        quantity=10,
+        due_at=datetime.now(tz=UTC) + timedelta(hours=48),
+        operations=[
+            ProductionOperation(
+                id=uuid4(),
+                productionOrderId=order_id,
+                sequenceNo=1,
+                name="Cut",
+                workCenterCode=wc_a,
+                durationMinutes=60,
+            ),
+            ProductionOperation(
+                id=uuid4(),
+                productionOrderId=order_id,
+                sequenceNo=2,
+                name="Assemble",
+                workCenterCode=wc_b,
+                durationMinutes=90,
+            ),
+        ],
+    )
+
+
+def test_health_endpoint() -> None:
+    client = TestClient(app)
+    response = client.get("/health")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ok"
+    assert payload["service"] == "ortools-scheduler"
+
+
+def test_schedule_two_operation_routing() -> None:
+    order = _sample_order()
+    request = ScheduleRequest(
+        tenantId=uuid4(),
+        organizationId=uuid4(),
+        orders=[order],
+        horizonHours=168,
+        objective="minimize_lateness",
+        planningStartAt=datetime.now(tz=UTC),
+    )
+    result = solve_schedule(request, timeout_seconds=30)
+    assert result.status == "completed"
+    assert result.schedule is not None
+    assert len(result.schedule) == 2
+    assert result.schedule[0].planned_start_at <= result.schedule[1].planned_start_at
+
+
+def test_schedule_respects_precedence() -> None:
+    order = _sample_order()
+    request = ScheduleRequest(
+        tenantId=uuid4(),
+        organizationId=uuid4(),
+        orders=[order],
+        planningStartAt=datetime(2026, 5, 23, 8, 0, tzinfo=UTC),
+    )
+    result = solve_schedule(request, timeout_seconds=30)
+    assert result.schedule is not None
+    cut = next(row for row in result.schedule if row.work_center_code == "WC-CUT")
+    asm = next(row for row in result.schedule if row.work_center_code == "WC-ASM")
+    assert cut.planned_end_at <= asm.planned_start_at
+
+
+def test_schedule_http_roundtrip() -> None:
+    order = _sample_order()
+    client = TestClient(app)
+    response = client.post(
+        "/schedule",
+        json={
+            "tenantId": str(uuid4()),
+            "organizationId": str(uuid4()),
+            "orders": [order.model_dump(mode="json", by_alias=True)],
+            "horizonHours": 168,
+            "objective": "minimize_lateness",
+            "planningStartAt": datetime.now(tz=UTC).isoformat(),
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "completed"
+    assert len(body["schedule"]) == 2
+
+
+def test_api_key_rejection(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("API_KEY", "secret-token")
+    get_settings = __import__("app.config", fromlist=["get_settings"]).get_settings
+    get_settings.cache_clear()
+
+    client = TestClient(app)
+    order = _sample_order()
+    payload = {
+        "tenantId": str(uuid4()),
+        "organizationId": str(uuid4()),
+        "orders": [order.model_dump(mode="json", by_alias=True)],
+    }
+
+    unauthorized = client.post("/schedule", json=payload)
+    assert unauthorized.status_code == 401
+
+    authorized = client.post(
+        "/schedule",
+        json=payload,
+        headers={"Authorization": "Bearer secret-token"},
+    )
+    assert authorized.status_code == 200
+
+    get_settings.cache_clear()

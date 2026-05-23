@@ -5,43 +5,37 @@
 ## Do not modify Open Mercato core
 
 - No edits under `packages/core`, `packages/ui`, `packages/ai-assistant`, or other platform packages.
-- Integrate via **command bus** (`sales.orders.*`, `catalog.*`), **UMES injection**, and links to `/backend/sales/*`.
+- Integrate via **command bus** (`sales.orders.*`), **UMES injection**, and links to `/backend/sales/*`.
 - Register only in `apps/mercato/src/modules.ts`: `{ id: 'production_planning', from: '@app' }`.
+
+## CP-SAT solver (Google OR-Tools)
+
+Heavy scheduling runs in **`open-mercato/services/ortools-scheduler`** (Python, Apache 2.0). Mercato never embeds OR-Tools in Node.
+
+| Step | File / endpoint |
+|------|-----------------|
+| Export problem | `lib/build-cpsat-payload.ts` |
+| HTTP bridge | `lib/ortools-bridge.ts` → `ORTOOLS_BRIDGE_URL` (default `…/schedule`) |
+| Solve | Python `app/solver/scheduler.py` (CP-SAT) |
+| Apply result | `lib/apply-cpsat-schedule.ts` via `POST /api/production_planning/optimize` |
+
+Env: `ORTOOLS_BRIDGE_URL`, `ORTOOLS_BRIDGE_API_KEY`, `ORTOOLS_BRIDGE_TIMEOUT_MS`.
+
+Spec: `.ai/specs/2026-05-23-production-planning-cpsat-ortools.md`
 
 ## Dependencies
 
-- `sales` — sales order detail tabs and stage-bar injection
-- `scheduler` + `queue` — periodic capacity refresh jobs
+- `sales` — order detail tab + stage-bar injection
+- `scheduler` + `queue` — capacity refresh every 4h
 - `workflows`, `notifications` — late-order alerts
-- `ai_assistant` — optional scheduling copilot (foundation stubs)
-
-## Reference
-
-Copy patterns from `apps/mercato/src/modules/crm_2027/` and `example/` (injection, ACL, setup).
+- `ai_assistant` — scheduling copilot + `production_planning.capacity_snapshot` tool
 
 ## Injection spots
 
-- `sales.document.detail.order:tabs` — production schedule tab on order detail
+- `sales.document.detail.order:tabs` — production schedule tab
 - `detail:sales.order:stage-bar` — production status chips
-- `menu:sidebar:main` — module navigation group
+- `menu:sidebar:main` — module navigation
 
-## Hexaly (commercial optimizer) — integration pattern
+## Reference
 
-Hexaly is **not** open source and has **no official Node.js SDK**. Do not add proprietary binaries to Mercato.
-
-Recommended architecture (aligned with Open Mercato module + queue model):
-
-1. **Data in Mercato** — production orders, operations, sales links (`production_planning_*` tables).
-2. **Export job** — `POST /api/production_planning/optimize` builds payload and calls `lib/hexaly-bridge.ts`.
-3. **Hexaly worker** — separate Python/Java microservice (or Hexaly Cloud) runs the solver; returns planned start/end per operation.
-4. **Import job** — apply `schedule[]` back via `production_planning` APIs (future: worker `hexaly-import`).
-
-Env:
-
-- `HEXALY_BRIDGE_URL` — HTTP endpoint of your bridge service
-- `HEXALY_BRIDGE_API_KEY` — optional bearer token
-- `HEXALY_BRIDGE_TIMEOUT_MS` — default `120000`
-
-Without `HEXALY_BRIDGE_URL`, the module uses in-app heuristics (`capacity-snapshot`, late-order flags) only.
-
-Licensing note: Hexaly is quote-based (Business) or free (Academic). Budget for solver separately from Mercato (MIT).
+Copy patterns from `crm_2027/` (ACL, setup, workers, injection).

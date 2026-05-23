@@ -18,6 +18,27 @@ const events = [
     label: 'Capacity schedule refreshed',
     category: 'system',
   },
+  {
+    id: 'production_planning.optimize.requested',
+    label: 'CP-SAT optimization requested',
+    category: 'system',
+  },
+  {
+    id: 'production_planning.optimize.completed',
+    label: 'CP-SAT optimization completed',
+    category: 'system',
+  },
+  {
+    id: 'production_planning.optimize.failed',
+    label: 'CP-SAT optimization failed',
+    category: 'system',
+  },
+  {
+    id: 'production_planning.schedule.applied',
+    label: 'CP-SAT schedule applied to operations',
+    entity: 'production_order',
+    category: 'crud',
+  },
 ] as const
 
 export const eventsConfig = createModuleEvents({ moduleId: 'production_planning', events })

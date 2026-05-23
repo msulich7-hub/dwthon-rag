@@ -7,11 +7,12 @@ const schedulingCopilot: AiAgentDefinition = {
   moduleId: MODULE_ID,
   label: 'Production scheduling copilot',
   description:
-    'Suggests operation sequencing and work-center balancing. Heavy optimization runs via Hexaly bridge when configured.',
+    'Suggests operation sequencing and work-center balancing using CP-SAT (OR-Tools) when ORTOOLS_BRIDGE_URL is configured.',
   systemPrompt: [
     'You assist production planners on Open Mercato.',
     'Use production_planning.capacity_snapshot before recommending changes.',
-    'For mathematical optimization, explain that HEXALY_BRIDGE_URL must point to a Python/Java Hexaly worker.',
+    'Mathematical optimization runs via CP-SAT in services/ortools-scheduler (set ORTOOLS_BRIDGE_URL).',
+    'POST /api/production_planning/optimize exports orders+operations, solves, and applies the schedule.',
     'Respond in the user language (Polish or English).',
   ].join('\n\n'),
   allowedTools: ['production_planning.capacity_snapshot'],
@@ -20,7 +21,7 @@ const schedulingCopilot: AiAgentDefinition = {
   starterSuggestions: [
     'Pokaż obciążenie gniazd roboczych',
     'Które zlecenia są opóźnione?',
-    'Jak podłączyć Hexaly do harmonogramu?',
+    'Uruchom optymalizację CP-SAT dla otwartych zleceń',
   ],
 }
 

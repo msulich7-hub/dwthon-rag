@@ -1,0 +1,22 @@
+{
+  "helpdesk.customerTickets.tabLabel": "Support",
+  "helpdesk.customerTickets.createTitle": "New ticket",
+  "helpdesk.customerTickets.createHint": "Create a support issue linked to this customer. Priority is triaged automatically.",
+  "helpdesk.customerTickets.subjectLabel": "Subject",
+  "helpdesk.customerTickets.subjectPlaceholder": "Cannot access billing portal",
+  "helpdesk.customerTickets.bodyLabel": "Description",
+  "helpdesk.customerTickets.bodyPlaceholder": "Describe the issue…",
+  "helpdesk.customerTickets.create": "Create ticket",
+  "helpdesk.customerTickets.loading": "Loading tickets…",
+  "helpdesk.customerTickets.empty": "No tickets yet.",
+  "helpdesk.customerTickets.loadError": "Failed to load tickets",
+  "helpdesk.customerTickets.missingCustomer": "Open a customer record to manage tickets.",
+  "helpdesk.tickets.title": "Tickets",
+  "helpdesk.tickets.empty": "No tickets in this queue.",
+  "helpdesk.tickets.loadError": "Failed to load tickets",
+  "helpdesk.ticket.status": "Status",
+  "helpdesk.ticket.priority": "Priority",
+  "helpdesk.ticket.comments": "Comments",
+  "helpdesk.ticket.addComment": "Add comment",
+  "helpdesk.ticket.notFound": "Ticket not found"
+}

@@ -20,6 +20,11 @@ Ship a competitive, modular CRM product for 2027 on Open Mercato: reuse ~80% pla
 | **D. Smart deal progression** | `suggest_deal_updates` + `deal_progression_agent`, whitelist `customers.update_deal_stage` | Post-meeting transcript analysis, follow-up drafts |
 | **E. Composable / modular** | Dedicated `@app` module, UMES injection on deal detail | Official module publish, CPQ integrations |
 
+
+## Constraint: app module only
+
+CRM 2027 lives in `apps/mercato/src/modules/crm_2027/` (`from: '@app'`). Do **not** change `packages/core` or other platform packages. Integrate via imports, command bus, UMES injection, and links to existing `/backend/customers/*` routes.
+
 ## Dependencies (platform)
 
 - **Core CRM:** `customers` (people, companies, deals, pipelines, activities)

@@ -10,7 +10,7 @@ export default function Crm2027HubPage() {
     <Page>
       <PageHeader
         title="CRM 2027"
-        description="Twenty-inspired workspace on Open Mercato — people, pipeline, AI copilot, and at-risk deals."
+        description="CRM workspace on Open Mercato (app module — composes customers, no core patches) — people, pipeline, AI copilot, and at-risk deals."
       />
       <PageBody className="space-y-8">
         <section>

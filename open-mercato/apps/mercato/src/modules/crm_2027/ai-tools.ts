@@ -7,6 +7,9 @@ import { suggestDealProgression } from './lib/deal-progression'
 import { executeVoiceIntent } from './lib/voice-execute'
 import { assertCrm2027Scope, resolveEm, type Crm2027ToolContext } from './lib/tool-context'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
+import { searchCrmRecords } from './lib/crm-search'
+import { CRM_2027_MCP_SURFACE } from './lib/crm-mcp-surface'
+
 
 const analyzeTextSentiment = defineAiTool({
   name: 'crm_2027.analyze_text_sentiment',
@@ -117,6 +120,37 @@ const listAtRiskDeals = defineAiTool({
   },
 })
 
+
+const searchRecords = defineAiTool({
+  name: 'crm_2027.search_records',
+  description: 'Twenty-style unified search across people, companies, and deals.',
+  isMutation: false,
+  requiredFeatures: ['crm_2027.view', 'customers.people.view'],
+  inputSchema: z.object({
+    q: z.string().min(1),
+    limit: z.number().int().min(1).max(30).default(10),
+  }),
+  async handler(input, ctx) {
+    assertCrm2027Scope(ctx as Crm2027ToolContext)
+    const scope = ctx as Crm2027ToolContext
+    const em = resolveEm(scope)
+    const items = await searchCrmRecords(em, scope, input.q, input.limit)
+    return { items, total: items.length }
+  },
+})
+
+const describeCrmSurface = defineAiTool({
+  name: 'crm_2027.describe_crm_surface',
+  description:
+    'Returns CRM object catalog and tool names (Twenty MCP get_tool_catalog equivalent for Open Mercato).',
+  isMutation: false,
+  requiredFeatures: ['crm_2027.ai'],
+  inputSchema: z.object({}),
+  async handler() {
+    return CRM_2027_MCP_SURFACE
+  },
+})
+
 const executeVoiceIntentTool = defineAiTool({
   name: 'crm_2027.execute_voice_intent',
   description:
@@ -138,6 +172,8 @@ const executeVoiceIntentTool = defineAiTool({
 })
 
 export const aiTools = [
+  describeCrmSurface,
+  searchRecords,
   analyzeTextSentiment,
   getDealContext,
   suggestDealUpdates,

@@ -2,11 +2,17 @@ import type { AiAgentDefinition } from '@open-mercato/ai-assistant/modules/ai_as
 
 const MODULE_ID = 'crm_2027'
 
+const DISCOVERY_TOOLS = [
+  'crm_2027.describe_crm_surface',
+  'crm_2027.search_records',
+] as const
+
 const READ_TOOLS = [
   'crm_2027.analyze_text_sentiment',
   'crm_2027.get_deal_context',
   'crm_2027.suggest_deal_updates',
   'crm_2027.list_at_risk_deals',
+  ...DISCOVERY_TOOLS,
   'customers.list_deals',
   'customers.get_deal',
   'customers.list_activities',
@@ -82,6 +88,7 @@ const sentimentMonitorAgent: AiAgentDefinition = {
   allowedTools: [
     'crm_2027.analyze_text_sentiment',
     'crm_2027.list_at_risk_deals',
+  ...DISCOVERY_TOOLS,
     'crm_2027.get_deal_context',
     'customers.list_deals',
     'customers.get_deal',
@@ -107,5 +114,20 @@ const salesAutonomyAgent: AiAgentDefinition = {
   mutationPolicy: 'confirm-required',
 }
 
-export const aiAgents = [copilot, dealProgressionAgent, sentimentMonitorAgent, salesAutonomyAgent]
+
+const crmCopilot: AiAgentDefinition = {
+  ...copilot,
+  id: 'crm_2027.crm_copilot',
+  label: 'CRM Copilot (Twenty parity)',
+  description: 'Primary CRM workspace agent with search, sentiment, and deal progression.',
+  allowedTools: [...READ_TOOLS, ...DISCOVERY_TOOLS, ...MUTATION_TOOLS],
+  starterSuggestions: [
+    'Search for Acme in CRM',
+    'Which deals are at risk?',
+    'Suggest next step for this deal',
+    'Analyze sentiment of this email',
+  ],
+}
+
+export const aiAgents = [crmCopilot, copilot, dealProgressionAgent, sentimentMonitorAgent, salesAutonomyAgent]
 export default aiAgents

@@ -6,6 +6,7 @@ import { Page, PageBody, PageHeader } from '@open-mercato/ui/backend/Page'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
+import { RecordPeekDrawer, type RecordPeekData } from '../../../components/RecordPeekDrawer'
 
 type AtRiskItem = {
   dealId: string
@@ -15,13 +16,14 @@ type AtRiskItem = {
   daysSinceLastActivity: number | null
   sentimentLabel: string | null
   source?: string
-  lastScannedAt?: string
 }
 
 export default function Crm2027AtRiskPage() {
   const [items, setItems] = React.useState<AtRiskItem[]>([])
   const [loading, setLoading] = React.useState(true)
   const [scanning, setScanning] = React.useState(false)
+  const [peek, setPeek] = React.useState<RecordPeekData | null>(null)
+  const [peekOpen, setPeekOpen] = React.useState(false)
 
   const load = React.useCallback(async () => {
     setLoading(true)
@@ -57,11 +59,23 @@ export default function Crm2027AtRiskPage() {
     }
   }, [load])
 
+  const openPeek = (item: AtRiskItem) => {
+    setPeek({
+      dealId: item.dealId,
+      title: item.title,
+      riskLevel: item.riskLevel,
+      reasons: item.reasons,
+      sentimentLabel: item.sentimentLabel,
+      daysSinceLastActivity: item.daysSinceLastActivity,
+    })
+    setPeekOpen(true)
+  }
+
   return (
     <Page>
       <PageHeader
         title="CRM 2027 — At-risk deals"
-        description="Deals flagged by sentiment signals or stalled activity. Powered by Open Mercato customers + CRM 2027 autonomy."
+        description="Twenty-style triage: peek records in the side panel or open the full deal."
         actions={
           <Button type="button" onClick={() => void runScan()} disabled={scanning}>
             {scanning ? 'Scanning…' : 'Run risk scan'}
@@ -81,35 +95,24 @@ export default function Crm2027AtRiskPage() {
                   <th className="px-3 py-2">Deal</th>
                   <th className="px-3 py-2">Risk</th>
                   <th className="px-3 py-2">Signals</th>
-                  <th className="px-3 py-2">Idle days</th>
-                  <th className="px-3 py-2">Sentiment</th>
-                  <th className="px-3 py-2" />
+                  <th className="px-3 py-2">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((item) => (
                   <tr key={`${item.dealId}-${item.source ?? 'live'}`} className="border-t">
                     <td className="px-3 py-2 font-medium">{item.title}</td>
-                    <td className="px-3 py-2">
-                      <span
-                        className={
-                          item.riskLevel === 'high'
-                            ? 'text-destructive font-medium'
-                            : 'text-amber-700 dark:text-amber-400'
-                        }
-                      >
-                        {item.riskLevel}
-                      </span>
-                    </td>
+                    <td className="px-3 py-2">{item.riskLevel}</td>
                     <td className="px-3 py-2 text-muted-foreground">{item.reasons.join(', ')}</td>
-                    <td className="px-3 py-2">{item.daysSinceLastActivity ?? '—'}</td>
-                    <td className="px-3 py-2">{item.sentimentLabel ?? '—'}</td>
-                    <td className="px-3 py-2 text-right">
+                    <td className="px-3 py-2 space-x-2">
+                      <Button type="button" variant="outline" size="sm" onClick={() => openPeek(item)}>
+                        Peek
+                      </Button>
                       <Link
-                        className="underline"
+                        className="text-sm underline"
                         href={`/backend/customers/deals/${item.dealId}`}
                       >
-                        Open deal
+                        Open
                       </Link>
                     </td>
                   </tr>
@@ -119,6 +122,7 @@ export default function Crm2027AtRiskPage() {
           </div>
         )}
       </PageBody>
+      <RecordPeekDrawer record={peek} open={peekOpen} onOpenChange={setPeekOpen} />
     </Page>
   )
 }

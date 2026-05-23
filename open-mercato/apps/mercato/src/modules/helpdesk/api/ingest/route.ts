@@ -5,12 +5,12 @@ import { ingestHelpdeskTicket } from '../../lib/ingest-ticket'
 import { resolveHelpdeskRequestContext } from '../../lib/request-context'
 
 export const metadata = {
-  POST: { requireAuth: true, requireFeatures: ['helpdesk.ingest', 'helpdesk.manage'] },
+  POST: { requireAuth: true, requireFeatures: ['helpdesk.ingest'] },
 }
 
 export const openApi = {
   POST: {
-    summary: 'Ingest a helpdesk ticket from email, chat, or integration payload',
+    summary: 'Ingest a customer-channel ticket (email, portal, chat webhook)',
     tags: ['helpdesk'],
   },
 }

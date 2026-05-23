@@ -2,10 +2,10 @@ import type { ModuleInfo } from '@open-mercato/shared/modules/registry'
 
 export const metadata: ModuleInfo = {
   name: 'helpdesk',
-  title: 'Helpdesk',
-  version: '0.1.0',
+  title: 'Service Desk',
+  version: '0.2.0',
   description:
-    'Jira-style helpdesk: tickets, triage ingest, comments, and customer detail tabs — app module only.',
+    'Internal service desk for agents (queues, internal notes) with a customer ingest channel — Open Mercato app module.',
   author: 'dwthon-rag',
   license: 'MIT',
 }

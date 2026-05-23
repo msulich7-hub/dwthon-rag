@@ -5,8 +5,8 @@ export const setup: ModuleSetupConfig = {
     superadmin: ['helpdesk.*', 'customers.*'],
     admin: ['helpdesk.*', 'customers.companies.view', 'customers.people.view'],
     employee: [
+      'helpdesk.submit',
       'helpdesk.view',
-      'helpdesk.manage',
       'customers.companies.view',
       'customers.people.view',
     ],

@@ -2,16 +2,21 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import {
   HelpdeskTicket,
   HelpdeskTicketComment,
+  type HelpdeskRequesterType,
+  type HelpdeskTeamQueue,
   type HelpdeskTicketPriority,
   type HelpdeskTicketStatus,
+  type HelpdeskTicketVisibility,
 } from '../data/entities'
 import type {
   CreateHelpdeskTicketBody,
   CreateTicketCommentBody,
   UpdateHelpdeskTicketBody,
 } from '../data/validators'
+import type { AgentQueueId } from './queues'
 import { assertCustomerLink } from './customer-context'
 import { allocateTicketKey } from './ticket-key'
+import { buildQueueFilter } from './queues'
 import { triageHelpdeskMessage, type HelpdeskTriageResult } from './triage'
 
 export type TicketListItem = {
@@ -22,9 +27,13 @@ export type TicketListItem = {
   priority: HelpdeskTicketPriority
   category: string | null
   source: string
+  visibility: HelpdeskTicketVisibility
+  requesterType: HelpdeskRequesterType
+  teamQueue: HelpdeskTeamQueue
   companyId: string | null
   personId: string | null
   assigneeUserId: string | null
+  requesterUserId: string | null
   reporterEmail: string | null
   reporterName: string | null
   triage: HelpdeskTriageResult | null
@@ -46,6 +55,13 @@ export type TicketDetail = TicketListItem & {
   }>
 }
 
+export type CreateTicketOptions = {
+  initialStatus?: HelpdeskTicketStatus
+  visibility?: HelpdeskTicketVisibility
+  requesterType?: HelpdeskRequesterType
+  requesterUserId?: string | null
+}
+
 function parseTriage(raw: string | null | undefined): HelpdeskTriageResult | null {
   if (!raw) return null
   try {
@@ -64,9 +80,13 @@ function mapTicketListItem(record: HelpdeskTicket): TicketListItem {
     priority: record.priority,
     category: record.category ?? null,
     source: record.source,
+    visibility: record.visibility,
+    requesterType: record.requesterType,
+    teamQueue: record.teamQueue,
     companyId: record.companyId ?? null,
     personId: record.personId ?? null,
     assigneeUserId: record.assigneeUserId ?? null,
+    requesterUserId: record.requesterUserId ?? null,
     reporterEmail: record.reporterEmail ?? null,
     reporterName: record.reporterName ?? null,
     triage: parseTriage(record.triageJson),
@@ -82,13 +102,19 @@ export async function listTickets(
     status?: HelpdeskTicketStatus
     companyId?: string
     personId?: string
+    queue?: AgentQueueId
+    currentUserId?: string | null
     limit?: number
   },
 ): Promise<TicketListItem[]> {
-  const where: Record<string, unknown> = {
-    tenantId: scope.tenantId,
-    organizationId: scope.organizationId,
-  }
+  const where: Record<string, unknown> =
+    filters.queue && filters.queue !== 'all'
+      ? buildQueueFilter(filters.queue, scope, filters.currentUserId ?? null)
+      : {
+          tenantId: scope.tenantId,
+          organizationId: scope.organizationId,
+        }
+
   if (filters.status) where.status = filters.status
   if (filters.companyId) where.companyId = filters.companyId
   if (filters.personId) where.personId = filters.personId
@@ -152,17 +178,30 @@ async function validateCustomerLinks(
   }
 }
 
+function resolveTeamQueue(
+  body: CreateHelpdeskTicketBody,
+  triage: HelpdeskTriageResult,
+): HelpdeskTeamQueue {
+  if (body.teamQueue) return body.teamQueue
+  if (triage.category === 'billing') return 'billing'
+  if (triage.category === 'access') return 'it'
+  if (triage.category === 'feature_request') return 'ops'
+  return 'general'
+}
+
 export async function createTicket(
   em: EntityManager,
   scope: { tenantId: string; organizationId: string },
   body: CreateHelpdeskTicketBody,
-  options?: { initialStatus?: HelpdeskTicketStatus },
+  options?: CreateTicketOptions,
 ): Promise<TicketDetail> {
   await validateCustomerLinks(em, scope, body)
 
   const triage = triageHelpdeskMessage(body.subject, body.body)
   const ticketKey = await allocateTicketKey(em, scope)
   const now = new Date()
+  const visibility = body.visibility ?? options?.visibility ?? 'internal'
+  const requesterType = body.requesterType ?? options?.requesterType ?? 'staff'
 
   const record = em.create(HelpdeskTicket, {
     tenantId: scope.tenantId,
@@ -174,6 +213,10 @@ export async function createTicket(
     priority: body.priority ?? triage.priority,
     category: body.category ?? triage.category,
     source: body.source ?? 'manual',
+    visibility,
+    requesterType,
+    requesterUserId: options?.requesterUserId ?? null,
+    teamQueue: resolveTeamQueue(body, triage),
     reporterEmail: body.reporterEmail ?? null,
     reporterName: body.reporterName ?? null,
     assigneeUserId: body.assigneeUserId ?? null,
@@ -222,6 +265,7 @@ export async function updateTicket(
     record.assigneeUserId = body.assigneeUserId
   }
   if (body.category !== undefined) record.category = body.category
+  if (body.teamQueue !== undefined) record.teamQueue = body.teamQueue
 
   record.updatedAt = new Date()
   await em.flush()
@@ -243,6 +287,8 @@ export async function addTicketComment(
   })
   if (!ticket) return null
 
+  const isInternal = body.isInternal ?? false
+
   const comment = em.create(HelpdeskTicketComment, {
     tenantId: scope.tenantId,
     organizationId: scope.organizationId,
@@ -250,12 +296,12 @@ export async function addTicketComment(
     authorUserId,
     authorName: body.authorName ?? null,
     body: body.body.trim(),
-    isInternal: body.isInternal ?? false,
+    isInternal,
   })
   em.persist(comment)
 
   ticket.updatedAt = new Date()
-  if (ticket.status === 'waiting' && !body.isInternal) {
+  if (ticket.status === 'waiting' && !isInternal) {
     ticket.status = 'open'
   }
 

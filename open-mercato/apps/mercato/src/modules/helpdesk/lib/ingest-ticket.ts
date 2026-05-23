@@ -8,8 +8,8 @@ export type IngestHelpdeskTicketResult = {
 }
 
 /**
- * Ingest path for email/webhook style payloads (Jira Service Management–like).
- * Always creates a new ticket; deduplication can be added later via external id.
+ * Customer channel ingest (email, portal, chat) — external visibility.
+ * Agents work these in the service desk workspace; requesters do not see internal notes.
  */
 export async function ingestHelpdeskTicket(
   em: EntityManager,
@@ -22,8 +22,14 @@ export async function ingestHelpdeskTicket(
     {
       ...body,
       source: body.source ?? 'email',
+      teamQueue: body.teamQueue ?? 'general',
     },
-    { initialStatus: 'open' },
+    {
+      initialStatus: 'open',
+      visibility: 'customer',
+      requesterType: 'customer',
+      requesterUserId: null,
+    },
   )
 
   return { ticket, created: true }

@@ -5,8 +5,7 @@ import { addTicketComment } from '../../../../lib/tickets'
 import { resolveHelpdeskRequestContext } from '../../../../lib/request-context'
 
 export const metadata = {
-  GET: { requireAuth: true, requireFeatures: ['helpdesk.view'] },
-  POST: { requireAuth: true, requireFeatures: ['helpdesk.manage'] },
+  POST: { requireAuth: true, requireFeatures: ['helpdesk.agent', 'helpdesk.view', 'helpdesk.manage'] },
 }
 
 export const openApi = {

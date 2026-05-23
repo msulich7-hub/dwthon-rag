@@ -12,7 +12,7 @@ jest.mock('../ticket-key', () => ({
 describe('ingestHelpdeskTicket', () => {
   const scope = { tenantId: 'tenant-1', organizationId: 'org-1' }
 
-  it('creates a ticket with triage defaults', async () => {
+  it('creates a customer-channel ticket with triage defaults', async () => {
     const now = new Date('2026-05-23T12:00:00.000Z')
     const record = {
       id: 'ticket-1',
@@ -25,9 +25,13 @@ describe('ingestHelpdeskTicket', () => {
       priority: 'urgent',
       category: 'access',
       source: 'email',
+      visibility: 'customer',
+      requesterType: 'customer',
+      teamQueue: 'it',
       reporterEmail: 'user@example.com',
       reporterName: null,
       assigneeUserId: null,
+      requesterUserId: null,
       companyId: null,
       personId: null,
       dealId: null,
@@ -47,13 +51,13 @@ describe('ingestHelpdeskTicket', () => {
     const result = await ingestHelpdeskTicket(em, scope, {
       subject: 'Cannot login',
       body: 'Password reset link expired and I need access urgently.',
-      source: 'email',
       reporterEmail: 'user@example.com',
     })
 
     expect(result.created).toBe(true)
     expect(result.ticket.ticketKey).toBe('HD-0042')
-    expect(result.ticket.subject).toBe('Cannot login')
+    expect(result.ticket.visibility).toBe('customer')
+    expect(result.ticket.requesterType).toBe('customer')
     expect(em.flush).toHaveBeenCalled()
   })
 })

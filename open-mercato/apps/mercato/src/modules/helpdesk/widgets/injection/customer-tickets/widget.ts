@@ -6,7 +6,7 @@ const widget: InjectionWidgetModule<Record<string, unknown>, Record<string, unkn
     id: 'helpdesk.injection.customer-tickets',
     title: 'Helpdesk customer tickets',
     description: 'List and create helpdesk tickets from company or person detail.',
-    features: ['helpdesk.view'],
+    features: ['helpdesk.agent'],
     requiredModules: ['helpdesk', 'customers'],
     priority: 50,
     enabled: true,

@@ -7,6 +7,7 @@ import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Textarea } from '@open-mercato/ui/primitives/textarea'
+import { Label } from '@open-mercato/ui/primitives/label'
 import {
   Select,
   SelectContent,
@@ -22,7 +23,18 @@ type TicketDetail = {
   description: string
   status: string
   priority: string
-  comments: Array<{ id: string; body: string; authorName: string | null; createdAt: string }>
+  visibility: string
+  requesterType: string
+  teamQueue: string
+  reporterName: string | null
+  reporterEmail: string | null
+  comments: Array<{
+    id: string
+    body: string
+    authorName: string | null
+    isInternal: boolean
+    createdAt: string
+  }>
 }
 
 export default function HelpdeskTicketDetailPage() {
@@ -30,7 +42,8 @@ export default function HelpdeskTicketDetailPage() {
   const params = useParams()
   const ticketId = typeof params?.id === 'string' ? params.id : ''
   const [ticket, setTicket] = React.useState<TicketDetail | null>(null)
-  const [comment, setComment] = React.useState('')
+  const [publicReply, setPublicReply] = React.useState('')
+  const [internalNote, setInternalNote] = React.useState('')
   const [error, setError] = React.useState<string | null>(null)
 
   const load = React.useCallback(() => {
@@ -53,14 +66,14 @@ export default function HelpdeskTicketDetailPage() {
     load()
   }
 
-  const submitComment = async () => {
-    if (!comment.trim()) return
+  const postComment = async (body: string, isInternal: boolean) => {
     await apiCall(`/api/helpdesk/tickets/${encodeURIComponent(ticketId)}/comments`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: comment.trim() }),
+      body: JSON.stringify({ body, isInternal }),
     })
-    setComment('')
+    if (isInternal) setInternalNote('')
+    else setPublicReply('')
     load()
   }
 
@@ -76,9 +89,15 @@ export default function HelpdeskTicketDetailPage() {
     )
   }
 
+  const publicComments = ticket.comments.filter((c) => !c.isInternal)
+  const internalComments = ticket.comments.filter((c) => c.isInternal)
+
   return (
     <Page>
-      <PageHeader title={`${ticket.ticketKey} — ${ticket.subject}`} />
+      <PageHeader
+        title={`${ticket.ticketKey} — ${ticket.subject}`}
+        description={`${ticket.visibility === 'customer' ? t('helpdesk.visibility.customer', 'Customer') : t('helpdesk.visibility.internal', 'Internal')} · ${ticket.teamQueue}`}
+      />
       <PageBody className="space-y-6">
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-sm text-muted-foreground">{t('helpdesk.ticket.status', 'Status')}</span>
@@ -97,14 +116,50 @@ export default function HelpdeskTicketDetailPage() {
           <span className="text-sm text-muted-foreground capitalize">
             {t('helpdesk.ticket.priority', 'Priority')}: {ticket.priority}
           </span>
+          {(ticket.reporterName || ticket.reporterEmail) && (
+            <span className="text-sm text-muted-foreground">
+              {t('helpdesk.ticket.requester', 'Requester')}: {ticket.reporterName ?? ticket.reporterEmail}
+            </span>
+          )}
         </div>
 
         <div className="rounded-lg border p-4 text-sm whitespace-pre-wrap">{ticket.description}</div>
 
         <section className="space-y-3">
-          <h2 className="text-sm font-medium">{t('helpdesk.ticket.comments', 'Comments')}</h2>
+          <h2 className="text-sm font-medium">
+            {t('helpdesk.ticket.publicThread', 'Replies to requester')}
+          </h2>
           <ul className="space-y-2">
-            {ticket.comments.map((item) => (
+            {publicComments.map((item) => (
+              <li key={item.id} className="rounded-lg border p-3 text-sm bg-card">
+                <div className="text-xs text-muted-foreground mb-1">
+                  {item.authorName ?? 'Agent'} · {new Date(item.createdAt).toLocaleString()}
+                </div>
+                {item.body}
+              </li>
+            ))}
+          </ul>
+          <div className="space-y-1">
+            <Label>{t('helpdesk.ticket.replyToRequester', 'Reply to requester')}</Label>
+            <Textarea value={publicReply} onChange={(e) => setPublicReply(e.target.value)} rows={3} />
+            <Button
+              type="button"
+              variant="default"
+              disabled={!publicReply.trim()}
+              onClick={() => void postComment(publicReply, false)}
+            >
+              {t('helpdesk.ticket.sendReply', 'Send reply')}
+            </Button>
+          </div>
+        </section>
+
+        <section className="space-y-3 rounded-lg border border-dashed p-4 bg-muted/20">
+          <h2 className="text-sm font-medium">{t('helpdesk.ticket.internalNotes', 'Internal notes')}</h2>
+          <p className="text-xs text-muted-foreground">
+            {t('helpdesk.ticket.internalNotesHint', 'Not visible to customers (JSM internal comment).')}
+          </p>
+          <ul className="space-y-2">
+            {internalComments.map((item) => (
               <li key={item.id} className="rounded-lg border p-3 text-sm">
                 <div className="text-xs text-muted-foreground mb-1">
                   {item.authorName ?? 'Agent'} · {new Date(item.createdAt).toLocaleString()}
@@ -113,9 +168,14 @@ export default function HelpdeskTicketDetailPage() {
               </li>
             ))}
           </ul>
-          <Textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3} />
-          <Button type="button" onClick={() => void submitComment()} disabled={!comment.trim()}>
-            {t('helpdesk.ticket.addComment', 'Add comment')}
+          <Textarea value={internalNote} onChange={(e) => setInternalNote(e.target.value)} rows={3} />
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={!internalNote.trim()}
+            onClick={() => void postComment(internalNote, true)}
+          >
+            {t('helpdesk.ticket.addInternalNote', 'Add internal note')}
           </Button>
         </section>
       </PageBody>

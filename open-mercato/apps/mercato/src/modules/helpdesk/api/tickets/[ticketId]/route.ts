@@ -5,8 +5,8 @@ import { getTicketDetail, updateTicket } from '../../../lib/tickets'
 import { resolveHelpdeskRequestContext } from '../../../lib/request-context'
 
 export const metadata = {
-  GET: { requireAuth: true, requireFeatures: ['helpdesk.view'] },
-  PATCH: { requireAuth: true, requireFeatures: ['helpdesk.manage'] },
+  GET: { requireAuth: true, requireFeatures: ['helpdesk.agent', 'helpdesk.view'] },
+  PATCH: { requireAuth: true, requireFeatures: ['helpdesk.agent', 'helpdesk.manage'] },
 }
 
 export const openApi = {

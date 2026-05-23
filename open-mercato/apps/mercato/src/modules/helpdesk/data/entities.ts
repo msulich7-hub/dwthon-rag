@@ -9,6 +9,13 @@ export type HelpdeskTicketStatus =
 
 export type HelpdeskTicketPriority = 'low' | 'medium' | 'high' | 'urgent'
 
+/** Staff-only ticket vs customer-submitted request (JSM external request). */
+export type HelpdeskTicketVisibility = 'internal' | 'customer'
+
+export type HelpdeskRequesterType = 'staff' | 'customer'
+
+export type HelpdeskTeamQueue = 'general' | 'it' | 'ops' | 'billing'
+
 @Entity({ tableName: 'helpdesk_tickets' })
 export class HelpdeskTicket {
   @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
@@ -40,6 +47,18 @@ export class HelpdeskTicket {
 
   @Property({ type: 'text' })
   source!: string
+
+  @Property({ type: 'text', default: 'internal' })
+  visibility: HelpdeskTicketVisibility = 'internal'
+
+  @Property({ name: 'requester_type', type: 'text', default: 'staff' })
+  requesterType: HelpdeskRequesterType = 'staff'
+
+  @Property({ name: 'requester_user_id', type: 'uuid', nullable: true })
+  requesterUserId?: string | null
+
+  @Property({ name: 'team_queue', type: 'text', default: 'general' })
+  teamQueue: HelpdeskTeamQueue = 'general'
 
   @Property({ name: 'reporter_email', type: 'text', nullable: true })
   reporterEmail?: string | null

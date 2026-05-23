@@ -6,8 +6,8 @@ import { createTicket, listTickets } from '../../../../../lib/tickets'
 import { resolveHelpdeskRequestContext } from '../../../../../lib/request-context'
 
 export const metadata = {
-  GET: { requireAuth: true, requireFeatures: ['helpdesk.view', 'customers.companies.view'] },
-  POST: { requireAuth: true, requireFeatures: ['helpdesk.manage', 'customers.companies.view'] },
+  GET: { requireAuth: true, requireFeatures: ['helpdesk.agent', 'helpdesk.view', 'customers.companies.view'] },
+  POST: { requireAuth: true, requireFeatures: ['helpdesk.agent', 'helpdesk.manage', 'customers.companies.view'] },
 }
 
 export const openApi = {
@@ -55,10 +55,12 @@ export async function POST(
     await assertCustomerLink(em, { tenantId, organizationId }, 'company', customerId)
     const json = await request.json().catch(() => null)
     const body = createHelpdeskTicketBodySchema.parse(json)
-    const ticket = await createTicket(em, { tenantId, organizationId }, {
-      ...body,
-      companyId: customerId,
-    })
+    const ticket = await createTicket(
+      em,
+      { tenantId, organizationId },
+      { ...body, companyId: customerId, source: body.source ?? 'manual' },
+      { visibility: 'customer', requesterType: 'customer' },
+    )
 
     return NextResponse.json({ companyId: customerId, ticket })
   } catch (error) {

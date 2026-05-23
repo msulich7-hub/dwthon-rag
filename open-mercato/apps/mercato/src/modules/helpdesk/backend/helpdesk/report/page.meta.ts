@@ -2,7 +2,7 @@ import type { PageMetadata } from '@open-mercato/shared/modules/registry'
 
 export const metadata: PageMetadata = {
   requireAuth: true,
-  requireFeatures: ['helpdesk.agent', 'helpdesk.view'],
+  requireFeatures: ['helpdesk.submit'],
 }
 
 export default metadata

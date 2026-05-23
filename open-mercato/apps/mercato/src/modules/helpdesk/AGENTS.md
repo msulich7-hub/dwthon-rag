@@ -1,20 +1,33 @@
-# Helpdesk — module agent guide
+# Service desk (helpdesk) — module agent guide
 
-**Module id:** `helpdesk` · **Source:** `@app` only (`apps/mercato/src/modules/helpdesk/`)
+**Module id:** `helpdesk` · **Source:** `@app` only
+
+## Positioning (May 2026)
+
+**Internal-first** service desk for staff (agents), modeled after **Jira Service Management** (agent workspace vs customer portal) and **Zammad** (Agent / Customer roles).
+
+OSS references: [Zammad](https://github.com/zammad/zammad), [Frappe Helpdesk](https://github.com/frappe/helpdesk), [osTicket](https://github.com/osticket/osticket). See `.ai/specs/2026-05-23-helpdesk-internal-service-desk.md`.
 
 ## Do not modify Open Mercato core
 
-- No edits under `packages/core`, `packages/ui`, `packages/ai-assistant`, or other platform packages.
-- Integrate via **imports**, **UMES injection** (`detail:customers.company:tabs`, `detail:customers.person:tabs`), and **module-local APIs** under `/api/helpdesk/*`.
-- Register only in `apps/mercato/src/modules.ts`: `{ id: 'helpdesk', from: '@app' }`.
+No edits under `packages/core`, `packages/ui`, `packages/ai-assistant`.
 
-## Reference module
+## Roles
 
-Copy patterns from `apps/mercato/src/modules/crm_2027/` (ingest API, entities, migration, injection tabs, `lib/__tests__/`).
+| Feature | Use |
+|---------|-----|
+| `helpdesk.agent` | Workspace, assign, resolve, CRM customer tab |
+| `helpdesk.view` | Read queues, internal notes |
+| `helpdesk.submit` | `/backend/helpdesk/report` internal requests |
+| `helpdesk.ingest` | `POST /api/helpdesk/ingest` customer channel |
 
-## Capabilities
+## Channels
 
-- Ticket CRUD with sequential keys (`HD-0001`)
-- `POST /api/helpdesk/ingest` for email/chat payloads
-- Customer detail **Support** tab (company + person)
-- Backend hub at `/backend/helpdesk`
+- **Internal** — `POST /api/helpdesk/requests/internal`, visibility `internal`, requester `staff`
+- **Customer** — `POST /api/helpdesk/ingest`, visibility `customer`, requester `customer`
+
+## Surfaces
+
+- `/backend/helpdesk/workspace` — agent queues
+- `/backend/helpdesk/report` — employee self-service
+- CRM tabs — agent-only linked tickets

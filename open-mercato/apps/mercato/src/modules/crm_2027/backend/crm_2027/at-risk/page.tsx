@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import Link from 'next/link'
+import { CrmShell } from '../../../components/CrmShell'
 import { Page, PageBody, PageHeader } from '@open-mercato/ui/backend/Page'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
@@ -73,56 +74,58 @@ export default function Crm2027AtRiskPage() {
 
   return (
     <Page>
-      <PageHeader
-        title="CRM 2027 — At-risk deals"
-        description="Twenty-style triage: peek records in the side panel or open the full deal."
-        actions={
-          <Button type="button" onClick={() => void runScan()} disabled={scanning}>
-            {scanning ? 'Scanning…' : 'Run risk scan'}
-          </Button>
-        }
-      />
-      <PageBody>
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No at-risk deals detected.</p>
-        ) : (
-          <div className="overflow-x-auto rounded-lg border">
-            <table className="min-w-full text-sm">
-              <thead className="bg-muted/50 text-left">
-                <tr>
-                  <th className="px-3 py-2">Deal</th>
-                  <th className="px-3 py-2">Risk</th>
-                  <th className="px-3 py-2">Signals</th>
-                  <th className="px-3 py-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={`${item.dealId}-${item.source ?? 'live'}`} className="border-t">
-                    <td className="px-3 py-2 font-medium">{item.title}</td>
-                    <td className="px-3 py-2">{item.riskLevel}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{item.reasons.join(', ')}</td>
-                    <td className="px-3 py-2 space-x-2">
-                      <Button type="button" variant="outline" size="sm" onClick={() => openPeek(item)}>
-                        Peek
-                      </Button>
-                      <Link
-                        className="text-sm underline"
-                        href={`/backend/customers/deals/${item.dealId}`}
-                      >
-                        Open
-                      </Link>
-                    </td>
+      <CrmShell>
+        <PageHeader
+          title="CRM 2027 — At-risk deals"
+          description="Twenty-style triage: peek records in the side panel or open the full deal."
+          actions={
+            <Button type="button" onClick={() => void runScan()} disabled={scanning}>
+              {scanning ? 'Scanning…' : 'Run risk scan'}
+            </Button>
+          }
+        />
+        <PageBody>
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : items.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No at-risk deals detected.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border">
+              <table className="min-w-full text-sm">
+                <thead className="bg-muted/50 text-left">
+                  <tr>
+                    <th className="px-3 py-2">Deal</th>
+                    <th className="px-3 py-2">Risk</th>
+                    <th className="px-3 py-2">Signals</th>
+                    <th className="px-3 py-2">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </PageBody>
-      <RecordPeekDrawer record={peek} open={peekOpen} onOpenChange={setPeekOpen} />
+                </thead>
+                <tbody>
+                  {items.map((item) => (
+                    <tr key={`${item.dealId}-${item.source ?? 'live'}`} className="border-t">
+                      <td className="px-3 py-2 font-medium">{item.title}</td>
+                      <td className="px-3 py-2">{item.riskLevel}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{item.reasons.join(', ')}</td>
+                      <td className="px-3 py-2 space-x-2">
+                        <Button type="button" variant="outline" size="sm" onClick={() => openPeek(item)}>
+                          Peek
+                        </Button>
+                        <Link
+                          className="text-sm underline"
+                          href={`/backend/customers/deals/${item.dealId}`}
+                        >
+                          Open
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </PageBody>
+        <RecordPeekDrawer record={peek} open={peekOpen} onOpenChange={setPeekOpen} />
+      </CrmShell>
     </Page>
   )
 }

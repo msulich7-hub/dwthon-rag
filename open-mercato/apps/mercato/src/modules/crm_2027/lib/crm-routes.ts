@@ -3,6 +3,9 @@ export const CRM_ROUTES = {
   hub: '/backend/crm_2027',
   search: '/backend/crm_2027/search',
   atRisk: '/backend/crm_2027/at-risk',
+  dashboard: '/backend/crm_2027/dashboard',
+  peopleShell: '/backend/crm_2027/people',
+  companiesShell: '/backend/crm_2027/companies',
   dealsShell: '/backend/crm_2027/deals',
   peopleList: '/backend/customers/people',
   peopleDetail: (id: string) => `/backend/customers/people-v2/${id}`,
@@ -16,8 +19,8 @@ export const CRM_ROUTES = {
 } as const
 
 export const CRM_OBJECTS = [
-  { id: 'people', label: 'People', href: CRM_ROUTES.peopleList, icon: 'Users' },
-  { id: 'companies', label: 'Companies', href: CRM_ROUTES.companiesList, icon: 'Building2' },
+  { id: 'people', label: 'People', href: CRM_ROUTES.peopleShell, icon: 'Users' },
+  { id: 'companies', label: 'Companies', href: CRM_ROUTES.companiesShell, icon: 'Building2' },
   { id: 'deals', label: 'Deals', href: CRM_ROUTES.dealsShell, icon: 'Handshake' },
   { id: 'pipeline', label: 'Pipeline', href: CRM_ROUTES.dealsKanban, icon: 'Kanban' },
 ] as const

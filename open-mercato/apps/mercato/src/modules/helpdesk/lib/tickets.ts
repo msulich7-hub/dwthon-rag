@@ -40,6 +40,7 @@ export type TicketListItem = {
   triage: HelpdeskTriageResult | null
   slaDueAt: string | null
   firstRespondedAt: string | null
+  portalPublicUrl: string | null
   createdAt: string
   updatedAt: string
 }
@@ -97,6 +98,7 @@ function mapTicketListItem(record: HelpdeskTicket): TicketListItem {
     triage: parseTriage(record.triageJson),
     slaDueAt: record.slaDueAt?.toISOString() ?? null,
     firstRespondedAt: record.firstRespondedAt?.toISOString() ?? null,
+    portalPublicUrl: record.portalPublicUrl ?? null,
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
   }

@@ -133,5 +133,10 @@
   "helpdesk.portal.csat": "Rate our support",
   "helpdesk.portal.submitCsat": "Submit rating",
   "helpdesk.portal.csatSaved": "Thank you for your feedback.",
-  "helpdesk.portal.csatDone": "You rated this request"
+  "helpdesk.portal.csatDone": "You rated this request",
+  "helpdesk.notifications.slaBreached.title": "SLA breached",
+  "helpdesk.notifications.slaBreached.body": "{ticketKey} — {subject} (due {slaDueAt})",
+  "helpdesk.agent.linkEnterKey": "Enter a ticket key (e.g. HD-0002).",
+  "helpdesk.agent.linkNotFound": "No ticket found with key {key}.",
+  "helpdesk.agent.linkSelf": "Cannot link a ticket to itself."
 }

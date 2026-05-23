@@ -3,9 +3,9 @@ import type { ModuleInfo } from '@open-mercato/shared/modules/registry'
 export const metadata: ModuleInfo = {
   name: 'helpdesk',
   title: 'Service Desk',
-  version: '0.5.0',
+  version: '0.6.0',
   description:
-    'Service desk with notifications, customer portal links, KB seeding, and reporter email on replies.',
+    'Service desk: SLA breach alerts, portal links in email, PL i18n, demo tickets, watcher names.',
   author: 'dwthon-rag',
   license: 'MIT',
 }

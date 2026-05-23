@@ -33,7 +33,7 @@ export async function notifyAfterTicketComment(
   })
 
   if (!opts.isInternal) {
-    await notifyReporterOnPublicReply(ticket, opts.body, opts.portalUrl)
+    await notifyReporterOnPublicReply(ticket, opts.body, opts.portalUrl ?? ticket.portalPublicUrl)
   }
 }
 

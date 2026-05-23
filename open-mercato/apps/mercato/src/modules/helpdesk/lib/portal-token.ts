@@ -10,7 +10,8 @@ export async function issuePortalToken(
   em: EntityManager,
   scope: { tenantId: string; organizationId: string },
   ticketId: string,
-): Promise<{ token: string; portalPath: string } | null> {
+  origin: string,
+): Promise<{ token: string; portalPath: string; portalUrl: string } | null> {
   const ticket = await em.findOne(HelpdeskTicket, {
     id: ticketId,
     tenantId: scope.tenantId,
@@ -21,13 +22,18 @@ export async function issuePortalToken(
   }
 
   const token = randomUUID()
+  const portalPath = `/ticket/${token}`
+  const portalUrl = `${origin.replace(/\/$/, '')}${portalPath}`
+
   ticket.portalTokenHash = hashPortalToken(token)
+  ticket.portalPublicUrl = portalUrl
   ticket.updatedAt = new Date()
   await em.flush()
 
   return {
     token,
-    portalPath: `/ticket/${token}`,
+    portalPath,
+    portalUrl,
   }
 }
 

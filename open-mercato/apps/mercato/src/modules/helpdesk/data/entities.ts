@@ -102,6 +102,12 @@ export class HelpdeskTicket {
   @Property({ name: 'portal_token_hash', type: 'text', nullable: true })
   portalTokenHash?: string | null
 
+  @Property({ name: 'portal_public_url', type: 'text', nullable: true })
+  portalPublicUrl?: string | null
+
+  @Property({ name: 'sla_breach_notified_at', type: Date, nullable: true })
+  slaBreachNotifiedAt?: Date | null
+
   @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
   createdAt: Date = new Date()
 

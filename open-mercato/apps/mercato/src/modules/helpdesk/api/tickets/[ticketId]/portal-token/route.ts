@@ -18,7 +18,8 @@ export async function POST(
       return NextResponse.json({ error: 'Missing ticket id' }, { status: 400 })
     }
 
-    const issued = await issuePortalToken(em, { tenantId, organizationId }, ticketId)
+    const origin = new URL(request.url).origin
+    const issued = await issuePortalToken(em, { tenantId, organizationId }, ticketId, origin)
     if (!issued) {
       return NextResponse.json(
         { error: 'Portal link is only available for customer-channel tickets' },
@@ -26,10 +27,11 @@ export async function POST(
       )
     }
 
-    const origin = new URL(request.url).origin
-    const portalUrl = `${origin}${issued.portalPath}`
-
-    return NextResponse.json({ token: issued.token, portalPath: issued.portalPath, portalUrl })
+    return NextResponse.json({
+      token: issued.token,
+      portalPath: issued.portalPath,
+      portalUrl: issued.portalUrl,
+    })
   } catch (error) {
     if (isCrudHttpError(error)) {
       return NextResponse.json(error.body, { status: error.status })

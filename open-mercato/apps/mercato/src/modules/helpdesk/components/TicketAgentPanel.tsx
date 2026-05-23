@@ -23,7 +23,13 @@ type CannedItem = { id: string; title: string; body: string; isInternal: boolean
 type KbItem = { id: string; title: string; slug: string; body: string }
 
 type Extras = {
-  watchers: Array<{ id: string; userId: string }>
+  watchers: Array<{
+    id: string
+    userId: string
+    userLabel: string
+    userName: string | null
+    userEmail: string | null
+  }>
   links: Array<{ id: string; linkType: string; ticket: { id: string; ticketKey: string; subject: string } }>
   timeEntries: Array<{ id: string; minutes: number; note: string | null }>
   totalMinutes: number
@@ -61,6 +67,7 @@ export function TicketAgentPanel({
   const [voiceMsg, setVoiceMsg] = React.useState<string | null>(null)
   const [tone, setTone] = React.useState<'professional' | 'empathetic' | 'friendly'>('professional')
   const [portalUrl, setPortalUrl] = React.useState<string | null>(null)
+  const [linkError, setLinkError] = React.useState<string | null>(null)
 
   const load = React.useCallback(async () => {
     const [{ result: ex }, { result: can }, { result: kbRes }] = await Promise.all([
@@ -271,7 +278,12 @@ export function TicketAgentPanel({
           <ul className="text-xs space-y-1 font-mono">
             {extras?.watchers.map((w) => (
               <li key={w.id} className="flex items-center justify-between gap-2">
-                <span>{w.userId.slice(0, 8)}…</span>
+                <span title={w.userId}>
+                  {w.userLabel}
+                  {w.userEmail && w.userName ? (
+                    <span className="text-muted-foreground font-sans"> ({w.userEmail})</span>
+                  ) : null}
+                </span>
                 {currentUserId && w.userId === currentUserId ? (
                   <Button
                     type="button"
@@ -309,11 +321,26 @@ export function TicketAgentPanel({
             type="button"
             size="sm"
             onClick={async () => {
+              setLinkError(null)
+              const key = linkKey.trim()
+              if (!key) {
+                setLinkError(t('helpdesk.agent.linkEnterKey', 'Enter a ticket key (e.g. HD-0002).'))
+                return
+              }
               const { result } = await apiCall<{ ticket: { id: string; ticketKey: string } }>(
-                `/api/helpdesk/tickets/lookup?key=${encodeURIComponent(linkKey.trim())}`,
+                `/api/helpdesk/tickets/lookup?key=${encodeURIComponent(key)}`,
               )
               const target = result?.ticket
-              if (!target) return
+              if (!target) {
+                setLinkError(
+                  t('helpdesk.agent.linkNotFound', 'No ticket found with key {key}.').replace('{key}', key),
+                )
+                return
+              }
+              if (target.id === ticketId) {
+                setLinkError(t('helpdesk.agent.linkSelf', 'Cannot link a ticket to itself.'))
+                return
+              }
               await apiCall(`/api/helpdesk/tickets/${encodeURIComponent(ticketId)}/links`, {
                 method: 'POST',
                 headers: { 'content-type': 'application/json' },
@@ -326,6 +353,7 @@ export function TicketAgentPanel({
             {t('helpdesk.agent.link', 'Link')}
           </Button>
         </div>
+        {linkError ? <p className="text-xs text-destructive">{linkError}</p> : null}
         <ul className="text-sm space-y-1">
           {extras?.links.map((l) => (
             <li key={l.id}>

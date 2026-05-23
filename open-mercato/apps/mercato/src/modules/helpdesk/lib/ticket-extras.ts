@@ -7,8 +7,16 @@ import {
 } from '../data/entities'
 import { getTicketDetail, type TicketDetail } from './tickets'
 import { buildTicketSummary, type TicketSummary } from './ticket-summary'
+import { resolveUserLabelsByIds } from './user-labels'
 
-export type WatcherItem = { id: string; userId: string; createdAt: string }
+export type WatcherItem = {
+  id: string
+  userId: string
+  createdAt: string
+  userName: string | null
+  userEmail: string | null
+  userLabel: string
+}
 
 export type TicketLinkItem = {
   id: string
@@ -96,13 +104,24 @@ export async function loadTicketExtras(
   }
 
   const totalMinutes = timeEntries.reduce((sum, e) => sum + e.minutes, 0)
+  const userLabels = await resolveUserLabelsByIds(
+    em,
+    scope,
+    watchers.map((w) => w.userId),
+  )
 
   return {
-    watchers: watchers.map((w) => ({
-      id: w.id,
-      userId: w.userId,
-      createdAt: w.createdAt.toISOString(),
-    })),
+    watchers: watchers.map((w) => {
+      const label = userLabels.get(w.userId)
+      return {
+        id: w.id,
+        userId: w.userId,
+        createdAt: w.createdAt.toISOString(),
+        userName: label?.name ?? null,
+        userEmail: label?.email ?? null,
+        userLabel: label?.label ?? w.userId,
+      }
+    }),
     links: linkedTickets,
     timeEntries: timeEntries.map((e) => ({
       id: e.id,
@@ -131,10 +150,15 @@ export async function addWatcher(
     organizationId: scope.organizationId,
   })
   if (existing) {
+    const labels = await resolveUserLabelsByIds(em, scope, [existing.userId])
+    const label = labels.get(existing.userId)
     return {
       id: existing.id,
       userId: existing.userId,
       createdAt: existing.createdAt.toISOString(),
+      userName: label?.name ?? null,
+      userEmail: label?.email ?? null,
+      userLabel: label?.label ?? existing.userId,
     }
   }
 
@@ -146,7 +170,16 @@ export async function addWatcher(
   })
   em.persist(row)
   await em.flush()
-  return { id: row.id, userId: row.userId, createdAt: row.createdAt.toISOString() }
+  const labels = await resolveUserLabelsByIds(em, scope, [row.userId])
+  const label = labels.get(row.userId)
+  return {
+    id: row.id,
+    userId: row.userId,
+    createdAt: row.createdAt.toISOString(),
+    userName: label?.name ?? null,
+    userEmail: label?.email ?? null,
+    userLabel: label?.label ?? row.userId,
+  }
 }
 
 export async function removeWatcher(

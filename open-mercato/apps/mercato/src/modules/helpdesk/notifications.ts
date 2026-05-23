@@ -42,6 +42,26 @@ export const notificationTypes: NotificationTypeDefinition[] = [
     expiresAfterHours: 72,
   },
   {
+    type: 'helpdesk.ticket.sla_breached',
+    module: 'helpdesk',
+    titleKey: 'helpdesk.notifications.slaBreached.title',
+    bodyKey: 'helpdesk.notifications.slaBreached.body',
+    icon: 'alarm-clock',
+    severity: 'warning',
+    actions: [
+      {
+        id: 'view',
+        labelKey: 'common.view',
+        variant: 'outline',
+        href: '/backend/helpdesk/tickets/{sourceEntityId}',
+        icon: 'external-link',
+      },
+    ],
+    primaryActionId: 'view',
+    linkHref: '/backend/helpdesk/tickets/{sourceEntityId}',
+    expiresAfterHours: 72,
+  },
+  {
     type: 'helpdesk.ticket.status_changed',
     module: 'helpdesk',
     titleKey: 'helpdesk.notifications.status.title',

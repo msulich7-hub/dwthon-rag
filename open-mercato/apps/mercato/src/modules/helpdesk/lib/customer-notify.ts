@@ -12,9 +12,7 @@ export async function notifyReporterOnPublicReply(
   if (!email) return
 
   const preview = commentBody.trim().slice(0, 500)
-  const linkBlock = portalUrl
-    ? `View your request: ${portalUrl}`
-    : `Reference: ${ticket.ticketKey}`
+  const url = portalUrl ?? ticket.portalPublicUrl ?? null
 
   try {
     await sendEmail({
@@ -26,7 +24,14 @@ export async function notifyReporterOnPublicReply(
         React.createElement('p', null, `Hello${ticket.reporterName ? ` ${ticket.reporterName}` : ''},`),
         React.createElement('p', null, `We posted an update on "${ticket.subject}":`),
         React.createElement('p', { style: { whiteSpace: 'pre-wrap' } }, preview),
-        React.createElement('p', null, linkBlock),
+        url
+          ? React.createElement(
+              'p',
+              null,
+              'View status and reply: ',
+              React.createElement('a', { href: url }, url),
+            )
+          : React.createElement('p', null, `Reference: ${ticket.ticketKey}`),
       ),
     })
   } catch (err) {

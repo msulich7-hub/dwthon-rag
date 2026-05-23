@@ -67,3 +67,13 @@ UI: `TicketAgentPanel`, `VoiceMicButton` on ticket detail and workspace; KB page
 - **Ticket lookup** — `GET /api/helpdesk/tickets/lookup?key=HD-0001`
 
 Migration: `Migration20260523210000_helpdesk_portal.ts` (`portal_token_hash`).
+
+## v0.6 — SLA scan, polish, demo data
+
+- **SLA breach scan** — queue `helpdesk:sla-scan` every 15m (`workers/sla-scan.ts`), notifies agents via `helpdesk.ticket.sla_breached`
+- **Portal URL in email** — `portal_public_url` stored when link is generated; included in reporter emails
+- **i18n** — `i18n/pl.json` (Polish)
+- **seedExamples** — 3 demo tickets (internal IT, customer billing, ops in progress)
+- **UX** — watcher display names (`lib/user-labels.ts`), ticket link validation messages
+
+Migration: `Migration20260523220000_helpdesk_v06.ts`

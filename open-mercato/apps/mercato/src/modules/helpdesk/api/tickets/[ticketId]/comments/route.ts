@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
+import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { createTicketCommentBodySchema } from '../../../../data/validators'
 import { addTicketComment } from '../../../../lib/tickets'
 import { resolveHelpdeskRequestContext } from '../../../../lib/request-context'
+import { notifyAfterTicketComment } from '../../../../lib/ticket-notify-bridge'
 
 export const metadata = {
   POST: { requireAuth: true, requireFeatures: ['helpdesk.agent', 'helpdesk.view', 'helpdesk.manage'] },
@@ -35,6 +37,18 @@ export async function POST(
     if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
     }
+
+    const container = await createRequestContainer()
+    await notifyAfterTicketComment(
+      container,
+      { tenantId, organizationId },
+      ticket,
+      {
+        actorUserId: userId,
+        isInternal: body.isInternal ?? false,
+        body: body.body,
+      },
+    )
 
     return NextResponse.json({ ticket })
   } catch (error) {

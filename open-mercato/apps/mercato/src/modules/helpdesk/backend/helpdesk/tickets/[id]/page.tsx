@@ -51,11 +51,17 @@ export default function HelpdeskTicketDetailPage() {
   const [publicReply, setPublicReply] = React.useState('')
   const [internalNote, setInternalNote] = React.useState('')
   const [error, setError] = React.useState<string | null>(null)
+  const [viewerUserId, setViewerUserId] = React.useState<string | null>(null)
 
   const load = React.useCallback(() => {
     if (!ticketId) return
-    void apiCall<{ ticket: TicketDetail }>(`/api/helpdesk/tickets/${encodeURIComponent(ticketId)}`)
-      .then(({ result }) => setTicket(result?.ticket ?? null))
+    void apiCall<{ ticket: TicketDetail; viewerUserId?: string | null }>(
+      `/api/helpdesk/tickets/${encodeURIComponent(ticketId)}`,
+    )
+      .then(({ result }) => {
+        setTicket(result?.ticket ?? null)
+        setViewerUserId(result?.viewerUserId ?? null)
+      })
       .catch(() => setError(t('helpdesk.ticket.notFound', 'Ticket not found')))
   }, [ticketId, t])
 
@@ -157,6 +163,8 @@ export default function HelpdeskTicketDetailPage() {
         <TicketAgentPanel
           ticketId={ticket.id}
           ticketKey={ticket.ticketKey}
+          visibility={ticket.visibility}
+          currentUserId={viewerUserId}
           onReload={load}
           publicReply={publicReply}
           setPublicReply={setPublicReply}

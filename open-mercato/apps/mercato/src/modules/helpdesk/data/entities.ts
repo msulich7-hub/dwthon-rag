@@ -99,6 +99,9 @@ export class HelpdeskTicket {
   @Property({ name: 'summary_json', type: 'text', nullable: true })
   summaryJson?: string | null
 
+  @Property({ name: 'portal_token_hash', type: 'text', nullable: true })
+  portalTokenHash?: string | null
+
   @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
   createdAt: Date = new Date()
 

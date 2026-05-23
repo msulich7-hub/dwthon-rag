@@ -57,3 +57,13 @@ No edits under `packages/core`, `packages/ui`, `packages/ai-assistant`.
 Migration: `Migration20260523200000_helpdesk_extras.ts`
 
 UI: `TicketAgentPanel`, `VoiceMicButton` on ticket detail and workspace; KB page `/backend/helpdesk/kb`.
+
+## v0.5 — notifications & customer portal
+
+- **In-app notifications** for watchers (comment + status) and assignee (`notifications.ts` + `subscribers/*`)
+- **Reporter email** on public agent reply (`lib/customer-notify.ts`, best-effort via Resend)
+- **Customer portal** — `POST …/portal-token` → public page `/ticket/{uuid}` + `GET/POST /api/helpdesk/public/[token]`
+- **Setup seed** — canned responses + starter KB articles in `seedDefaults`
+- **Ticket lookup** — `GET /api/helpdesk/tickets/lookup?key=HD-0001`
+
+Migration: `Migration20260523210000_helpdesk_portal.ts` (`portal_token_hash`).

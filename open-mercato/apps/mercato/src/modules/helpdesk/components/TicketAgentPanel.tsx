@@ -34,6 +34,8 @@ type Extras = {
 type TicketAgentPanelProps = {
   ticketId: string
   ticketKey: string
+  visibility: string
+  currentUserId: string | null
   onReload: () => void
   publicReply: string
   setPublicReply: (v: string) => void
@@ -42,6 +44,8 @@ type TicketAgentPanelProps = {
 export function TicketAgentPanel({
   ticketId,
   ticketKey,
+  visibility,
+  currentUserId,
   onReload,
   publicReply,
   setPublicReply,
@@ -56,6 +60,7 @@ export function TicketAgentPanel({
   const [csatRating, setCsatRating] = React.useState('5')
   const [voiceMsg, setVoiceMsg] = React.useState<string | null>(null)
   const [tone, setTone] = React.useState<'professional' | 'empathetic' | 'friendly'>('professional')
+  const [portalUrl, setPortalUrl] = React.useState<string | null>(null)
 
   const load = React.useCallback(async () => {
     const [{ result: ex }, { result: can }, { result: kbRes }] = await Promise.all([
@@ -263,11 +268,32 @@ export function TicketAgentPanel({
           >
             {t('helpdesk.agent.watchMe', 'Watch this ticket')}
           </Button>
-          <p className="text-xs text-muted-foreground">
-            {extras?.watchers.length
-              ? `${extras.watchers.length} watcher(s)`
-              : t('helpdesk.agent.noWatchers', 'No watchers')}
-          </p>
+          <ul className="text-xs space-y-1 font-mono">
+            {extras?.watchers.map((w) => (
+              <li key={w.id} className="flex items-center justify-between gap-2">
+                <span>{w.userId.slice(0, 8)}…</span>
+                {currentUserId && w.userId === currentUserId ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 text-xs"
+                    onClick={() =>
+                      void apiCall(
+                        `/api/helpdesk/tickets/${encodeURIComponent(ticketId)}/watchers?userId=${encodeURIComponent(w.userId)}`,
+                        { method: 'DELETE' },
+                      ).then(() => load())
+                    }
+                  >
+                    {t('helpdesk.agent.unwatch', 'Unwatch')}
+                  </Button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+          {!extras?.watchers.length ? (
+            <p className="text-xs text-muted-foreground">{t('helpdesk.agent.noWatchers', 'No watchers')}</p>
+          ) : null}
         </div>
       </section>
 
@@ -283,10 +309,10 @@ export function TicketAgentPanel({
             type="button"
             size="sm"
             onClick={async () => {
-              const { result } = await apiCall<{ tickets: Array<{ id: string; ticketKey: string }> }>(
-                `/api/helpdesk/tickets?search=${encodeURIComponent(linkKey)}`,
+              const { result } = await apiCall<{ ticket: { id: string; ticketKey: string } }>(
+                `/api/helpdesk/tickets/lookup?key=${encodeURIComponent(linkKey.trim())}`,
               )
-              const target = result?.tickets?.find((x) => x.ticketKey === linkKey.trim())
+              const target = result?.ticket
               if (!target) return
               await apiCall(`/api/helpdesk/tickets/${encodeURIComponent(ticketId)}/links`, {
                 method: 'POST',
@@ -311,6 +337,36 @@ export function TicketAgentPanel({
           ))}
         </ul>
       </section>
+
+      {visibility === 'customer' ? (
+        <section className="rounded-xl border p-4 space-y-2 bg-sky-500/5">
+          <h2 className="text-sm font-semibold">{t('helpdesk.agent.portal', 'Customer portal link')}</h2>
+          <p className="text-xs text-muted-foreground">
+            {t('helpdesk.agent.portalHint', 'Share with the requester to view status and reply. Regenerating invalidates the previous link.')}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              void apiCall<{ portalUrl: string }>(
+                `/api/helpdesk/tickets/${encodeURIComponent(ticketId)}/portal-token`,
+                { method: 'POST' },
+              ).then(({ result }) => {
+                if (result?.portalUrl) {
+                  setPortalUrl(result.portalUrl)
+                  void navigator.clipboard?.writeText(result.portalUrl)
+                }
+              })
+            }
+          >
+            {t('helpdesk.agent.generatePortal', 'Generate & copy link')}
+          </Button>
+          {portalUrl ? (
+            <p className="text-xs break-all font-mono text-muted-foreground">{portalUrl}</p>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="rounded-xl border p-4 space-y-2">
         <h2 className="text-sm font-semibold">{t('helpdesk.agent.csat', 'CSAT (internal)')}</h2>

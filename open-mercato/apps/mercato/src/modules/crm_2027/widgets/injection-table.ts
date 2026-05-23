@@ -25,6 +25,15 @@ export const injectionTable: ModuleInjectionTable = {
     widgetId: 'crm_2027.injection.list-context-bar',
     priority: 35,
   },
+  'detail:customers.deal:tabs': [
+    {
+      widgetId: 'crm_2027.injection.deal-meetings',
+      kind: 'tab',
+      groupId: 'crm-2027-meetings',
+      groupLabel: 'crm_2027.dealMeetings.tabLabel',
+      priority: 45,
+    },
+  ],
 }
 
 export default injectionTable

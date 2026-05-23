@@ -1,5 +1,24 @@
 {
   "crm_2027.notifications.dealHighRisk.title": "Deal flagged high risk",
   "crm_2027.notifications.dealHighRisk.body": "{dealTitle} needs attention after the latest CRM 2027 risk scan.",
-  "crm_2027.notifications.dealHighRisk.board": "At-risk board"
+  "crm_2027.notifications.dealHighRisk.board": "At-risk board",
+  "crm_2027.dealMeetings.tabLabel": "Meetings",
+  "crm_2027.dealMeetings.ingestTitle": "Meeting transcript",
+  "crm_2027.dealMeetings.ingestHint": "Paste notes from Zoom, Teams, Gong, or a manual recap. We analyze sentiment and refresh deal risk.",
+  "crm_2027.dealMeetings.titleLabel": "Title",
+  "crm_2027.dealMeetings.titlePlaceholder": "Discovery call",
+  "crm_2027.dealMeetings.sourceLabel": "Source",
+  "crm_2027.dealMeetings.source.manual": "Manual",
+  "crm_2027.dealMeetings.source.zoom": "Zoom",
+  "crm_2027.dealMeetings.source.teams": "Teams",
+  "crm_2027.dealMeetings.source.gong": "Gong",
+  "crm_2027.dealMeetings.transcriptLabel": "Transcript",
+  "crm_2027.dealMeetings.transcriptPlaceholder": "Paste the meeting transcript or call notes here…",
+  "crm_2027.dealMeetings.analyze": "Analyze",
+  "crm_2027.dealMeetings.loading": "Loading meetings…",
+  "crm_2027.dealMeetings.empty": "No meetings ingested yet.",
+  "crm_2027.dealMeetings.loadError": "Failed to load meetings",
+  "crm_2027.dealMeetings.missingDeal": "Open a deal to ingest meeting notes.",
+  "crm_2027.dealMeetings.dealRisk": "Deal at risk",
+  "crm_2027.dealMeetings.untitled": "Untitled meeting"
 }

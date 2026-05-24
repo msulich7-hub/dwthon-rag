@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { href: MES_ROUTES.operator, labelKey: 'mes.shell.nav.operator', fallback: 'Operator' },
   { href: MES_ROUTES.routing, labelKey: 'mes.shell.nav.routing', fallback: 'Routing' },
   { href: MES_ROUTES.pulse, labelKey: 'mes.shell.nav.pulse', fallback: 'Pulse' },
+  { href: MES_ROUTES.trace, labelKey: 'mes.shell.nav.trace', fallback: 'Trace' },
 ] as const
 
 export function MesShell({ children }: MesShellProps) {

@@ -51,6 +51,15 @@ const widget: InjectionMenuItemWidget = {
       groupId: 'mes.nav.group',
       placement: { position: InjectionPosition.After, relativeTo: 'mes-pulse' },
     },
+    {
+      id: 'mes-trace',
+      label: 'Trace',
+      icon: 'Search',
+      href: MES_ROUTES.trace,
+      features: ['mes.trace.view'],
+      groupId: 'mes.nav.group',
+      placement: { position: InjectionPosition.After, relativeTo: 'mes-routing' },
+    },
   ],
 }
 

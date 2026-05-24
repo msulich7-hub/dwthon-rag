@@ -3,6 +3,8 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
+import type { ColumnDef } from '@tanstack/react-table'
+import { DataTable } from '@open-mercato/ui/backend/DataTable'
 import { Page, PageBody, PageHeader } from '@open-mercato/ui/backend/Page'
 import { apiCall, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
@@ -49,6 +51,7 @@ export default function MesWorkOrderDetailPage() {
   const [detail, setDetail] = React.useState<DetailResponse | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [transitioning, setTransitioning] = React.useState(false)
+  const [lots, setLots] = React.useState<Array<{ id: string; lotNumber: string; productCode: string; quantity: number; status: string }>>([])
 
   const load = React.useCallback(async () => {
     if (!workOrderId) return
@@ -58,6 +61,14 @@ export default function MesWorkOrderDetailPage() {
         `/api/mes/work-orders/${encodeURIComponent(workOrderId)}`,
       )
       setDetail(payload)
+      try {
+        const lotsPayload = await readApiResultOrThrow<{
+          lots: Array<{ id: string; lotNumber: string; productCode: string; quantity: number; status: string }>
+        }>(`/api/mes/lots?workOrderId=${encodeURIComponent(workOrderId)}`)
+        setLots(lotsPayload.lots ?? [])
+      } catch {
+        setLots([])
+      }
     } catch {
       flash(t('mes.workOrderDetail.loadError', 'Failed to load work order'), 'error')
     } finally {
@@ -102,6 +113,16 @@ export default function MesWorkOrderDetailPage() {
   const progressPercent = totalOps > 0 ? Math.round((completedOps / totalOps) * 100) : 0
 
   const nextStatus = detail ? NEXT_STATUS[detail.workOrder.status] : undefined
+
+  const lotColumns = React.useMemo<ColumnDef<(typeof lots)[number]>[]>(
+    () => [
+      { accessorKey: 'lotNumber', header: t('mes.trace.columns.lot', 'Lot #') },
+      { accessorKey: 'productCode', header: t('mes.trace.columns.product', 'Product') },
+      { accessorKey: 'quantity', header: t('mes.trace.columns.qty', 'Qty') },
+      { accessorKey: 'status', header: t('mes.trace.columns.status', 'Status') },
+    ],
+    [t],
+  )
 
   return (
     <Page>
@@ -168,6 +189,20 @@ export default function MesWorkOrderDetailPage() {
                   <MesOperationStepper operations={detail.operations} />
                 </section>
               ) : null}
+
+              <section className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-sm font-medium">{t('mes.workOrderDetail.lots', 'Lots')}</h2>
+                  <Link href={MES_ROUTES.trace} className="text-xs text-primary hover:underline">
+                    {t('mes.workOrderDetail.traceLink', 'Trace & recall')}
+                  </Link>
+                </div>
+                {lots.length > 0 ? (
+                  <DataTable columns={lotColumns} data={lots} isLoading={false} embedded />
+                ) : (
+                  <p className="text-xs text-muted-foreground">{t('mes.workOrderDetail.noLots', 'No lots linked.')}</p>
+                )}
+              </section>
 
               {detail.workOrder.notes ? (
                 <section className="rounded-lg border bg-muted/20 p-3 text-sm">

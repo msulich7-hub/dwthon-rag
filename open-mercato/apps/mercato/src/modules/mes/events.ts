@@ -43,6 +43,24 @@ const events = [
     entity: 'work_order_operation',
     category: 'crud',
   },
+  {
+    id: 'mes.andon.critical',
+    label: 'Andon critical escalation',
+    entity: 'andon',
+    category: 'alert',
+  },
+  {
+    id: 'mes.lot.created',
+    label: 'Lot created',
+    entity: 'lot',
+    category: 'crud',
+  },
+  {
+    id: 'mes.material.consumed',
+    label: 'Material consumed',
+    entity: 'lot',
+    category: 'crud',
+  },
 ] as const
 
 export const eventsConfig = createModuleEvents({ moduleId: 'mes', events })

@@ -6,5 +6,6 @@ export const MES_ROUTES = {
   operatorKiosk: '/backend/mes/operator?kiosk=1',
   routing: '/backend/mes/routing',
   pulse: '/backend/mes/pulse',
+  trace: '/backend/mes/trace',
   salesOrders: '/backend/sales/orders',
 } as const

@@ -62,6 +62,27 @@ export const operationConfirmationBodySchema = z.object({
   goodQty: z.number().int().min(0).optional(),
   scrapQty: z.number().int().min(0).optional(),
   notes: z.string().trim().max(2000).optional(),
+  lotNumber: z.string().trim().max(120).optional(),
+  consumeQty: z.number().int().positive().optional(),
+})
+
+export const createLotBodySchema = z.object({
+  lotNumber: z.string().trim().min(1).max(120),
+  productCode: z.string().trim().min(1).max(120),
+  quantity: z.number().int().positive().max(1_000_000),
+  workOrderId: z.string().uuid().optional(),
+  notes: z.string().trim().max(4000).optional(),
+})
+
+export const listLotsQuerySchema = z.object({
+  productCode: z.string().trim().max(120).optional(),
+  workOrderId: z.string().uuid().optional(),
+  status: z.enum(['active', 'consumed', 'quarantine']).optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+})
+
+export const recallSearchQuerySchema = z.object({
+  lotNumber: z.string().trim().min(1).max(120),
 })
 
 export const listDispatchQueueQuerySchema = z.object({

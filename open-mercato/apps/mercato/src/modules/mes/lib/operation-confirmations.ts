@@ -15,6 +15,7 @@ import {
   promoteNextOperation,
 } from './work-order-operations'
 import { canTransitionWorkOrderStatus } from './work-order-status'
+import { recordMaterialConsumption } from './material-consumption'
 import { updateWorkOrderStatus } from './work-orders'
 
 export type MesScope = { tenantId: string; organizationId: string }
@@ -130,6 +131,26 @@ export async function confirmWorkOrderOperation(
     operatorId: operatorId ?? null,
     notes: body.notes?.trim() ?? null,
   })
+
+  if (
+    body.lotNumber?.trim() &&
+    (body.confirmationType === 'complete' || body.confirmationType === 'partial')
+  ) {
+    const consumeQty = body.consumeQty ?? body.goodQty ?? operation.plannedQty
+    try {
+      await recordMaterialConsumption(em, scope, operation.id, body.lotNumber, consumeQty)
+    } catch (error) {
+      if (error instanceof Error) {
+        const consumptionErrors = new Set([
+          'LOT_NOT_FOUND',
+          'LOT_NOT_ACTIVE',
+          'INSUFFICIENT_LOT_QTY',
+        ])
+        if (consumptionErrors.has(error.message)) throw error
+      }
+      throw error
+    }
+  }
 
   await em.flush()
 

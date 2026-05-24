@@ -15,6 +15,8 @@ import { MesEmptyState } from '../../../components/MesEmptyState'
 import { MesListSkeleton } from '../../../components/MesListSkeleton'
 import { MesStatusBadge } from '../../../components/MesStatusBadge'
 import { MesScanField } from '../../../components/MesScanField'
+import { MesCameraScanner } from '../../../components/MesCameraScanner'
+import { MesOperatorLotField } from '../../../components/MesOperatorLotField'
 import { MES_ROUTES } from '../../../lib/mes-routes'
 
 type DispatchQueueItem = {
@@ -46,6 +48,9 @@ export default function MesOperatorPage() {
   const [workCenter, setWorkCenter] = React.useState('')
   const [highlightedId, setHighlightedId] = React.useState<string | null>(null)
   const [workCenterOptions, setWorkCenterOptions] = React.useState<string[]>([])
+  const [consumeLot, setConsumeLot] = React.useState('')
+  const [consumeQty, setConsumeQty] = React.useState('1')
+  const [cameraOn, setCameraOn] = React.useState(false)
   const rowRefs = React.useRef<Record<string, HTMLLIElement | null>>({})
 
   React.useEffect(() => {
@@ -117,6 +122,7 @@ export default function MesOperatorPage() {
       setBusyId(item.operation.id)
       try {
         const remaining = item.operation.plannedQty - item.operation.completedQty
+        const parsedConsumeQty = Number.parseInt(consumeQty, 10)
         const call = await apiCall(
           `/api/mes/work-orders/${encodeURIComponent(item.workOrderId)}/operations/${encodeURIComponent(item.operation.id)}/confirm`,
           {
@@ -125,6 +131,8 @@ export default function MesOperatorPage() {
             body: JSON.stringify({
               confirmationType: 'complete',
               goodQty: remaining > 0 ? remaining : item.operation.plannedQty,
+              lotNumber: consumeLot.trim() || undefined,
+              consumeQty: Number.isFinite(parsedConsumeQty) && parsedConsumeQty > 0 ? parsedConsumeQty : undefined,
             }),
           },
         )
@@ -140,7 +148,7 @@ export default function MesOperatorPage() {
         setBusyId(null)
       }
     },
-    [loadQueue, t],
+    [consumeLot, consumeQty, loadQueue, t],
   )
 
   const handleScan = React.useCallback(
@@ -152,6 +160,11 @@ export default function MesOperatorPage() {
           item.operation.operationCode.toUpperCase() === scan,
       )
       if (!match) {
+        if (scan.startsWith('LOT-') || scan.includes('-')) {
+          setConsumeLot(scan)
+          flash(t('mes.scan.lotCaptured', 'Lot captured for next completion'), 'success')
+          return
+        }
         flash(t('mes.scan.notFound', 'No matching operation in queue'), 'error')
         setHighlightedId(null)
         return
@@ -176,6 +189,20 @@ export default function MesOperatorPage() {
   const body = (
     <PageBody className={`space-y-4 ${kiosk ? 'max-w-3xl mx-auto' : ''}`}>
       <MesScanField kiosk={kiosk} autoFocus={kiosk} onScan={handleScan} />
+      {cameraOn || kiosk ? <MesCameraScanner onScan={handleScan} active /> : null}
+      {!kiosk ? (
+        <Button type="button" variant="ghost" size="sm" onClick={() => setCameraOn((v) => !v)}>
+          {cameraOn ? t('mes.camera.hide', 'Hide camera') : t('mes.camera.show', 'Use camera scanner')}
+        </Button>
+      ) : null}
+
+      <MesOperatorLotField
+        kiosk={kiosk}
+        lotNumber={consumeLot}
+        consumeQty={consumeQty}
+        onLotNumberChange={setConsumeLot}
+        onConsumeQtyChange={setConsumeQty}
+      />
 
       <div className={`flex flex-wrap gap-3 items-end ${kiosk ? 'text-lg' : ''}`}>
         <div className="space-y-1 flex-1 min-w-[200px]">
@@ -292,7 +319,7 @@ export default function MesOperatorPage() {
         <div className="min-h-screen bg-background p-4 md:p-8">
           <PageHeader
             title={t('mes.operator.kioskTitle', 'Shop floor')}
-            description={t('mes.operator.kioskDescription', 'Tap Start or Complete for your work center.')}
+            description={t('mes.operator.kioskDescription', 'Scan barcodes — camera, lot capture, auto start/complete.')}
             actions={
               <Button variant="ghost" size="sm" asChild>
                 <Link href={MES_ROUTES.operator}>{t('mes.operator.exitKiosk', 'Exit kiosk')}</Link>

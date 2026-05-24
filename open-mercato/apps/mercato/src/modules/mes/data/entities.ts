@@ -209,3 +209,83 @@ export class MesOperationConfirmation {
   @Property({ name: 'confirmed_at', type: Date, onCreate: () => new Date() })
   confirmedAt: Date = new Date()
 }
+
+export type MesLotStatus = 'active' | 'consumed' | 'quarantine'
+
+@Entity({ tableName: 'mes_lots' })
+export class MesLot {
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ name: 'lot_number', type: 'text' })
+  lotNumber!: string
+
+  @Property({ name: 'product_code', type: 'text' })
+  productCode!: string
+
+  @Property({ type: 'int' })
+  quantity!: number
+
+  @Property({ type: 'text' })
+  status!: MesLotStatus
+
+  @Property({ name: 'work_order_id', type: 'uuid', nullable: true })
+  workOrderId?: string | null
+
+  @Property({ type: 'text', nullable: true })
+  notes?: string | null
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+
+  @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
+  updatedAt: Date = new Date()
+}
+
+@Entity({ tableName: 'mes_material_consumptions' })
+export class MesMaterialConsumption {
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ name: 'work_order_operation_id', type: 'uuid' })
+  workOrderOperationId!: string
+
+  @Property({ name: 'lot_id', type: 'uuid' })
+  lotId!: string
+
+  @Property({ type: 'int' })
+  quantity!: number
+
+  @Property({ name: 'consumed_at', type: Date, onCreate: () => new Date() })
+  consumedAt: Date = new Date()
+}
+
+@Entity({ tableName: 'mes_andon_state' })
+export class MesAndonState {
+  @PrimaryKey({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @PrimaryKey({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ name: 'last_escalation_level', type: 'int', default: 0 })
+  lastEscalationLevel: number = 0
+
+  @Property({ name: 'last_notified_at', type: Date, nullable: true })
+  lastNotifiedAt?: Date | null
+
+  @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
+  updatedAt: Date = new Date()
+}

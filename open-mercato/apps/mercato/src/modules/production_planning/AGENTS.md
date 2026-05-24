@@ -22,6 +22,9 @@ Heavy scheduling runs in **`open-mercato/services/ortools-scheduler`** (Python, 
 | Warm-start | `warmStartScenarioId` → `fixedOperations` from parent scenario schedule |
 | Interactive SLA | `lib/cpsat-sla.ts` — p95 target **&lt;60 s** for ≤500 ops (scenario KPI) |
 | Control tower | `GET /api/production_planning/control-tower/overview` · `.../exceptions` · UI `/backend/production_planning/control-tower` |
+| MRP / genesis | `POST /api/production_planning/mrp/netting/runs` · `GET /api/production_planning/genesis/roots` |
+| Gantt 150 WC | `GET /api/production_planning/gantt` · UI `/backend/production_planning/gantt` |
+| What-if overrides | `capacity.oeeMultiplier`, `workCenterBlackoutHours`, `demand.forecastDeltaPct` → payload |
 | What-if scenarios | `data/what-if-scenarios.registry.json` · `lib/what-if-scenario-runner.ts` · `POST /api/production_planning/scenarios/runs` |
 | Scenario Lab UI | `/backend/production_planning/scenarios` |
 | Cross-order pegging | `lib/pegging-to-assembly-links.ts` → `assemblyLinks` on CP-SAT payload |

@@ -22,6 +22,10 @@ import type {
 } from './ortools-bridge'
 import { loadWarmStartFixedOperations } from './warm-start-from-scenario'
 import {
+  applyScenarioPayloadOverrides,
+  type ScenarioPayloadOverrides,
+} from './what-if-payload-overrides'
+import {
   buildCrossOrderAssemblyLinks,
   filterAssemblyLinksForOperationIds,
   mergeAssemblyLinks,
@@ -43,6 +47,7 @@ export type BuildCpsatPayloadOptions = {
   objectiveWeights?: CpsatObjectiveWeights | Record<string, number> | null
   fixedOperations?: CpsatFixedOperation[]
   warmStartScenarioId?: string | null
+  scenarioOverrides?: ScenarioPayloadOverrides | Record<string, unknown> | null
 }
 
 function mergeFixedOperations(
@@ -69,6 +74,7 @@ function attachChunkPayload(
   orders: PayloadOrder[],
   assemblyLinks: CpsatAssemblyLink[],
   allFixed: CpsatFixedOperation[],
+  workCenterFloors: CpsatScheduleRequest['workCenterFloors'] = [],
 ): CpsatScheduleRequest {
   const operationIds = new Set(orders.flatMap((o) => o.operations.map((op) => op.id)))
   return {
@@ -76,6 +82,7 @@ function attachChunkPayload(
     orders,
     assemblyLinks,
     fixedOperations: filterFixedForOperationIds(allFixed, operationIds),
+    workCenterFloors,
   }
 }
 
@@ -199,7 +206,13 @@ export async function buildCpsatScheduleRequest(
   options: BuildCpsatPayloadOptions,
 ): Promise<CpsatScheduleRequest> {
   const planningStartAt = options.planningStartAt ?? new Date()
-  const payloadOrders = await loadPayloadOrders(em, scope, options.productionOrderIds)
+  let payloadOrders = await loadPayloadOrders(em, scope, options.productionOrderIds)
+  const overrideResult = applyScenarioPayloadOverrides(
+    payloadOrders,
+    options.scenarioOverrides,
+    planningStartAt,
+  )
+  payloadOrders = overrideResult.orders
   const base = buildPayloadBase(scope, options, planningStartAt)
   const assemblyLinks = resolveAssemblyLinks(payloadOrders, options)
   const opIds = new Set(payloadOrders.flatMap((o) => o.operations.map((op) => op.id)))
@@ -214,7 +227,13 @@ export async function buildCpsatScheduleRequest(
     fixed = mergeFixedOperations(fixed, warm)
   }
 
-  return attachChunkPayload(base, payloadOrders, assemblyLinks, fixed)
+  return attachChunkPayload(
+    base,
+    payloadOrders,
+    assemblyLinks,
+    fixed,
+    overrideResult.workCenterFloors,
+  )
 }
 
 export async function buildCpsatScheduleBatchFromDb(
@@ -223,7 +242,13 @@ export async function buildCpsatScheduleBatchFromDb(
   options: BuildCpsatPayloadOptions,
 ): Promise<CpsatScheduleBatch> {
   const planningStartAt = options.planningStartAt ?? new Date()
-  const payloadOrders = await loadPayloadOrders(em, scope, options.productionOrderIds)
+  let payloadOrders = await loadPayloadOrders(em, scope, options.productionOrderIds)
+  const overrideResult = applyScenarioPayloadOverrides(
+    payloadOrders,
+    options.scenarioOverrides,
+    planningStartAt,
+  )
+  payloadOrders = overrideResult.orders
   const base = buildPayloadBase(scope, options, planningStartAt)
   const maxOps = options.maxOperationsPerSolve ?? DEFAULT_MAX_OPERATIONS_PER_SOLVE
   const totalOps = payloadOrders.reduce((s, o) => s + o.operations.length, 0)
@@ -240,6 +265,7 @@ export async function buildCpsatScheduleBatchFromDb(
     )
     fixed = mergeFixedOperations(fixed, warm)
   }
+  const floors = overrideResult.workCenterFloors
 
   if (totalOps <= maxOps) {
     return {
@@ -247,7 +273,7 @@ export async function buildCpsatScheduleBatchFromDb(
       totalOperations: totalOps,
       chunkCount: 1,
       maxOperationsPerSolve: maxOps,
-      chunks: [attachChunkPayload(base, payloadOrders, assemblyLinks, fixed)],
+      chunks: [attachChunkPayload(base, payloadOrders, assemblyLinks, fixed, floors)],
     }
   }
 
@@ -261,9 +287,15 @@ export async function buildCpsatScheduleBatchFromDb(
     ...batch,
     chunks: batch.chunks.map((chunk) => {
       const chunkOpIds = new Set(chunk.orders.flatMap((o) => o.operations.map((op) => op.id)))
+      const chunkFloors = floors.filter((f) =>
+        chunk.orders.some((o) =>
+          o.operations.some((op) => op.workCenterCode === f.workCenterCode),
+        ),
+      )
       return {
         ...chunk,
         fixedOperations: filterFixedForOperationIds(fixed, chunkOpIds),
+        workCenterFloors: chunkFloors,
       }
     }),
   }

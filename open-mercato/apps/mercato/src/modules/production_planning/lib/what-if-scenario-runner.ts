@@ -91,6 +91,7 @@ export async function runTemplateScenario(
       objective: resolved.objective,
       objectiveWeights: resolved.objectiveWeights,
       warmStartScenarioId,
+      scenarioOverrides: resolved.overrides,
       applySync: resolved.applySync,
       dryRun: resolved.dryRun || resolved.proposeOnly,
     })

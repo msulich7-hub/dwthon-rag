@@ -28,6 +28,10 @@ export default function ProductionPlanningHubPage() {
               36 szablonów · bundle’e · compare KPI · turnieje
             </div>
           </Link>
+          <Link href={PP_ROUTES.gantt} className="rounded-lg border p-4 hover:bg-muted/50">
+            <div className="font-medium">Gantt (150 WC)</div>
+            <div className="text-xs text-muted-foreground mt-1">Harmonogram skończonej mocy</div>
+          </Link>
           <Link href={PP_ROUTES.controlTower} className="rounded-lg border p-4 hover:bg-muted/50">
             <div className="font-medium">Control tower</div>
             <div className="text-xs text-muted-foreground mt-1">
@@ -35,6 +39,10 @@ export default function ProductionPlanningHubPage() {
             </div>
           </Link>
         </div>
+        <p className="text-sm text-muted-foreground">
+          MRP: <code className="text-xs">POST /api/production_planning/mrp/netting/runs</code> · genesis:{' '}
+          <code className="text-xs">GET /api/production_planning/genesis/roots</code>
+        </p>
         <p className="text-sm text-muted-foreground">
           Integracja ze sprzedażą: zakładka „Produkcja” na szczegółach zamówienia oraz chipy statusu na pasku etapów.
         </p>

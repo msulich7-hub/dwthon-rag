@@ -355,6 +355,7 @@ Scalenie w jednym REPORT.
 
 | Dokument | Rola |
 |----------|------|
+| `2026-05-26-all-app-modules-integration-audit-brief.md` | Audyt 5 obszarów (CRM, planning, helpdesk, transcripts, SF spec) — orchestrator + subagenci |
 | `2026-05-24-production-planning-master-plan.md` | 100 kroków, bramki F0–F4 |
 | `2026-05-25-production-planning-expert-debate-m1-gantt.md` | Decyzje M1 + dual-Gantt |
 | `2026-05-25-production-planning-mercato-only-max-slice.md` | Zakres bez ETL |

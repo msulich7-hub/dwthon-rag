@@ -1,11 +1,19 @@
 import { createModuleQueue, type Queue } from '@open-mercato/queue'
 
 export const CRM_2027_RISK_SCAN_QUEUE = 'crm_2027:risk-scan'
+export const CRM_2027_EMAIL_SYNC_QUEUE = 'crm_2027:email-sync'
 
 export type Crm2027RiskScanJobPayload = {
   tenantId: string
   organizationId: string
   stallDays?: number
+}
+
+export type Crm2027EmailSyncJobPayload = {
+  tenantId: string
+  organizationId: string
+  days?: number
+  limit?: number
 }
 
 const GLOBAL_KEY = '__crm_2027_queues__' as const

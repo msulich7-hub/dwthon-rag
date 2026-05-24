@@ -12,7 +12,8 @@ const widget: InjectionMenuItemWidget = {
     { id: 'crm-2027-companies', label: 'Companies', icon: 'Building2', href: CRM_ROUTES.companiesShell, features: ['crm_2027.view', 'customers.companies.view'], groupId: 'crm_2027.nav.group', placement: { position: InjectionPosition.After, relativeTo: 'crm-2027-people' } },
     { id: 'crm-2027-deals', label: 'Deals', icon: 'Handshake', href: CRM_ROUTES.dealsShell, features: ['crm_2027.view', 'customers.deals.view'], groupId: 'crm_2027.nav.group', placement: { position: InjectionPosition.After, relativeTo: 'crm-2027-companies' } },
     { id: 'crm-2027-pipeline', label: 'Pipeline', icon: 'Kanban', href: CRM_ROUTES.dealsKanban, features: ['crm_2027.view', 'customers.deals.view'], groupId: 'crm_2027.nav.group', placement: { position: InjectionPosition.After, relativeTo: 'crm-2027-deals' } },
-    { id: 'crm-2027-at-risk', label: 'At risk', icon: 'AlertTriangle', href: CRM_ROUTES.atRisk, features: ['crm_2027.view'], groupId: 'crm_2027.nav.group', placement: { position: InjectionPosition.Last } },
+    { id: 'crm-2027-calendar', label: 'Calendar', icon: 'Calendar', href: CRM_ROUTES.calendar, features: ['crm_2027.view', 'customers.deals.view'], groupId: 'crm_2027.nav.group', placement: { position: InjectionPosition.After, relativeTo: 'crm-2027-pipeline' } },
+    { id: 'crm-2027-at-risk', label: 'At risk', icon: 'AlertTriangle', href: CRM_ROUTES.atRisk, features: ['crm_2027.view'], groupId: 'crm_2027.nav.group', placement: { position: InjectionPosition.After, relativeTo: 'crm-2027-calendar' } },
   ],
 }
 export default widget

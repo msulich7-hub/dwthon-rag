@@ -26,6 +26,7 @@ type MeetingRisk = {
 type MeetingItem = {
   id: string
   dealId: string
+  interactionId?: string | null
   title: string | null
   source: string | null
   transcriptExcerpt: string
@@ -242,6 +243,15 @@ export default function DealMeetingsWidget({
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {meeting.source ?? 'manual'} · {new Date(meeting.ingestedAt).toLocaleString()}
+                    {meeting.interactionId ? (
+                      <>
+                        {' '}
+                        ·{' '}
+                        <span className="text-primary">
+                          {t('crm_2027.dealMeetings.onTimeline', 'On deal timeline')}
+                        </span>
+                      </>
+                    ) : null}
                   </div>
                 </div>
                 <span className={`text-xs rounded-full border px-2 py-0.5 ${riskTone(meeting.sentiment.atRisk ? 'high' : 'low')}`}>

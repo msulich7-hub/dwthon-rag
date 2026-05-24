@@ -1,5 +1,5 @@
 import type { ModuleSetupConfig } from '@open-mercato/shared/modules/setup'
-import { CRM_2027_RISK_SCAN_QUEUE } from './lib/queue'
+import { CRM_2027_EMAIL_SYNC_QUEUE, CRM_2027_RISK_SCAN_QUEUE } from './lib/queue'
 
 import crypto from 'node:crypto'
 
@@ -50,6 +50,42 @@ async function registerRiskScanSchedule(
   })
 }
 
+async function registerEmailSyncSchedule(
+  container: { hasRegistration?: (name: string) => boolean; resolve: (name: string) => unknown },
+  tenantId: string,
+  organizationId: string,
+): Promise<void> {
+  if (typeof container.hasRegistration !== 'function' || !container.hasRegistration('schedulerService')) {
+    return
+  }
+  const schedulerService = container.resolve('schedulerService') as SchedulerServiceLike
+  const scheduleId = stableUuidFromString(`crm_2027:email-sync:${tenantId}:${organizationId}`)
+
+  await schedulerService.register({
+    id: scheduleId,
+    name: 'CRM 2027 email sentiment sync',
+    description: 'Scans recent email interactions and refreshes at-risk flags every 12 hours.',
+    scopeType: 'organization',
+    organizationId,
+    tenantId,
+    scheduleType: 'interval',
+    scheduleValue: '12h',
+    timezone: 'UTC',
+    targetType: 'queue',
+    targetQueue: CRM_2027_EMAIL_SYNC_QUEUE,
+    targetPayload: {
+      tenantId,
+      organizationId,
+      days: 14,
+      limit: 50,
+    },
+    requireFeature: 'crm_2027.manage',
+    sourceType: 'module',
+    sourceModule: 'crm_2027',
+    isEnabled: true,
+  })
+}
+
 export const setup: ModuleSetupConfig = {
   defaultRoleFeatures: {
     superadmin: ['crm_2027.*', 'customers.*', 'ai_assistant.*', 'perspectives.use'],
@@ -74,6 +110,7 @@ export const setup: ModuleSetupConfig = {
 
   async seedDefaults({ container, tenantId, organizationId }) {
     await registerRiskScanSchedule(container, tenantId, organizationId)
+    await registerEmailSyncSchedule(container, tenantId, organizationId)
   },
 }
 

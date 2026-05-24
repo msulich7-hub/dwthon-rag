@@ -26,9 +26,11 @@ export default function Crm2027DashboardPage() {
   const [forecast, setForecast] = React.useState<ForecastData | null>(null)
 
   React.useEffect(() => {
-    void apiCall<DashboardData>('/api/crm_2027/dashboard').then(setData).catch(() => setData(null))
+    void apiCall<DashboardData>('/api/crm_2027/dashboard')
+      .then(({ result }) => setData(result ?? null))
+      .catch(() => setData(null))
     void apiCall<ForecastData>('/api/crm_2027/forecast')
-      .then(setForecast)
+      .then(({ result }) => setForecast(result ?? null))
       .catch(() => setForecast(null))
   }, [])
 

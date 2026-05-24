@@ -20,5 +20,6 @@
   "crm_2027.dealMeetings.loadError": "Failed to load meetings",
   "crm_2027.dealMeetings.missingDeal": "Open a deal to ingest meeting notes.",
   "crm_2027.dealMeetings.dealRisk": "Deal at risk",
-  "crm_2027.dealMeetings.untitled": "Untitled meeting"
+  "crm_2027.dealMeetings.untitled": "Untitled meeting",
+  "crm_2027.dealMeetings.onTimeline": "On deal timeline"
 }

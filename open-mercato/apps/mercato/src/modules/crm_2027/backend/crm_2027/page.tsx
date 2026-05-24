@@ -44,8 +44,29 @@ export default function Crm2027HubPage() {
               </Link>
               <Link href={CRM_ROUTES.dashboard} className="rounded-lg border p-4 hover:bg-muted/50">
                 <div className="font-medium">Dashboard</div>
-                <div className="text-xs text-muted-foreground">KPI overview</div>
+                <div className="text-xs text-muted-foreground">KPI + forecast</div>
               </Link>
+              <Link href={CRM_ROUTES.calendar} className="rounded-lg border p-4 hover:bg-muted/50">
+                <div className="font-medium">Calendar</div>
+                <div className="text-xs text-muted-foreground">Upcoming meetings & calls</div>
+              </Link>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-sm font-medium text-muted-foreground mb-3">Integrations</h2>
+            <div className="rounded-lg border p-4 text-sm space-y-2">
+              <p className="text-muted-foreground">
+                Webhooks: <code className="text-xs">POST /api/crm_2027/webhooks/zoom</code>,{' '}
+                <code className="text-xs">POST /api/crm_2027/webhooks/gong</code>
+              </p>
+              <p className="text-muted-foreground">
+                Email sync: <code className="text-xs">POST /api/crm_2027/sync/email</code> (or 12h scheduler)
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Set <code>CRM_2027_WEBHOOK_SECRET</code> / <code>CRM_2027_ZOOM_WEBHOOK_SECRET</code>. Unauthenticated
+                webhooks require <code>tenantId</code> + <code>organizationId</code> in the JSON body.
+              </p>
             </div>
           </section>
 

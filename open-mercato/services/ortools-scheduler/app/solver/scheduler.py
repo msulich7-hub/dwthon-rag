@@ -17,6 +17,7 @@ from app.schemas import (
     ScheduleResponse,
     WorkCenterFloor,
 )
+from app.solver.assembly import apply_assembly_links
 from app.solver.ops import FlatOperation, SchedulerError
 from app.solver.preprocess import preprocess_schedule_request, should_use_pairwise_changeover
 from app.solver.profiles import CPSAT_PROFILES, apply_cpsat_profile, tier_for_operation_count
@@ -118,6 +119,23 @@ def solve_schedule(
         ordered = sorted(order_ops, key=lambda o: o.sequence_no)
         for prev, nxt in zip(ordered, ordered[1:]):
             model.add(ends[prev.op_id] <= starts[nxt.op_id])
+
+    try:
+        apply_assembly_links(
+            model,
+            starts,
+            ends,
+            flat_ops,
+            list(request.assembly_links),
+            slot_minutes=slot_minutes,
+        )
+    except SchedulerError as exc:
+        return ScheduleResponse(
+            job_id=job_id,
+            status="failed",
+            message=str(exc),
+            solver_status="INFEASIBLE",
+        )
 
     order_completion: dict[UUID, cp_model.IntVar] = {}
     for order_id, order_ops in ops_by_order.items():

@@ -30,6 +30,12 @@ export type CpsatWorkCenterFloor = {
   earliestStartAt: string
 }
 
+export type CpsatAssemblyLink = {
+  predecessorOperationId: string
+  successorOperationId: string
+  lagMinutes: number
+}
+
 export type CpsatChunkMeta = {
   batchId: string
   chunkIndex: number
@@ -104,6 +110,7 @@ export type CpsatScheduleRequest = {
   rolling?: CpsatRollingConfig | null
   fixedOperations?: CpsatFixedOperation[]
   workCenterFloors?: CpsatWorkCenterFloor[]
+  assemblyLinks?: CpsatAssemblyLink[]
   chunk?: CpsatChunkMeta
 }
 

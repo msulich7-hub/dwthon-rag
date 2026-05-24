@@ -12,7 +12,13 @@ import {
   DEFAULT_MAX_OPERATIONS_PER_SOLVE,
   type PayloadOrder,
 } from './cpsat-chunking'
-import type { CpsatObjective, CpsatScheduleRequest } from './ortools-bridge'
+import type { CpsatAssemblyLink, CpsatObjective, CpsatScheduleRequest } from './ortools-bridge'
+import {
+  buildCrossOrderAssemblyLinks,
+  filterAssemblyLinksForOperationIds,
+  mergeAssemblyLinks,
+  type CpsatAssemblyLink as PegLink,
+} from './pegging-to-assembly-links'
 
 export { buildScheduleBatch, DEFAULT_MAX_OPERATIONS_PER_SOLVE }
 export type { CpsatScheduleBatch }
@@ -24,6 +30,8 @@ export type BuildCpsatPayloadOptions = {
   planningStartAt?: Date
   maxOperationsPerSolve?: number
   enableRolling?: boolean
+  assemblyLinks?: PegLink[]
+  includeCrossOrderPegging?: boolean
 }
 
 type PayloadBase = Omit<CpsatScheduleRequest, 'orders' | 'chunk' | 'fixedOperations' | 'workCenterFloors'>
@@ -123,6 +131,18 @@ function buildPayloadBase(
   }
 }
 
+function resolveAssemblyLinks(
+  orders: PayloadOrder[],
+  options: BuildCpsatPayloadOptions,
+): CpsatAssemblyLink[] {
+  const explicit = options.assemblyLinks ?? []
+  const cross =
+    options.includeCrossOrderPegging !== false
+      ? buildCrossOrderAssemblyLinks(orders)
+      : []
+  return mergeAssemblyLinks(explicit, cross)
+}
+
 export async function buildCpsatScheduleRequest(
   em: EntityManager,
   scope: OrgScope,
@@ -131,10 +151,12 @@ export async function buildCpsatScheduleRequest(
   const planningStartAt = options.planningStartAt ?? new Date()
   const payloadOrders = await loadPayloadOrders(em, scope, options.productionOrderIds)
   const base = buildPayloadBase(scope, options, planningStartAt)
+  const assemblyLinks = resolveAssemblyLinks(payloadOrders, options)
 
   return {
     ...base,
     orders: payloadOrders,
+    assemblyLinks,
   }
 }
 
@@ -149,19 +171,22 @@ export async function buildCpsatScheduleBatchFromDb(
   const maxOps = options.maxOperationsPerSolve ?? DEFAULT_MAX_OPERATIONS_PER_SOLVE
   const totalOps = payloadOrders.reduce((s, o) => s + o.operations.length, 0)
 
+  const assemblyLinks = resolveAssemblyLinks(payloadOrders, options)
+
   if (totalOps <= maxOps) {
     return {
       batchId: createCpsatJobId(),
       totalOperations: totalOps,
       chunkCount: 1,
       maxOperationsPerSolve: maxOps,
-      chunks: [{ ...base, orders: payloadOrders }],
+      chunks: [{ ...base, orders: payloadOrders, assemblyLinks }],
     }
   }
 
   return buildScheduleBatch(base, payloadOrders, {
     maxOperationsPerSolve: maxOps,
     batchId: createCpsatJobId(),
+    assemblyLinks,
   })
 }
 

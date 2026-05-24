@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.schemas import ProductionOperation, ProductionOrder, ScheduleRequest
+from app.schemas import AssemblyLink, ProductionOperation, ProductionOrder, ScheduleRequest
 from app.solver.profiles import (
     CPSAT_PROFILES,
     SolverSizeTier,
@@ -111,6 +111,34 @@ def test_schedule_respects_precedence() -> None:
     cut = next(row for row in result.schedule if row.work_center_code == "WC-CUT")
     asm = next(row for row in result.schedule if row.work_center_code == "WC-ASM")
     assert cut.planned_end_at <= asm.planned_start_at
+
+
+def test_cross_order_assembly_link() -> None:
+    order_a = _sample_order(wc_a="WC-A", wc_b="WC-B")
+    order_b = _sample_order(wc_a="WC-C", wc_b="WC-D")
+    op_a_last = sorted(order_a.operations, key=lambda o: o.sequence_no)[-1]
+    op_b_first = sorted(order_b.operations, key=lambda o: o.sequence_no)[0]
+    request = ScheduleRequest(
+        tenantId=uuid4(),
+        organizationId=uuid4(),
+        orders=[order_a, order_b],
+        horizonHours=168,
+        objective="minimize_lateness",
+        planningStartAt=datetime(2026, 5, 23, 8, 0, tzinfo=UTC),
+        assemblyLinks=[
+            AssemblyLink(
+                predecessorOperationId=op_a_last.id,
+                successorOperationId=op_b_first.id,
+                lagMinutes=0,
+            )
+        ],
+    )
+    result = solve_schedule(request, timeout_seconds=30)
+    assert result.status == "completed"
+    assert result.schedule is not None
+    end_a = next(row for row in result.schedule if row.operation_id == op_a_last.id)
+    start_b = next(row for row in result.schedule if row.operation_id == op_b_first.id)
+    assert end_a.planned_end_at <= start_b.planned_start_at
 
 
 def test_schedule_http_roundtrip() -> None:

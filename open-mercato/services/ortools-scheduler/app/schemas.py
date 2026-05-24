@@ -94,6 +94,22 @@ class WorkCenterFloor(BaseModel):
     earliest_start_at: datetime = Field(alias="earliestStartAt")
 
 
+class AssemblyLink(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    predecessor_operation_id: UUID = Field(alias="predecessorOperationId")
+    successor_operation_id: UUID = Field(alias="successorOperationId")
+    lag_minutes: int = Field(default=0, alias="lagMinutes", ge=0, le=60 * 24 * 14)
+
+    @field_validator("successor_operation_id")
+    @classmethod
+    def no_self_link(cls, succ: UUID, info) -> UUID:
+        pred = info.data.get("predecessor_operation_id")
+        if pred is not None and pred == succ:
+            raise ValueError("predecessorOperationId must differ from successorOperationId")
+        return succ
+
+
 class ChunkMeta(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
@@ -136,6 +152,11 @@ class ScheduleRequest(BaseModel):
     work_center_floors: list[WorkCenterFloor] = Field(
         default_factory=list,
         alias="workCenterFloors",
+    )
+    assembly_links: list[AssemblyLink] = Field(
+        default_factory=list,
+        alias="assemblyLinks",
+        max_length=2000,
     )
     chunk: ChunkMeta | None = None
 

@@ -79,8 +79,8 @@ export function resolveTemplateOptimizeParamsFromTemplate(
       'Demand/supply/capacity overrides are catalog metadata until IFS/MRP bridge is wired; solve uses current DB orders.',
     )
   }
-  if (mergedOverrides.assemblyLinks || mergedOverrides.changeoverGroups || mergedOverrides.routing) {
-    notes.push('Advanced constraint overrides will apply when assemblyLinks/changeoverGroups ship in payload builder.')
+  if (mergedOverrides.changeoverGroups || mergedOverrides.routingAlternatives) {
+    notes.push('Changeover/routing overrides from registry apply when those payload fields are enabled.')
   }
 
   return {

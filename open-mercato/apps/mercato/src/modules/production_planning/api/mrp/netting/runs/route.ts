@@ -6,6 +6,7 @@ import { resolveProductionPlanningRequestContext } from '../../../../lib/request
 
 const bodySchema = z.object({
   mode: z.enum(['full', 'incremental']).optional(),
+  bootstrapFromSilver: z.boolean().optional(),
 })
 
 export const metadata = {
@@ -23,7 +24,10 @@ export async function POST(request: Request) {
     const { tenantId, organizationId, em } = await resolveProductionPlanningRequestContext(request)
     const json = await request.json().catch(() => ({}))
     const body = bodySchema.parse(json)
-    const result = await executeNettingRun(em, { tenantId, organizationId }, { mode: body.mode })
+    const result = await executeNettingRun(em, { tenantId, organizationId }, {
+      mode: body.mode,
+      bootstrapFromSilver: body.bootstrapFromSilver,
+    })
     return NextResponse.json(result)
   } catch (error) {
     if (isCrudHttpError(error)) {

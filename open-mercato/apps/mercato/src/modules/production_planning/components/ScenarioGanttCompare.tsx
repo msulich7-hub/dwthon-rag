@@ -2,6 +2,8 @@
 
 import * as React from 'react'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
+import { Button } from '@open-mercato/ui/primitives/button'
+import { downloadCsvInBrowser, ganttCompareToCsv } from '../lib/gantt-export-csv'
 
 type GanttCompareBar = {
   operationId: string
@@ -36,6 +38,7 @@ const DIFF_CLASS: Record<GanttCompareBar['diffKind'], string> = {
 type ScenarioGanttCompareProps = {
   baselineScenarioId: string
   scenarioId: string
+  scenarioBId?: string
   horizonHours?: number
   maxWorkCenters?: number
 }
@@ -78,10 +81,12 @@ function GanttTrack({
 export function ScenarioGanttCompare({
   baselineScenarioId,
   scenarioId,
+  scenarioBId,
   horizonHours = 72,
   maxWorkCenters = 50,
 }: ScenarioGanttCompareProps) {
   const [payload, setPayload] = React.useState<GanttDualComparePayload | null>(null)
+  const [payloadB, setPayloadB] = React.useState<GanttDualComparePayload | null>(null)
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const wcScrollRef = React.useRef<HTMLDivElement>(null)
@@ -107,14 +112,30 @@ export function ScenarioGanttCompare({
       horizonHours: String(horizonHours),
       maxWorkCenters: String(maxWorkCenters),
     })
-    void apiCall<GanttDualComparePayload>(`/api/production_planning/gantt/compare?${qs}`)
-      .then(({ result }) => setPayload(result ?? null))
+    const loadA = apiCall<GanttDualComparePayload>(`/api/production_planning/gantt/compare?${qs}`)
+    const loadB = scenarioBId
+      ? apiCall<GanttDualComparePayload>(
+          `/api/production_planning/gantt/compare?${new URLSearchParams({
+            baselineScenarioId,
+            scenarioId: scenarioBId,
+            horizonHours: String(horizonHours),
+            maxWorkCenters: String(maxWorkCenters),
+          })}`,
+        )
+      : Promise.resolve({ result: null })
+
+    void Promise.all([loadA, loadB])
+      .then(([a, b]) => {
+        setPayload(a.result ?? null)
+        setPayloadB(b.result ?? null)
+      })
       .catch(() => {
         setPayload(null)
+        setPayloadB(null)
         setError('Nie udało się załadować porównania Gantt.')
       })
       .finally(() => setLoading(false))
-  }, [baselineScenarioId, scenarioId, horizonHours, maxWorkCenters])
+  }, [baselineScenarioId, scenarioId, scenarioBId, horizonHours, maxWorkCenters])
 
   const rangeStart = payload ? Date.parse(payload.planningStartAt) : 0
   const rangeEnd = payload ? Date.parse(payload.planningEndAt) : 1
@@ -126,6 +147,20 @@ export function ScenarioGanttCompare({
     <div className="rounded-lg border p-3 space-y-2 mt-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-medium text-sm">Dual Gantt — baseline vs scenariusz A</h3>
+        <div className="flex flex-wrap items-center gap-2">
+        {payload ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={() =>
+              downloadCsvInBrowser('gantt-compare.csv', ganttCompareToCsv(payload))
+            }
+          >
+            CSV
+          </Button>
+        ) : null}
         <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <span className="w-3 h-2 rounded bg-primary/70" /> bez zmian
@@ -139,6 +174,7 @@ export function ScenarioGanttCompare({
           <span className="inline-flex items-center gap-1">
             <span className="w-3 h-2 rounded bg-muted-foreground/50" /> usunięte w A
           </span>
+        </div>
         </div>
       </div>
       {loading ? (
@@ -199,6 +235,53 @@ export function ScenarioGanttCompare({
               </div>
             </div>
           </div>
+          {scenarioBId && payloadB ? (
+            <div className="mt-4 pt-3 border-t">
+              <h4 className="text-sm font-medium mb-2">Scenariusz B vs baseline</h4>
+              <div className="flex rounded border max-h-[40vh] overflow-hidden">
+                <div className="w-[120px] shrink-0 border-r bg-background text-[10px]">
+                  <div className="h-7 border-b bg-muted/30 px-1 flex items-center font-medium">Gniazdo</div>
+                  {payloadB.rows.map((row) => (
+                    <div key={row.workCenterCode} className="h-10 px-1 py-1 border-b truncate text-xs">
+                      {row.workCenterCode}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex-1 overflow-auto">
+                  <div className="grid grid-cols-2 gap-1 min-w-[560px]">
+                    <div className="h-7 border-b bg-muted/30 text-[10px] font-medium px-1 flex items-center">
+                      Baseline
+                    </div>
+                    <div className="h-7 border-b bg-muted/30 text-[10px] font-medium px-1 flex items-center">
+                      Scenariusz B
+                    </div>
+                    {payloadB.rows.map((row) => (
+                      <React.Fragment key={row.workCenterCode}>
+                        <GanttTrack
+                          operations={row.baselineOperations}
+                          rangeStart={Date.parse(payloadB.planningStartAt)}
+                          rangeMs={Math.max(
+                            1,
+                            Date.parse(payloadB.planningEndAt) -
+                              Date.parse(payloadB.planningStartAt),
+                          )}
+                        />
+                        <GanttTrack
+                          operations={row.scenarioOperations}
+                          rangeStart={Date.parse(payloadB.planningStartAt)}
+                          rangeMs={Math.max(
+                            1,
+                            Date.parse(payloadB.planningEndAt) -
+                              Date.parse(payloadB.planningStartAt),
+                          )}
+                        />
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </>
       )}
     </div>

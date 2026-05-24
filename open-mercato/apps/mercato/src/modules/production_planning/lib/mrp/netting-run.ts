@@ -8,11 +8,15 @@ import {
   ProductionPlanningNettingRun,
   type NettingRunStatus,
 } from '../../data/entities'
+import { isPoolNettingOrderCode } from '../ifs/extract-pilot'
 import { FACTORY_ORDER_CODE_PREFIX } from '../seed-factory-fixture'
 import { recordIfsStagingBatch } from '../ifs/staging-batch'
 import type { OrgScope } from '../production-order'
-import { explodeBom, explodeContentHash } from './explode'
+import { explodeBom, explodeContentHash, maxExplodedLevel } from './explode'
+import { bootstrapGenesisFromSilver } from './netting-from-silver'
+import { resolveVariantTree } from './resolve-variant-tree'
 import { poolGroupKey, weekBucketKey } from './time-buckets'
+import { emitProductionPlanningEvent } from '../events'
 import { stableUuidFromString } from '../stable-uuid'
 
 export type NettingRunResult = {
@@ -38,7 +42,7 @@ type PoolGroup = {
 export async function executeNettingRun(
   em: EntityManager,
   scope: OrgScope,
-  options?: { mode?: 'full' | 'incremental' },
+  options?: { mode?: 'full' | 'incremental'; bootstrapFromSilver?: boolean },
 ): Promise<NettingRunResult> {
   const started = Date.now()
   const runId = randomUUID()
@@ -54,11 +58,33 @@ export async function executeNettingRun(
   })
   await em.persistAndFlush(run)
 
-  const orders = await em.find(ProductionPlanningOrder, {
+  if (options?.bootstrapFromSilver) {
+    await bootstrapGenesisFromSilver(em, scope)
+  }
+
+  let orders = await em.find(ProductionPlanningOrder, {
     tenantId: scope.tenantId,
     organizationId: scope.organizationId,
     status: { $in: ['draft', 'planned', 'in_progress'] },
   })
+  orders = orders.filter((o) => !isPoolNettingOrderCode(o.code))
+
+  if (mode === 'incremental') {
+    const lastCompleted = await em.findOne(
+      ProductionPlanningNettingRun,
+      {
+        tenantId: scope.tenantId,
+        organizationId: scope.organizationId,
+        status: 'completed',
+        id: { $ne: runId },
+      },
+      { orderBy: { completedAt: 'DESC' } },
+    )
+    if (lastCompleted?.completedAt) {
+      const since = lastCompleted.completedAt
+      orders = orders.filter((o) => o.updatedAt >= since)
+    }
+  }
 
   const naiveMoCount = orders.length
   const poolGroups = new Map<string, PoolGroup>()
@@ -114,9 +140,17 @@ export async function executeNettingRun(
       root.contentHash = contentHash
     }
 
+    const variant = resolveVariantTree({
+      productSku: order.productSku ?? 'UNKNOWN',
+      quantity: Number(order.quantity),
+      requestedDate: order.dueAt,
+    })
+
     const exploded = explodeBom({
       rootSku: order.productSku ?? 'UNKNOWN',
       quantity: Number(order.quantity),
+      requestedDate: order.dueAt,
+      maxDepth: 6,
     })
 
     await em.nativeDelete(ProductionPlanningGenesisNode, { genesisRootId: rootId })
@@ -148,7 +182,14 @@ export async function executeNettingRun(
     }
 
     root.status = 'exploded'
-    root.resolutionJson = JSON.stringify({ variantCode: 'default', explodedLevels: exploded.length })
+    root.variantCode = variant.variantCode
+    root.resolutionJson = JSON.stringify({
+      variantCode: variant.variantCode,
+      bomRevisionId: variant.bomRevisionId,
+      explodedNodeCount: exploded.length,
+      maxLevel: maxExplodedLevel(exploded),
+      source: 'mercato_bom_catalog',
+    })
     rootsProcessed += 1
   }
 
@@ -247,6 +288,20 @@ export async function executeNettingRun(
   run.statsJson = JSON.stringify({ consolidationPct, wallMs, poolGroupCount: poolGroups.size })
   run.message = `Netting completed: ${consolidationPct}% MO reduction vs naive`
   await em.flush()
+
+  await emitProductionPlanningEvent(
+    'production_planning.netting.completed',
+    {
+      tenantId: scope.tenantId,
+      organizationId: scope.organizationId,
+      runId,
+      rootsProcessed,
+      poolMoCreated,
+      consolidationPct,
+      wallMs,
+    },
+    { persistent: true },
+  )
 
   return {
     runId,

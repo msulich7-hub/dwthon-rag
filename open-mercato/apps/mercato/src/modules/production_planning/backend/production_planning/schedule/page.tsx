@@ -12,6 +12,8 @@ type WorkCenterLoad = {
   scheduledMinutes: number
   operationCount: number
   utilizationPct: number
+  calendarCapacityMinutes?: number
+  calendarId?: string
 }
 
 type Snapshot = {
@@ -25,6 +27,7 @@ export default function ProductionSchedulePage() {
   const [snapshot, setSnapshot] = React.useState<Snapshot | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [optimizing, setOptimizing] = React.useState(false)
+  const [replanning, setReplanning] = React.useState(false)
   const [optimizeMessage, setOptimizeMessage] = React.useState<string | null>(null)
 
   const loadCapacity = React.useCallback(() => {
@@ -67,15 +70,49 @@ export default function ProductionSchedulePage() {
     }
   }, [loadCapacity])
 
+  const runDeltaReplan = React.useCallback(async () => {
+    setReplanning(true)
+    setOptimizeMessage(null)
+    try {
+      const { result } = await apiCall<{
+        netting: { rootsProcessed: number; consolidationPct: number }
+        optimize?: { applied: number; status: string }
+        antiFantasy: { passed: boolean; violationCount: number }
+        wallMs: number
+      }>('/api/production_planning/delta-replan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ runOptimize: true }),
+      })
+      setOptimizeMessage(
+        `Delta replan ${result?.wallMs ?? '?'} ms · netting ${result?.netting.rootsProcessed ?? 0} roots · CP-SAT ${result?.optimize?.applied ?? 0} ops · AF ${result?.antiFantasy.passed ? 'OK' : `${result?.antiFantasy.violationCount} violations`}`,
+      )
+      loadCapacity()
+    } catch {
+      setOptimizeMessage('Delta replan nie powiódł się.')
+    } finally {
+      setReplanning(false)
+    }
+  }, [loadCapacity])
+
   return (
     <Page>
       <PageHeader
         title="Harmonogram — pojemność"
-        description="Wykorzystanie gniazd roboczych + optymalizacja CP-SAT (Google OR-Tools)."
+        description="Wykorzystanie gniazd (kalendarze Mercato 1–3 zmiany) + CP-SAT + delta replan."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" size="sm" disabled={optimizing} onClick={() => void runCpsatOptimize()}>
               {optimizing ? 'Optymalizuję…' : 'Optymalizuj CP-SAT'}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={replanning || optimizing}
+              onClick={() => void runDeltaReplan()}
+            >
+              {replanning ? 'Replan…' : 'Delta replan'}
             </Button>
             <Link href={PP_ROUTES.hub} className="text-sm underline text-muted-foreground">
               Powrót
@@ -118,7 +155,9 @@ export default function ProductionSchedulePage() {
                       <span>{wc.utilizationPct}% obciążenia</span>
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">
-                      {wc.operationCount} operacji · {wc.scheduledMinutes} min zaplanowanych
+                      {wc.operationCount} operacji · {wc.scheduledMinutes} min /{' '}
+                      {wc.calendarCapacityMinutes ?? '—'} min pojemności kalendarza
+                      {wc.calendarId ? ` · ${wc.calendarId}` : ''}
                     </div>
                   </li>
                 ))}

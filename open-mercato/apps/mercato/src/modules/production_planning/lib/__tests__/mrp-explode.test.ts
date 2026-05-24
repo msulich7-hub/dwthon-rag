@@ -10,6 +10,11 @@ describe('mrp explode', () => {
     expect(lines.filter((l) => l.level === 1).length).toBeGreaterThan(0)
   })
 
+  it('explodes PRODUCT-* to deeper Mercato catalog chain', () => {
+    const lines = explodeBom({ rootSku: 'PRODUCT-X', quantity: 1, maxDepth: 6 })
+    expect(lines.length).toBeGreaterThan(2)
+  })
+
   it('pool group key uses sku and week', () => {
     const due = new Date('2026-05-26T12:00:00.000Z')
     expect(poolGroupKey('SKU-A', due)).toContain('SKU-A')

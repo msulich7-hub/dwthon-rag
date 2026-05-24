@@ -16,6 +16,14 @@
       "orderLate": {
         "title": "Production order is late",
         "body": "Order {code} missed its due date."
+      },
+      "nettingCompleted": {
+        "title": "MRP netting completed",
+        "body": "{rootsProcessed} roots · {poolMoCreated} pool MO · {consolidationPct}% consolidation"
+      },
+      "optimizeCompleted": {
+        "title": "CP-SAT optimization completed",
+        "body": "{operationCount} operations scheduled · {applied} applied"
       }
     }
   }

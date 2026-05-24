@@ -278,6 +278,7 @@ export default function ProductionScenariosPage() {
               <ScenarioGanttCompare
                 baselineScenarioId={baselineId}
                 scenarioId={compareA}
+                scenarioBId={compareB || undefined}
                 horizonHours={72}
                 maxWorkCenters={50}
               />

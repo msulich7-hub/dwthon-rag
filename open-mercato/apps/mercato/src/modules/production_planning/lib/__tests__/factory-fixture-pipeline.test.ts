@@ -108,4 +108,15 @@ describe('factory fixture → CP-SAT pipeline', () => {
     const bench = table.find((r) => r.preset === 'benchmark')!
     expect(bench.chunkCount).toBe(Math.ceil(bench.operationCount / 500))
   })
+
+  it('benchmark batch exceeds 600 ops (rolling-horizon eligible scale)', () => {
+    const plan = buildFactorySeedPlan(SCOPE, 'benchmark')
+    const orders = factoryPlanToPayloadOrders(plan)
+    const links = buildCrossOrderAssemblyLinks(orders)
+    const batch = buildScheduleBatch({ ...BASE_REQUEST, horizonHours: 336 }, orders, {
+      assemblyLinks: links,
+    })
+    expect(batch.totalOperations).toBeGreaterThan(600)
+    expect(batch.chunkCount).toBeGreaterThanOrEqual(2)
+  })
 })

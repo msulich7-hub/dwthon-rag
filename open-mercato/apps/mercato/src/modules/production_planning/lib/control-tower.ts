@@ -1,9 +1,12 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import {
+  ProductionPlanningGenesisRoot,
+  ProductionPlanningIfsSilverExtractWatermark,
   ProductionPlanningOptimizeJob,
   ProductionPlanningOrder,
   ProductionPlanningPlanScenario,
 } from '../data/entities'
+import { runAntiFantasyChecks } from './anti-fantasy'
 import { buildCapacitySnapshot, isOrderLate } from './capacity-snapshot'
 import { isOrtoolsBridgeConfigured } from './ortools-bridge'
 import type { OrgScope } from './production-order'
@@ -19,6 +22,9 @@ export type PlanningException = {
     | 'failed_scenario'
     | 'failed_optimize'
     | 'bridge_unconfigured'
+    | 'silver_stale'
+    | 'genesis_empty'
+    | 'anti_fantasy'
   title: string
   message: string
   entityType: string
@@ -186,6 +192,71 @@ export async function listControlTowerExceptions(
     },
     { orderBy: { updatedAt: 'DESC' }, limit: 20 },
   )
+  const genesisCount = await em.count(ProductionPlanningGenesisRoot, {
+    tenantId: scope.tenantId,
+    organizationId: scope.organizationId,
+  })
+  const openOrders = await em.count(ProductionPlanningOrder, {
+    tenantId: scope.tenantId,
+    organizationId: scope.organizationId,
+    status: { $in: ['planned', 'in_progress', 'draft'] },
+  })
+  if (openOrders > 5 && genesisCount === 0) {
+    exceptions.push({
+      id: 'genesis-empty',
+      severity: 'medium',
+      category: 'genesis_empty',
+      title: 'No genesis roots — run MRP netting',
+      message: `${openOrders} open MO without genesis demand trees.`,
+      entityType: 'system',
+      entityId: 'genesis',
+      detectedAt: now.toISOString(),
+      ageMinutes: 0,
+      drillPath: '/backend/production_planning/genesis',
+    })
+  }
+
+  const silverWm = await em.find(ProductionPlanningIfsSilverExtractWatermark, {
+    tenantId: scope.tenantId,
+    organizationId: scope.organizationId,
+  })
+  const staleHours = 24
+  for (const wm of silverWm) {
+    if (!wm.lastSuccessAt) continue
+    const ageH = (now.getTime() - wm.lastSuccessAt.getTime()) / 3_600_000
+    if (ageH <= staleHours) continue
+    exceptions.push({
+      id: `silver-stale:${wm.entityName}`,
+      severity: 'medium',
+      category: 'silver_stale',
+      title: `Silver extract stale: ${wm.entityName}`,
+      message: `Last success ${Math.round(ageH)}h ago (Mercato pilot, not IFS JDBC).`,
+      entityType: 'ifs_silver',
+      entityId: wm.entityName,
+      detectedAt: wm.lastSuccessAt.toISOString(),
+      ageMinutes: Math.round(ageH * 60),
+      drillPath: '/backend/production_planning/genesis',
+    })
+  }
+
+  const antiFantasy = await runAntiFantasyChecks(em, scope, {
+    horizonHours: options?.horizonHours ?? 168,
+  })
+  for (const v of antiFantasy.violations.slice(0, 10)) {
+    exceptions.push({
+      id: `anti-fantasy:${v.code}:${v.entityId ?? 'global'}`,
+      severity: v.severity,
+      category: 'anti_fantasy',
+      title: v.title,
+      message: v.message,
+      entityType: 'schedule',
+      entityId: v.entityId ?? v.code,
+      detectedAt: antiFantasy.checkedAt,
+      ageMinutes: 0,
+      drillPath: '/backend/production_planning/schedule',
+    })
+  }
+
   for (const job of failedJobs) {
     exceptions.push({
       id: `optimize-failed:${job.id}`,

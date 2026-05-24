@@ -16,6 +16,8 @@ export type IfsSilverReconcileResult = {
     entity: string
     liveCount: number
     silverCount: number
+    liveQty?: number
+    silverQty?: number
     deltaPct: number
     ok: boolean
   }>
@@ -70,10 +72,38 @@ export async function reconcileIfsSilverPilot(
     isDeleted: false,
   })
 
+  const liveQtySum = liveOrders.reduce((s, o) => s + Number(o.quantity), 0)
+  const silverOrderRows = await em.find(
+    ProductionPlanningIfsSilverShopOrder,
+    {
+      tenantId: scope.tenantId,
+      organizationId: scope.organizationId,
+      isDeleted: false,
+    },
+    { fields: ['revisedQtyDue'] },
+  )
+  const silverQtySum = silverOrderRows.reduce((s, o) => s + Number(o.revisedQtyDue), 0)
+
+  const silverCoRows = await em.find(
+    ProductionPlanningIfsSilverCustomerOrderLine,
+    {
+      tenantId: scope.tenantId,
+      organizationId: scope.organizationId,
+      isDeleted: false,
+    },
+    { fields: ['buyQtyDue'] },
+  )
+  const silverCoQty = silverCoRows.reduce((s, l) => s + Number(l.buyQtyDue), 0)
+  const liveCoQty = liveOrders
+    .filter((o) => Boolean(o.salesOrderId))
+    .reduce((s, o) => s + Number(o.quantity), 0)
+
   const checks = [
     compareCounts('shop_orders', liveOrderCount, silverOrders, tolerancePct),
     compareCounts('shop_order_operations', liveOps, silverOps, tolerancePct),
     compareCounts('customer_order_lines', liveCoDemandCount, silverCoLines, tolerancePct),
+    compareQty('shop_order_qty', liveQtySum, silverQtySum, tolerancePct),
+    compareQty('customer_order_line_qty', liveCoQty, silverCoQty, tolerancePct),
   ]
 
   return {
@@ -97,5 +127,24 @@ function compareCounts(
     silverCount,
     deltaPct: Math.round(deltaPct * 1000) / 1000,
     ok: deltaPct <= tolerancePct || (liveCount === 0 && silverCount === 0),
+  }
+}
+
+function compareQty(
+  entity: string,
+  liveQty: number,
+  silverQty: number,
+  tolerancePct: number,
+): IfsSilverReconcileResult['checks'][number] {
+  const base = Math.max(liveQty, 1)
+  const deltaPct = Math.abs(liveQty - silverQty) / base * 100
+  return {
+    entity,
+    liveCount: 0,
+    silverCount: 0,
+    liveQty: Math.round(liveQty * 1000) / 1000,
+    silverQty: Math.round(silverQty * 1000) / 1000,
+    deltaPct: Math.round(deltaPct * 1000) / 1000,
+    ok: deltaPct <= tolerancePct || (liveQty === 0 && silverQty === 0),
   }
 }

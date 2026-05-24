@@ -6,6 +6,7 @@ import {
   ProductionPlanningOrder,
   ProductionPlanningPlanScenario,
 } from '../data/entities'
+import { runAntiFantasyChecks } from './anti-fantasy'
 import { buildCapacitySnapshot, isOrderLate } from './capacity-snapshot'
 import { isOrtoolsBridgeConfigured } from './ortools-bridge'
 import type { OrgScope } from './production-order'
@@ -23,6 +24,7 @@ export type PlanningException = {
     | 'bridge_unconfigured'
     | 'silver_stale'
     | 'genesis_empty'
+    | 'anti_fantasy'
   title: string
   message: string
   entityType: string
@@ -234,6 +236,24 @@ export async function listControlTowerExceptions(
       detectedAt: wm.lastSuccessAt.toISOString(),
       ageMinutes: Math.round(ageH * 60),
       drillPath: '/backend/production_planning/genesis',
+    })
+  }
+
+  const antiFantasy = await runAntiFantasyChecks(em, scope, {
+    horizonHours: options?.horizonHours ?? 168,
+  })
+  for (const v of antiFantasy.violations.slice(0, 10)) {
+    exceptions.push({
+      id: `anti-fantasy:${v.code}:${v.entityId ?? 'global'}`,
+      severity: v.severity,
+      category: 'anti_fantasy',
+      title: v.title,
+      message: v.message,
+      entityType: 'schedule',
+      entityId: v.entityId ?? v.code,
+      detectedAt: antiFantasy.checkedAt,
+      ageMinutes: 0,
+      drillPath: '/backend/production_planning/schedule',
     })
   }
 

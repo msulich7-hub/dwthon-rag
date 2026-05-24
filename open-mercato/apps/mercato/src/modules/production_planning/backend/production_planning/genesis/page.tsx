@@ -27,6 +27,8 @@ type GenesisNode = {
   productSku: string
   extendedQty: number
   parentNodeId: string | null
+  netQty?: number
+  supplyQty?: number
 }
 
 type NettingRun = {
@@ -193,6 +195,8 @@ export default function ProductionGenesisPage() {
       <li key={node.id} className="text-xs">
         <span style={{ paddingLeft: depth * 12 }} className="font-mono">
           L{node.level} · {node.nodeType} · {node.productSku} ×{node.extendedQty}
+          {node.netQty != null ? ` · net ${node.netQty}` : ''}
+          {node.supplyQty != null && node.supplyQty > 0 ? ` (supply ${node.supplyQty})` : ''}
         </span>
         {children.length > 0 ? (
           <ul className="mt-0.5">{children.map((c) => renderNode(c, depth + 1))}</ul>

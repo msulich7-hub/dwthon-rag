@@ -35,6 +35,10 @@ export default function OrderScheduleWidget({
   const t = useT()
   const salesOrderId = readSalesOrderId(context)
   const [items, setItems] = React.useState<ProductionOrderItem[]>([])
+  const [pegging, setPegging] = React.useState<{
+    genesisRoots: Array<{ productSku: string; status: string }>
+    peggingLinks: Array<{ poolOrderCode: string | null; quantity: number }>
+  } | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [title, setTitle] = React.useState('')
 
@@ -46,8 +50,20 @@ export default function OrderScheduleWidget({
         `/api/production_planning/sales-orders/${encodeURIComponent(salesOrderId)}/production`,
       )
       setItems(Array.isArray(payload?.items) ? payload.items : [])
+      try {
+        const peg = await readApiResultOrThrow<{
+          genesisRoots: Array<{ productSku: string; status: string }>
+          peggingLinks: Array<{ poolOrderCode: string | null; quantity: number }>
+        }>(
+          `/api/production_planning/sales-orders/${encodeURIComponent(salesOrderId)}/pegging`,
+        )
+        setPegging(peg ?? null)
+      } catch {
+        setPegging(null)
+      }
     } catch {
       setItems([])
+      setPegging(null)
     } finally {
       setLoading(false)
     }
@@ -108,6 +124,24 @@ export default function OrderScheduleWidget({
           {t('production_planning.orderSchedule.empty', 'Brak powiązanych zleceń produkcyjnych.')}
         </p>
       ) : (
+        <>
+        {pegging && (pegging.genesisRoots.length > 0 || pegging.peggingLinks.length > 0) ? (
+          <div className="rounded-lg border p-3 text-xs space-y-1 bg-muted/20">
+            <p className="font-medium">
+              {t('production_planning.orderSchedule.pegging', 'Genesis / pegging')}
+            </p>
+            {pegging.genesisRoots.map((r, i) => (
+              <p key={i} className="text-muted-foreground">
+                {r.productSku} · {r.status}
+              </p>
+            ))}
+            {pegging.peggingLinks.map((p, i) => (
+              <p key={i} className="text-muted-foreground">
+                → pool {p.poolOrderCode ?? '—'} ×{p.quantity}
+              </p>
+            ))}
+          </div>
+        ) : null}
         <ul className="space-y-2">
           {items.map((item) => (
             <li key={item.id} className="rounded-lg border p-3 text-sm">
@@ -131,6 +165,7 @@ export default function OrderScheduleWidget({
             </li>
           ))}
         </ul>
+        </>
       )}
     </div>
   )

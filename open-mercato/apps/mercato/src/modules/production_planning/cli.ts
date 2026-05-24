@@ -11,6 +11,7 @@ import { reconcileIfsSilverPilot } from './lib/ifs/reconcile'
 import { executeNettingRun } from './lib/mrp/netting-run'
 import { bootstrapGenesisFromSilver } from './lib/mrp/netting-from-silver'
 import { buildHindsightOverview } from './lib/hindsight/hindsight-service'
+import { runDeltaReplan } from './lib/delta-replan'
 
 function parseArgs(rest: string[]) {
   const args: Record<string, string | boolean> = {}
@@ -165,4 +166,21 @@ const runExtract: ModuleCli = {
   },
 }
 
-export default [seedFactory, runPipeline, runNetting, runExtract]
+const runDeltaReplanCli: ModuleCli = {
+  command: 'run-delta-replan',
+  async run(rest) {
+    const args = parseArgs(rest)
+    const scope = requireScope(args)
+    if (!scope) return
+    const container = await createRequestContainer()
+    const em = container.resolve('em') as EntityManager
+    const result = await runDeltaReplan(
+      em,
+      { tenantId: scope.tenantId, organizationId: scope.orgId },
+      { runOptimize: args['skip-optimize'] !== true },
+    )
+    console.log(JSON.stringify(result, null, 2))
+  },
+}
+
+export default [seedFactory, runPipeline, runNetting, runExtract, runDeltaReplanCli]

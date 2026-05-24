@@ -18,6 +18,12 @@
 - `customers` — deal-linked work orders (`CustomerDeal` read for validation)
 - `workflows` / `notifications` / `scheduler` — optional in later phases via `events.ts`
 
+## Phases
+
+- **A (foundation):** work orders, deal widgets, dashboard API
+- **B (execution):** routing templates, operations, confirmations, dispatch queue, operator POD
+- **C–F:** see `.ai/specs/2026-05-23-mes-phase-*.md` and `2026-05-23-mes-world-class-roadmap.md`
+
 ## After changes
 
 ```bash

@@ -9,7 +9,7 @@ export const setup: ModuleSetupConfig = {
       'customers.deals.manage',
       'catalog.products.view',
     ],
-    employee: ['mes.view', 'customers.deals.view', 'catalog.products.view'],
+    employee: ['mes.view', 'mes.execute', 'customers.deals.view', 'catalog.products.view'],
   },
 }
 

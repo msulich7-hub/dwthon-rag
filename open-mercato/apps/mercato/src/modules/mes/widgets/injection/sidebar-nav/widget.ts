@@ -15,6 +15,15 @@ const widget: InjectionMenuItemWidget = {
       groupLabel: 'Manufacturing',
       placement: { position: InjectionPosition.First },
     },
+    {
+      id: 'mes-operator',
+      label: 'Operator queue',
+      icon: 'Play',
+      href: MES_ROUTES.operator,
+      features: ['mes.view', 'mes.execute'],
+      groupId: 'mes.nav.group',
+      placement: { position: InjectionPosition.After, relativeTo: 'mes-home' },
+    },
   ],
 }
 

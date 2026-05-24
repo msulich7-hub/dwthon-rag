@@ -59,7 +59,16 @@ export default function MesHubPage() {
           </div>
         ) : null}
 
-        <section className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
+          <section className="grid gap-3 sm:grid-cols-2">
+            <Link href="/backend/mes/operator" className="rounded-lg border p-4 hover:bg-muted/50">
+              <div className="font-medium">{t('mes.hub.operatorLink', 'Operator queue')}</div>
+              <div className="text-xs text-muted-foreground">
+                {t('mes.hub.operatorHint', 'Start and complete shop-floor operations')}
+              </div>
+            </Link>
+          </section>
+
+          <section className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
           <p className="font-medium text-foreground mb-2">{t('mes.hub.integrationsTitle', 'Integrations')}</p>
           <ul className="list-disc list-inside space-y-1">
             <li>

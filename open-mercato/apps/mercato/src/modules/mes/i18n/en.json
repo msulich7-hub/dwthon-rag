@@ -8,6 +8,8 @@
   "mes.hub.integrationsTitle": "Integrations",
   "mes.hub.linkDeals": "CRM deals",
   "mes.hub.linkDealsHint": "work orders tab and production chip on deal detail",
+  "mes.hub.operatorLink": "Operator queue",
+  "mes.hub.operatorHint": "Start and complete shop-floor operations",
   "mes.dealWorkOrders.tabLabel": "Production",
   "mes.dealWorkOrders.missingDeal": "Open a deal to manage manufacturing work orders.",
   "mes.dealWorkOrders.loadError": "Failed to load work orders",
@@ -20,5 +22,13 @@
   "mes.dealWorkOrders.empty": "No work orders yet.",
   "mes.dealProductionChip.label": "{count} active WO",
   "mes.notifications.workOrderCompleted.title": "Work order completed",
-  "mes.notifications.workOrderCompleted.body": "Manufacturing work order {orderNumber} was completed."
+  "mes.notifications.workOrderCompleted.body": "Manufacturing work order {orderNumber} was completed.",
+  "mes.operator.title": "Operator queue",
+  "mes.operator.description": "Shop-floor dispatch — start and complete operations.",
+  "mes.operator.loadError": "Failed to load dispatch queue",
+  "mes.operator.loading": "Loading queue…",
+  "mes.operator.empty": "No operations in queue.",
+  "mes.operator.start": "Start",
+  "mes.operator.complete": "Complete",
+  "mes.operator.backHub": "MES hub"
 }

@@ -22,6 +22,12 @@ export default function ProductionPlanningHubPage() {
             <div className="font-medium">Harmonogram i pojemność</div>
             <div className="text-xs text-muted-foreground mt-1">Obciążenie gniazd roboczych</div>
           </Link>
+          <Link href={PP_ROUTES.scenarios} className="rounded-lg border p-4 hover:bg-muted/50 sm:col-span-2">
+            <div className="font-medium">Scenario Lab (what-if)</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              36 szablonów · bundle’e · compare KPI · turnieje
+            </div>
+          </Link>
         </div>
         <p className="text-sm text-muted-foreground">
           Integracja ze sprzedażą: zakładka „Produkcja” na szczegółach zamówienia oraz chipy statusu na pasku etapów.

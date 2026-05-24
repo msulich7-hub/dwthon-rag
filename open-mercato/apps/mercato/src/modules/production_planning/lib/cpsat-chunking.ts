@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import type { CpsatScheduleEntry, CpsatScheduleRequest } from './ortools-bridge'
+import type { CpsatAssemblyLink, CpsatScheduleEntry, CpsatScheduleRequest } from './ortools-bridge'
+import { filterAssemblyLinksForOperationIds } from './pegging-to-assembly-links'
 
 export const DEFAULT_ASYNC_ORDER_THRESHOLD = 20
 export const DEFAULT_ORDER_CHUNK_SIZE = 25
@@ -63,18 +64,85 @@ export function partitionOrdersByOperationCap(
   return chunks
 }
 
-export function buildScheduleBatch(
-  base: Omit<CpsatScheduleRequest, 'orders' | 'chunk' | 'fixedOperations' | 'workCenterFloors'>,
+function operationIdToOrderId(orders: PayloadOrder[]): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const order of orders) {
+    for (const op of order.operations) map.set(op.id, order.id)
+  }
+  return map
+}
+
+/** Union-find order ids linked by cross-order assemblyLinks. */
+export function partitionOrdersPegAware(
   orders: PayloadOrder[],
-  options?: { maxOperationsPerSolve?: number; batchId?: string },
+  assemblyLinks: CpsatAssemblyLink[],
+  maxOps: number,
+): PayloadOrder[][] {
+  if (assemblyLinks.length === 0) {
+    return partitionOrdersByOperationCap(orders, maxOps)
+  }
+
+  let partitions = partitionOrdersByOperationCap(orders, maxOps)
+  const opToOrder = operationIdToOrderId(orders)
+
+  const orderChunkIndex = (orderId: string): number =>
+    partitions.findIndex((chunk) => chunk.some((o) => o.id === orderId))
+
+  let guard = 0
+  let changed = true
+  while (changed && guard < partitions.length * assemblyLinks.length + 1) {
+    guard += 1
+    changed = false
+    for (const link of assemblyLinks) {
+      const orderA = opToOrder.get(link.predecessorOperationId)
+      const orderB = opToOrder.get(link.successorOperationId)
+      if (!orderA || !orderB || orderA === orderB) continue
+      const idxA = orderChunkIndex(orderA)
+      const idxB = orderChunkIndex(orderB)
+      if (idxA < 0 || idxB < 0 || idxA === idxB) continue
+
+      const keep = Math.min(idxA, idxB)
+      const drop = Math.max(idxA, idxB)
+      const merged = [...partitions[keep]!, ...partitions[drop]!]
+      const mergedOps = countSchedulableOps(merged)
+      if (mergedOps > maxOps) {
+        throw new Error('PEG_CLUSTER_EXCEEDS_MAX_OPERATIONS')
+      }
+      partitions[keep] = merged
+      partitions.splice(drop, 1)
+      changed = true
+      break
+    }
+  }
+
+  return partitions
+}
+
+export function buildScheduleBatch(
+  base: Omit<
+    CpsatScheduleRequest,
+    'orders' | 'chunk' | 'fixedOperations' | 'workCenterFloors' | 'assemblyLinks'
+  >,
+  orders: PayloadOrder[],
+  options?: {
+    maxOperationsPerSolve?: number
+    batchId?: string
+    assemblyLinks?: CpsatAssemblyLink[]
+  },
 ): CpsatScheduleBatch {
   const maxOps = Math.min(options?.maxOperationsPerSolve ?? DEFAULT_MAX_OPERATIONS_PER_SOLVE, 500)
   const batchId = options?.batchId ?? randomUUID()
-  const partitions = partitionOrdersByOperationCap(orders, maxOps)
+  const allLinks = options?.assemblyLinks ?? []
+  const partitions =
+    allLinks.length > 0
+      ? partitionOrdersPegAware(orders, allLinks, maxOps)
+      : partitionOrdersByOperationCap(orders, maxOps)
   const totalOperations = countSchedulableOps(orders)
 
   const chunks: CpsatScheduleRequest[] = partitions.map((partition, chunkIndex) => {
     const operationIds = partition.flatMap((o) => o.operations.map((op) => op.id))
+    const opIdSet = new Set(operationIds)
+    const chunkLinks = filterAssemblyLinksForOperationIds(allLinks, opIdSet)
     return {
       ...base,
       orders: partition,
@@ -82,6 +150,7 @@ export function buildScheduleBatch(
       maxOperationsPerSolve: maxOps,
       fixedOperations: [],
       workCenterFloors: [],
+      assemblyLinks: chunkLinks,
       chunk: {
         batchId,
         chunkIndex,

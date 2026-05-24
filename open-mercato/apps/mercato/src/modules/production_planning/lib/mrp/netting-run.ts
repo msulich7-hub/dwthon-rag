@@ -121,14 +121,20 @@ export async function executeNettingRun(
 
     await em.nativeDelete(ProductionPlanningGenesisNode, { genesisRootId: rootId })
 
+    const nodeIdByKey = new Map<string, string>()
     for (const line of exploded) {
+      const nodeId = stableUuidFromString(`genesis:node:${rootId}:${line.nodeKey}`)
+      nodeIdByKey.set(line.nodeKey, nodeId)
+      const parentNodeId = line.parentNodeKey
+        ? (nodeIdByKey.get(line.parentNodeKey) ?? null)
+        : null
       em.persist(
         em.create(ProductionPlanningGenesisNode, {
-          id: stableUuidFromString(`genesis:node:${rootId}:${line.nodeKey}`),
+          id: nodeId,
           tenantId: scope.tenantId,
           organizationId: scope.organizationId,
           genesisRootId: rootId,
-          parentNodeId: null,
+          parentNodeId,
           nodeKey: line.nodeKey,
           level: line.level,
           nodeType: line.nodeType,

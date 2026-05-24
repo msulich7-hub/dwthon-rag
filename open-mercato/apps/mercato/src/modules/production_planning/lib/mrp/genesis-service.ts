@@ -22,6 +22,7 @@ export type GenesisNodeDto = {
   productSku: string
   extendedQty: number
   parentNodeId: string | null
+  parentNodeKey: string | null
 }
 
 export async function listGenesisRoots(
@@ -90,14 +91,18 @@ export async function getGenesisTree(
       status: root.status,
       nodeCount: nodes.length,
     },
-    nodes: nodes.map((n) => ({
-      id: n.id,
-      nodeKey: n.nodeKey,
-      level: n.level,
-      nodeType: n.nodeType,
-      productSku: n.productSku,
-      extendedQty: Number(n.extendedQty),
-      parentNodeId: n.parentNodeId ?? null,
-    })),
+    nodes: nodes.map((n) => {
+      const parent = n.parentNodeId ? nodes.find((p) => p.id === n.parentNodeId) : undefined
+      return {
+        id: n.id,
+        nodeKey: n.nodeKey,
+        level: n.level,
+        nodeType: n.nodeType,
+        productSku: n.productSku,
+        extendedQty: Number(n.extendedQty),
+        parentNodeId: n.parentNodeId ?? null,
+        parentNodeKey: parent?.nodeKey ?? null,
+      }
+    }),
   }
 }

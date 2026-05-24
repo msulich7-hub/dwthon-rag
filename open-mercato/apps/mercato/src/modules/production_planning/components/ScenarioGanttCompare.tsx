@@ -50,7 +50,7 @@ function GanttTrack({
   rangeMs: number
 }) {
   return (
-    <div className="relative h-9 my-0.5 mr-1 bg-muted/20 rounded min-w-[280px]">
+    <div className="relative h-9 my-0.5 bg-muted/20 rounded min-w-[240px]">
       {operations.map((op) => {
         const left = ((Date.parse(op.plannedStartAt) - rangeStart) / rangeMs) * 100
         const width = Math.max(
@@ -84,7 +84,18 @@ export function ScenarioGanttCompare({
   const [payload, setPayload] = React.useState<GanttDualComparePayload | null>(null)
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
-  const scrollRef = React.useRef<HTMLDivElement>(null)
+  const wcScrollRef = React.useRef<HTMLDivElement>(null)
+  const bodyScrollRef = React.useRef<HTMLDivElement>(null)
+  const syncingScroll = React.useRef(false)
+
+  const syncScrollTop = React.useCallback((source: HTMLDivElement, target: HTMLDivElement | null) => {
+    if (!target || syncingScroll.current) return
+    syncingScroll.current = true
+    target.scrollTop = source.scrollTop
+    requestAnimationFrame(() => {
+      syncingScroll.current = false
+    })
+  }, [])
 
   React.useEffect(() => {
     if (!baselineScenarioId || !scenarioId) return
@@ -142,41 +153,50 @@ export function ScenarioGanttCompare({
             {payload.workCenterCount} gniazd · horyzont {horizonHours}h · wspólna oś od{' '}
             {new Date(payload.planningStartAt).toLocaleString()}
           </p>
-          <div
-            ref={scrollRef}
-            className="overflow-auto max-h-[50vh] rounded border"
-            onScroll={(e) => {
-              const el = e.currentTarget
-              if (scrollRef.current && scrollRef.current !== el) return
-            }}
-          >
-            <div className="min-w-[720px]">
-              <div className="grid grid-cols-[120px_1fr_1fr] gap-1 text-[10px] font-medium border-b bg-muted/30 sticky top-0 z-10 px-1 py-1">
-                <span>Gniazdo</span>
-                <span>Baseline</span>
-                <span>Scenariusz A</span>
+          <div className="flex rounded border max-h-[50vh] overflow-hidden">
+            <div
+              ref={wcScrollRef}
+              className="w-[120px] shrink-0 overflow-y-auto overflow-x-hidden border-r bg-background"
+              onScroll={(e) => syncScrollTop(e.currentTarget, bodyScrollRef.current)}
+            >
+              <div className="h-7 border-b bg-muted/30 text-[10px] font-medium flex items-center px-1 sticky top-0 z-10">
+                Gniazdo
               </div>
               {payload.rows.map((row) => (
-                <div
-                  key={row.workCenterCode}
-                  className="grid grid-cols-[120px_1fr_1fr] gap-1 border-b items-center"
-                >
-                  <div className="p-1 text-xs sticky left-0 bg-background">
-                    <div className="font-medium truncate">{row.workCenterCode}</div>
-                    <div className="text-muted-foreground">{row.department ?? '—'}</div>
-                  </div>
-                  <GanttTrack
-                    operations={row.baselineOperations}
-                    rangeStart={rangeStart}
-                    rangeMs={rangeMs}
-                  />
-                  <GanttTrack
-                    operations={row.scenarioOperations}
-                    rangeStart={rangeStart}
-                    rangeMs={rangeMs}
-                  />
+                <div key={row.workCenterCode} className="h-10 px-1 py-1 border-b text-xs">
+                  <div className="font-medium truncate">{row.workCenterCode}</div>
+                  <div className="text-muted-foreground truncate">{row.department ?? '—'}</div>
                 </div>
               ))}
+            </div>
+            <div
+              ref={bodyScrollRef}
+              className="flex-1 overflow-auto"
+              onScroll={(e) => syncScrollTop(e.currentTarget, wcScrollRef.current)}
+            >
+              <div className="min-w-[560px]">
+                <div className="grid grid-cols-2 gap-1 h-7 border-b bg-muted/30 text-[10px] font-medium sticky top-0 z-10 px-1 items-center">
+                  <span>Baseline</span>
+                  <span>Scenariusz A</span>
+                </div>
+                {payload.rows.map((row) => (
+                  <div
+                    key={row.workCenterCode}
+                    className="grid grid-cols-2 gap-1 border-b items-center h-10 px-1"
+                  >
+                    <GanttTrack
+                      operations={row.baselineOperations}
+                      rangeStart={rangeStart}
+                      rangeMs={rangeMs}
+                    />
+                    <GanttTrack
+                      operations={row.scenarioOperations}
+                      rangeStart={rangeStart}
+                      rangeMs={rangeMs}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </>

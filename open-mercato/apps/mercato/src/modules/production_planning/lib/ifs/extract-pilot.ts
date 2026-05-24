@@ -13,10 +13,16 @@ import {
 } from '../../data/entities'
 import { recordIfsStagingBatch } from './staging-batch'
 import type { OrgScope } from '../production-order'
+import { FACTORY_ORDER_CODE_PREFIX } from '../seed-factory-fixture'
 import { stableUuidFromString } from '../stable-uuid'
 
 const SOURCE_SYSTEM = process.env.PRODUCTION_PLANNING_IFS_SOURCE ?? 'mercato_pilot'
 const CONTRACT = 'MAIN'
+
+/** Pool MO from netting are Mercato-authored — exclude from silver to avoid SoR loop. */
+export function isPoolNettingOrderCode(code: string): boolean {
+  return code.includes(`${FACTORY_ORDER_CODE_PREFIX}POOL-NET-`)
+}
 
 export type IfsSilverExtractResult = {
   batchId: string
@@ -78,17 +84,21 @@ export async function runIfsSilverExtractPilot(
   const extractedAt = new Date()
   const lastSeenAt = extractedAt
 
-  const orders = await em.find(ProductionPlanningOrder, {
+  const allOrders = await em.find(ProductionPlanningOrder, {
     tenantId: scope.tenantId,
     organizationId: scope.organizationId,
     status: { $nin: ['cancelled'] },
   })
+  const orders = allOrders.filter((o) => !isPoolNettingOrderCode(o.code))
 
-  const operations = await em.find(ProductionPlanningOperation, {
-    tenantId: scope.tenantId,
-    organizationId: scope.organizationId,
-    status: { $nin: ['cancelled'] },
-  })
+  const orderIds = new Set(orders.map((o) => o.id))
+  const operations = (
+    await em.find(ProductionPlanningOperation, {
+      tenantId: scope.tenantId,
+      organizationId: scope.organizationId,
+      status: { $nin: ['cancelled'] },
+    })
+  ).filter((op) => orderIds.has(op.productionOrderId))
 
   const pegLinks = await em.find(ProductionPlanningPeggingLink, {
     tenantId: scope.tenantId,

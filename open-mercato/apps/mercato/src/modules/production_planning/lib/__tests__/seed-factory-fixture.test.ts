@@ -32,12 +32,12 @@ describe('seed-factory-fixture', () => {
     expect(countFactorySeedOperations(plan)).toBeGreaterThanOrEqual(60)
   })
 
-  it('benchmark preset targets ~2500 operations and 150 work centers', () => {
+  it('benchmark preset targets ~2.2k operations and 150 work centers', () => {
     const plan = buildFactorySeedPlan(SCOPE, 'benchmark')
     expect(plan.workCenterCodes).toHaveLength(150)
     const opCount = countFactorySeedOperations(plan)
-    expect(opCount).toBeGreaterThanOrEqual(2200)
-    expect(opCount).toBeLessThanOrEqual(2800)
+    expect(opCount).toBeGreaterThanOrEqual(2150)
+    expect(opCount).toBeLessThanOrEqual(2400)
   })
 
   it('pegs ~30% of orders to shared sales orders', () => {

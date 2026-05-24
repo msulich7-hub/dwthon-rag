@@ -4,6 +4,12 @@ import {
   ProductionPlanningOrder,
   type ProductionOrderStatus,
 } from '../data/entities'
+import {
+  buildScheduleBatch,
+  shouldRunCpsatAsync,
+  type PayloadOrder,
+} from './cpsat-chunking'
+import { buildCrossOrderAssemblyLinks } from './pegging-to-assembly-links'
 import type { OrgScope } from './production-order'
 import { stableUuidFromString } from './stable-uuid'
 
@@ -151,13 +157,19 @@ export function buildFactorySeedPlan(
     )
 
     let salesOrderId: string | null = null
+    let pegGroupIdx: number | null = null
     if (pegAssigned < peggedCount) {
-      const groupIdx = Math.floor(pegAssigned / pegGroupSize) % salesOrderIds.length
-      salesOrderId = salesOrderIds[groupIdx]!
+      pegGroupIdx = Math.floor(pegAssigned / pegGroupSize) % salesOrderIds.length
+      salesOrderId = salesOrderIds[pegGroupIdx]!
       pegAssigned += 1
     }
 
-    const opCount = pickInt(rng, config.minOpsPerOrder, config.maxOpsPerOrder)
+    const opCount =
+      salesOrderId != null && preset === 'benchmark'
+        ? pickInt(rng, 3, 5)
+        : preset === 'benchmark'
+          ? pickInt(rng, 30, 32)
+          : pickInt(rng, config.minOpsPerOrder, config.maxOpsPerOrder)
     const operations: FactorySeedPlanOrder['operations'] = []
     let totalMinutes = 0
 
@@ -179,9 +191,12 @@ export function buildFactorySeedPlan(
       })
     }
 
-    const dueDays = 3 + pickInt(rng, 0, 21)
     const dueAt = new Date()
-    dueAt.setUTCDate(dueAt.getUTCDate() + dueDays)
+    if (pegGroupIdx != null) {
+      dueAt.setUTCDate(dueAt.getUTCDate() + 3 + pegGroupIdx)
+    } else {
+      dueAt.setUTCDate(dueAt.getUTCDate() + 10 + pickInt(rng, 0, 21))
+    }
     dueAt.setUTCHours(17, 0, 0, 0)
 
     const statusRoll = rng()
@@ -213,6 +228,91 @@ export function countFactorySeedOperations(plan: FactorySeedPlan): number {
 
 export function countPeggedOrders(plan: FactorySeedPlan): number {
   return plan.orders.filter((o) => o.salesOrderId != null).length
+}
+
+/** Maps in-memory factory plan to CP-SAT payload orders (no DB). */
+export function factoryPlanToPayloadOrders(plan: FactorySeedPlan): PayloadOrder[] {
+  return plan.orders.map((row) => ({
+    id: row.id,
+    code: row.code,
+    title: row.title,
+    salesOrderId: row.salesOrderId,
+    productSku: row.productSku,
+    quantity: row.quantity,
+    status: row.status,
+    workCenterCode: row.workCenterCode,
+    plannedStartAt: null,
+    plannedEndAt: null,
+    dueAt: row.dueAt.toISOString(),
+    isLate: false,
+    operations: row.operations.map((op) => ({
+      id: op.id,
+      productionOrderId: row.id,
+      sequenceNo: op.sequenceNo,
+      name: op.name,
+      workCenterCode: op.workCenterCode,
+      durationMinutes: op.durationMinutes,
+      status: 'pending',
+      plannedStartAt: null,
+      plannedEndAt: null,
+    })),
+  }))
+}
+
+export type FactoryFixtureResearchMetrics = {
+  preset: FactorySeedPreset
+  orderCount: number
+  operationCount: number
+  workCenterCount: number
+  peggedOrderCount: number
+  crossOrderAssemblyLinks: number
+  uniqueWorkCentersUsed: number
+  chunkCount: number
+  maxOpsPerChunk: number
+  asyncAutoMode: boolean
+}
+
+export function analyzeFactoryFixturePipeline(
+  scope: OrgScope,
+  preset: FactorySeedPreset,
+): FactoryFixtureResearchMetrics {
+  const plan = buildFactorySeedPlan(scope, preset)
+  const orders = factoryPlanToPayloadOrders(plan)
+  const links = buildCrossOrderAssemblyLinks(orders)
+  const batch = buildScheduleBatch(
+    {
+      tenantId: scope.tenantId,
+      organizationId: scope.organizationId,
+      horizonHours: 168,
+      objective: 'minimize_lateness',
+      planningStartAt: new Date('2026-05-24T08:00:00.000Z').toISOString(),
+    },
+    orders,
+    { assemblyLinks: links },
+  )
+
+  const wcUsed = new Set<string>()
+  for (const o of orders) {
+    for (const op of o.operations) wcUsed.add(op.workCenterCode)
+  }
+
+  const maxOpsPerChunk = Math.max(
+    0,
+    ...batch.chunks.map((c) => c.orders.reduce((s, o) => s + o.operations.length, 0)),
+  )
+
+  return {
+    preset,
+    orderCount: plan.orders.length,
+    operationCount: countFactorySeedOperations(plan),
+    workCenterCount: plan.workCenterCodes.length,
+    peggedOrderCount: countPeggedOrders(plan),
+    crossOrderAssemblyLinks: links.length,
+    uniqueWorkCentersUsed: wcUsed.size,
+    chunkCount: batch.chunkCount,
+    maxOpsPerChunk,
+    asyncAutoMode: shouldRunCpsatAsync(plan.orders.length, 'auto'),
+  }
 }
 
 export type SeedFactoryFixtureOptions = {

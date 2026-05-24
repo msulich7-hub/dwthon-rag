@@ -37,7 +37,7 @@ Env: `ORTOOLS_BRIDGE_URL`, `ORTOOLS_BRIDGE_API_KEY`, `ORTOOLS_BRIDGE_TIMEOUT_MS`
 mercato production_planning seed-factory --org=<uuid> --tenant=<uuid> --preset=benchmark [--force]
 ```
 
-Codes use prefix `FACTORY-` (~10% `FACTORY-POOL-*`). ~30% MO share `salesOrderId` for pegging tests. Auto-seed on org setup: `PRODUCTION_PLANNING_AUTO_SEED=small|medium|benchmark`.
+Codes use prefix `FACTORY-` (~10% `FACTORY-POOL-*`). ~30% MO share `salesOrderId` for pegging tests (same `dueAt` per peg group). **Benchmark:** pegged MO use 3–5 ops (chunk-safe); bulk MO use 30–32 ops (~2.3k ops total, 5×500 chunks). Auto-seed: `PRODUCTION_PLANNING_AUTO_SEED=small|medium|benchmark`.
 
 Spec: `.ai/specs/2026-05-23-production-planning-cpsat-ortools.md`
 

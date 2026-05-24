@@ -1,5 +1,11 @@
 # Production Planning Master Plan — Module 1: IFS9 Data Bridge
 
+**North star:** Class A APS data foundation (May 2026)
+**Parity tier key:** P0 must-have | P1 parity | P2 differentiator
+
+**Module 1 parity focus (May 2026):** Real-time incremental CDC · harmonized planning-area semantics · multi-horizon time buckets · actuals for plan attainment · supplier tier-2 optional · data quality SLAs like enterprise IBP.
+
+
 **Scope:** Steps **1–20** · **Open Mercato** `production_planning` + **IFS9 read-only extract**  
 **Prerequisite:** None — Module 1 is the program entry point. Mercato `production_planning` foundation entities (orders, operations, capacity) may exist as stubs; IFS is not required at CP-SAT runtime.  
 **System of record:** Oracle **IFS9** (Applications) — Mercato reads only; no write-back in Module 1.
@@ -78,6 +84,11 @@ Module 1 must **not** implement genesis trees, MRP netting, or CP-SAT payloads �
 - Glossary defines peg types (`DEMAND_CODE` / `SUPPLY_CODE`) and shop-order vs customer-order linkage fields.
 - Dictionary stored in repo; SME review comments resolved before Step 4 DDL freeze.
 
+**Market parity:**
+- **P0:** Data dictionary depth (orders, pegs, BOM, capacity, actuals) matches Oracle ASCP / SAP IBP HPA master-data catalog scope for Class A APS.
+- **P1:** Change-detection column registry aligned with Kinaxis Maestro incremental extract metadata and SAP IBP RTI CDC keys.
+- **P1:** Peg type glossary (`DEMAND_CODE` / `SUPPLY_CODE`) harmonized with IFS `SUPPLY_DEMAND` and o9 Digital Brain supply-chain graph semantics.
+
 ---
 
 ## Step 2 — ADR: Read-only Mercato ↔ IFS9 integration architecture
@@ -92,6 +103,11 @@ Module 1 must **not** implement genesis trees, MRP netting, or CP-SAT payloads �
 - Defines idempotency: extracts are **append/upsert by natural key**, never mutate IFS.
 - States Mercato CP-SAT / optimize path **must not call IFS at runtime** (F0 gate from master plan).
 - Security review sign-off recorded; PII fields (customer name on `CUSTOMER_ORDER`) flagged for redaction in non-prod.
+
+**Market parity:**
+- **P0:** Read-only JDBC bronze→silver boundary matches SAP IBP RTI / Kinaxis ingest pattern (external SoR → planning hub, no write-back).
+- **P1:** Retry vs fatal error taxonomy comparable to Opcenter APS and Oracle ASCP connector resilience.
+- **P0:** Runtime decoupling (F0: CP-SAT must not call IFS) matches PlanetTogether / Asprova batch-planning staging discipline.
 
 ---
 
@@ -109,6 +125,11 @@ Module 1 must **not** implement genesis trees, MRP netting, or CP-SAT payloads �
 - **BOM effectivity:** `MANUF_STRUCTURE` / `MANUF_STRUCTURE_ALTERNATIVE` rows effective at any date in window (not only current effectivity).
 - Anchor date configurable via env `IFS_EXTRACT_ANCHOR_DATE` (default: org local midnight yesterday); documented for Module 4 replay alignment.
 
+**Market parity:**
+- **P0:** 365d window + configurable anchor supports multi-horizon hindsight and replay runs (SAP IBP HPA time series, o9 as-of planning).
+- **P1:** Demand/supply/actuals/BOM effectivity closure rules align with Oracle ASCP planning-bucket inclusion policy.
+- **P1:** Harmonized planning area scoping via `CONTRACT` / site mirrors OMP+ planning-area and o9 location hierarchy semantics.
+
 ---
 
 ## Step 4 — Bronze staging DDL (raw IFS landing)
@@ -123,6 +144,11 @@ Module 1 must **not** implement genesis trees, MRP netting, or CP-SAT payloads �
 - Natural key columns preserved (`contract`, `order_no`, `line_no`, `release_no`, `sequence_no`, `part_no`, etc.) with **non-unique** indexes for load performance.
 - No FK from bronze to silver (load order flexibility); migration runs clean on empty DB.
 - Table/column naming convention documented in migration header comment.
+
+**Market parity:**
+- **P0:** Bronze landing with batch id, extract timestamp, and row hash matches enterprise IBP raw-layer audit (Kinaxis, SAP RTI).
+- **P1:** Optional `raw_payload_json` lineage comparable to o9 Digital Brain drift-debug payloads.
+- **P1:** Non-unique natural-key indexes follow Oracle ASCP high-volume incremental load conventions.
 
 ---
 
@@ -147,6 +173,11 @@ Module 1 must **not** implement genesis trees, MRP netting, or CP-SAT payloads �
 - `is_deleted` / `last_seen_at` columns support incremental soft-delete detection.
 - ERD diagram checked into `docs/integrations/ifs9/silver-erd.mmd`.
 
+**Market parity:**
+- **P0:** Silver `(tenant_id, organization_id, contract)` harmonized planning area semantics match OMP+ site/area and SAP IBP location keys.
+- **P1:** `is_deleted` / `last_seen_at` soft-delete columns align with SAP IBP HPA tombstone CDC and Kinaxis delta feeds.
+- **P0:** `ifs_silver_supply_demand_pegs` foundation enables Kinaxis-style concurrent peg graph and Oracle ASCP native peg consumption.
+
 ---
 
 ## Step 6 — JDBC connector & secure extract runtime
@@ -162,6 +193,11 @@ Module 1 must **not** implement genesis trees, MRP netting, or CP-SAT payloads �
 - Connection errors classified: retryable (network, timeout) vs fatal (auth, syntax); exponential backoff with max 3 retries per batch.
 - Extract emits structured logs: `entity`, `batchId`, `rowCount`, `durationMs`, `watermark`.
 - Unit tests with Testcontainers Oracle or mocked `ResultSet`; no credentials in repo.
+
+**Market parity:**
+- **P0:** Streaming JDBC with ≤15 min incremental target matches SAP IBP RTI near-real-time CDC SLO and Kinaxis Maestro refresh cadence.
+- **P1:** Batch streaming (≤5,000 rows) comparable to Oracle ASCP incremental ATP pull sizing and Opcenter APS extract chunking.
+- **P0:** Structured logs (`entity`, `batchId`, `watermark`) match enterprise IBP integration telemetry (o9, SAP RTI).
 
 ---
 
@@ -179,6 +215,11 @@ Module 1 must **not** implement genesis trees, MRP netting, or CP-SAT payloads �
 - Staging validation: row count within ±0.1% of IFS control query supplied by Integration team.
 - Job registered in scheduler with name `ifs9.extract.customer_orders`.
 
+**Market parity:**
+- **P0:** 365d customer-order demand extract is P0 input for plan attainment and multi-horizon buckets (SAP IBP HPA, o9 demand actuals).
+- **P1:** Priority tier from `CUSTOMER_INFO` seeds CBP-lite customer attributes for Module 2 variant/routing rules.
+- **P1:** ±0.1% row-count reconcile tolerance matches enterprise IBP data quality SLAs on demand headers.
+
 ---
 
 ## Step 8 — Extract job: `SHOP_ORDER` (365d)
@@ -193,6 +234,11 @@ Module 1 must **not** implement genesis trees, MRP netting, or CP-SAT payloads �
 - Includes pool/repetitive markers if present (`order_code`, `schedule_no`) for Module 2 pool MO rules.
 - Links to `CUSTOMER_ORDER` captured when IFS populates demand peg fields on shop order header.
 - Bronze load completes for full window without OOM; documented row/sec on staging hardware.
+
+**Market parity:**
+- **P0:** Shop-order extract with pool/repetitive markers (`order_code`, `schedule_no`) enables Module 2 SAP IBP OBP–style pool MO parity.
+- **P1:** `demand_code` / customer-order linkage matches Oracle ASCP and IFS native demand-side peg semantics.
+- **P0:** WIP supply window policy aligned with Kinaxis Maestro manufacturing-order horizon and OMP+ open-MO scope.
 
 ---
 
@@ -209,6 +255,11 @@ Module 1 must **not** implement genesis trees, MRP netting, or CP-SAT payloads �
 - Supports alternate routing reference via `operation_no` / `alternative_no` when IFS models alternates at operation level.
 - Data supports CP-SAT payload building in Module 3 (durations, WC codes) without re-querying IFS.
 
+**Market parity:**
+- **P0:** Operation-level routing (durations, WC, qty complete) required for Opcenter APS / Asprova finite-capacity payloads (Module 3).
+- **P1:** Alternate routing reference matches OMP+ and Oracle ASCP routing-alternative selection inputs.
+- **P0:** Order-closure operation extract (not independent date filter) matches PlanetTogether shop-order operation graph integrity.
+
 ---
 
 ## Step 10 — Extract job: `SUPPLY_DEMAND` pegging graph (365d)
@@ -223,6 +274,11 @@ Module 1 must **not** implement genesis trees, MRP netting, or CP-SAT payloads �
 - Peg types mapped to enum: `customer_line`, `shop_order`, `purchase_order`, `on_hand`, `forecast` based on IFS `demand_code` / `supply_code` values (full value list in data dictionary).
 - Silver table `ifs_silver_supply_demand_pegs` stores resolved UUID FKs to silver demand/supply entities where resolvable; `unresolved_ref_json` for orphan pegs.
 - QA fixture validates many-to-one peg chains (multiple CO lines → one shop order) match planner Excel sample.
+
+**Market parity:**
+- **P0:** `SUPPLY_DEMAND` peg graph extract — direct parity with IFS / Oracle ASCP native pegging (`SUPPLY_DEMAND` model).
+- **P1:** Many-to-one peg chains (multiple CO lines → one shop order) align with Kinaxis concurrent propagation and SAP IBP peg inputs.
+- **P1:** `unresolved_ref_json` orphan peg retention matches o9 Digital Brain link-gap handling; supplier tier-2 optional at P2 in later modules.
 
 ---
 
@@ -240,6 +296,11 @@ Module 1 must **not** implement genesis trees, MRP netting, or CP-SAT payloads �
 - Target scale: 150 work centers supported; extract handles up to 200.
 - Aligns with existing Mercato `capacity-snapshot.ts` field names (`workCenterCode`, slot boundaries).
 
+**Market parity:**
+- **P0:** Work-center master + expanded calendar slots — P0 capacity foundation for Class A APS (SAP IBP, Opcenter APS, PlanetTogether).
+- **P1:** ≥95% calendar coverage SLA comparable to PlanetTogether / OMP+ capacity-calendar data quality gates.
+- **P1:** WC group / department fields support harmonized planning-area rollups (OMP+, o9 location hierarchy).
+
 ---
 
 ## Step 12 — Extract job: `MANUF_OPERATION_FEEDBACK` (actuals)
@@ -254,6 +315,11 @@ Module 1 must **not** implement genesis trees, MRP netting, or CP-SAT payloads �
 - Window filter on `FEEDBACK_TIME` per Step 3; includes feedback for shop orders outside demand window if feedback date in window.
 - Silver rows linked to `ifs_silver_shop_order_operations` when possible; orphan actuals retained with natural key for Module 4 reconciliation.
 - Supports year hindsight KPI: planned vs actual operation finish variance.
+
+**Market parity:**
+- **P0:** `MANUF_OPERATION_FEEDBACK` actuals — P0 plan attainment lens (SAP IBP execution feedback, Kinaxis actuals, Oracle ASCP schedule adherence).
+- **P1:** Planned vs actual operation finish variance KPI matches o9 and SAP IBP performance analytics.
+- **P1:** Orphan actual retention supports late-arriving feedback CDC like SAP IBP RTI actuals streams.
 
 ---
 
@@ -271,6 +337,11 @@ Module 1 must **not** implement genesis trees, MRP netting, or CP-SAT payloads �
 - On-hand snapshot: qty by `contract` / `location` at extract time stored in `ifs_silver_inventory_on_hand` with `snapshot_at`.
 - Effectivity rule: include structures effective for any day in 365d window (Step 3).
 
+**Market parity:**
+- **P0:** Effectivity-dated BOM + alternatives — P0 for SAP IBP HPA / Oracle ASCP / OMP+ multi-level explosion inputs.
+- **P1:** On-hand snapshot at extract time matches o9 / SAP IBP immutable supply-snapshot pattern (Module 2 netting).
+- **P2:** Supplier tier-2 structures optional in Module 1 scope — P2 differentiator; full tier-2 network deferred without blocking P0 IFS parity.
+
 ---
 
 ## Step 14 — Bronze → silver transform & surrogate key registry
@@ -286,6 +357,11 @@ Module 1 must **not** implement genesis trees, MRP netting, or CP-SAT payloads �
 - Type coercion and enum normalization centralized (IFS `Objstate` → Mercato enum).
 - `source_row_hash` change detection skips no-op updates.
 - Transform unit tests cover: new insert, update, soft-delete, resurrected row.
+
+**Market parity:**
+- **P0:** Stable surrogate natural-key registry — P0 idempotency for real-time incremental CDC (Kinaxis, SAP IBP RTI upsert).
+- **P1:** `source_row_hash` skip-no-op matches o9 Digital Brain change-detection efficiency.
+- **P0:** Centralized enum normalization delivers harmonized planning-area semantics across IFS → Mercato silver.
 
 ---
 
@@ -307,6 +383,11 @@ Module 1 must **not** implement genesis trees, MRP netting, or CP-SAT payloads �
 - Failures emit `IFS_DQ_*` codes; critical failures block silver promotion flag `ifs_silver.promotion_blocked`.
 - Report archived per extract batch for audit trail.
 
+**Market parity:**
+- **P0:** Reconciliation tolerances (±0.1% headers, ±0.05% operations) — enterprise IBP data quality SLAs (SAP IBP, Kinaxis Maestro).
+- **P1:** `IFS_DQ_*` promotion block before silver promote matches o9 data quality gate before planning run.
+- **P1:** Freshness SLA (`max(last_updated_at)` < 24h) comparable to SAP IBP HPA RTI freshness monitors.
+
 ---
 
 ## Step 16 — Backfill orchestration & scheduler integration
@@ -322,6 +403,11 @@ Module 1 must **not** implement genesis trees, MRP netting, or CP-SAT payloads �
 - Partial failure: resume from last successful entity job without re-extracting completed entities.
 - Manual trigger: `POST /api/production_planning/ifs/sync` (admin ACL) enqueues backfill or incremental mode.
 - Initial production runbook dry-run executed once in staging with signed timing log.
+
+**Market parity:**
+- **P0:** Full 365d backfill ≤4h with dependency graph — P0 initial Class A data foundation load (Oracle ASCP / SAP IBP cutover pattern).
+- **P1:** Partial failure resume comparable to Kinaxis Maestro and o9 incremental orchestration recovery.
+- **P0:** Admin manual sync trigger matches Opcenter APS / PlanetTogether on-demand data refresh before replan.
 
 ---
 
@@ -345,6 +431,11 @@ Module 1 must **not** implement genesis trees, MRP netting, or CP-SAT payloads �
 - OpenAPI fragments checked into module; contract tests in `lib/__tests__/ifs-api.test.ts`.
 - **No runtime IFS JDBC** from API handlers — Postgres silver only (F0 gate).
 
+**Market parity:**
+- **P0:** Read API over Postgres silver only — P0 planning-hub consumption without SoR coupling (SAP IBP, o9 Digital Brain pattern).
+- **P1:** Peg, calendar, BOM, and feedback endpoints match Oracle ASCP planning API surface area for MRP workers.
+- **P1:** Cursor pagination (default 500) follows OMP+ / PlanetTogether bulk-read conventions.
+
 ---
 
 ## Step 18 — Incremental sync, watermark & late-arriving data
@@ -361,6 +452,11 @@ Module 1 must **not** implement genesis trees, MRP netting, or CP-SAT payloads �
 - Watermark lag metric exported: p95 ≤15 min behind IFS `LAST_ACTIVITY_DATE` on pilot tables.
 - Schema drift: extract column mismatch fails job with actionable `IFS_SCHEMA_DRIFT` error listing missing columns.
 
+**Market parity:**
+- **P0:** ≤15 min p95 incremental lag — P0 real-time incremental CDC parity (SAP IBP RTI, Kinaxis Maestro refresh SLO).
+- **P1:** Late-arriving row capture + peg closure re-run matches o9 / Kinaxis concurrent propagation refresh triggers.
+- **P1:** Soft-delete after N incremental misses — SAP IBP HPA tombstone CDC pattern.
+
 ---
 
 ## Step 19 — Planner UAT & Module 1 acceptance sign-off
@@ -375,6 +471,11 @@ Module 1 must **not** implement genesis trees, MRP netting, or CP-SAT payloads �
 - Peg graph sample: ≥95% match planner manual peg trace on UAT set.
 - Sign-off document stored in `docs/integrations/ifs9/uat-module1-signoff.pdf` (or markdown with approver names/dates).
 - Critical defects = 0; major defects have waiver or fix before Step 20 production runbook.
+
+**Market parity:**
+- **P0:** Planner UAT peg trace ≥95% — P0 market sign-off on `SUPPLY_DEMAND` fidelity (Oracle ASCP, IFS native pegging).
+- **P1:** 365d hindsight window validated — SAP IBP multi-horizon actuals and plan-attainment alignment.
+- **P1:** BOM manual verification against IFS UI — OMP+ / Asprova structure parity checkpoint.
 
 ---
 
@@ -396,6 +497,11 @@ Module 1 must **not** implement genesis trees, MRP netting, or CP-SAT payloads �
   - List of known unresolved pegs / data gaps with severity
   - Recommended Module 2 step 21 entry criteria (F0 gate: "Import IFS 365d reconciled")
 - Update `apps/mercato/src/modules/production_planning/AGENTS.md` with IFS bridge env vars and read API paths.
+
+**Market parity:**
+- **P0:** Watermark lag, DQ block, and extract-failure alerts — P0 enterprise IBP operational SLAs (Kinaxis, SAP IBP).
+- **P1:** Module 2 handoff peg sample + known gaps list supports Kinaxis / SAP IBP genesis-netting entry criteria.
+- **P2:** Explicit severity-ranked data gaps — transparency differentiator vs opaque ASCP extract black boxes.
 
 ---
 

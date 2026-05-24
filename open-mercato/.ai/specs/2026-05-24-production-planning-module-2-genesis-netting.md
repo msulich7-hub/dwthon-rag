@@ -1,5 +1,11 @@
 # Production Planning Master Plan — Module 2: Genesis Trees & MRP Netting
 
+**North star:** Class A APS data foundation (May 2026)
+**Parity tier key:** P0 must-have | P1 parity | P2 differentiator
+
+**Module 2 parity focus (May 2026):** Concurrent netting · pool MO like SAP IBP OBP · pegging like IFS `SUPPLY_DEMAND` + Kinaxis concurrent propagation · CBP-lite attributes · exception-driven replan · genesis trees as differentiator.
+
+
 **Scope:** Steps **21–40** · **Open Mercato** `production_planning` module (`apps/mercato/src/modules/production_planning/`)  
 **Prerequisite:** Module 1 complete (steps 1–20): IFS9 bronze/silver staging, BOM + effectivity extract, sales/shop-order read API, 365-day reconciliation gate (F0).
 
@@ -65,6 +71,11 @@
 - Unit tests cover: single variant, date-bound effectivity crossover, superseded revision, and customer-specific routing override (when present in silver).
 - Resolver is pure/deterministic: same inputs + same M1 snapshot version → identical output hash.
 
+**Market parity:**
+- **P0:** Effectivity-dated variant / routing resolution — P0 Oracle ASCP / SAP IBP BOM-routing selection at demand date.
+- **P1:** `VARIANT_AMBIGUOUS` with explicit candidate list matches Kinaxis Maestro configurable routing pick (no silent default).
+- **P2:** Customer-specific routing override when present in silver — CBP-lite attribute-based routing (o9, SAP IBP characteristic rules).
+
 ---
 
 ## Step 22 — 6-level BOM explosion engine (`explode.ts`)
@@ -80,6 +91,11 @@
 - `makeOrBuy = buy` leaves leaf purchase demand; `make` attaches routing operations template for downstream MO generation.
 - Golden fixture: 4-level real BOM + 1 phantom level → expected node count and quantities match within ±0.0001 UoM.
 - Explosion completes ≤50ms p95 per demand line on golden SKU (profiled in Step 37).
+
+**Market parity:**
+- **P0:** 6-level capped BOM explosion — P0 parity with SAP IBP HPA / Oracle ASCP / OMP+ standard explosion depth.
+- **P1:** Phantom roll-through without make nodes matches Opcenter APS and Oracle ASCP phantom assembly handling.
+- **P2:** Cycle detection + depth warnings feed genesis tree materialization — P2 differentiator foundation vs flat batch MRP lists.
 
 ---
 
@@ -112,6 +128,11 @@ Indexes: `(tenant_id, organization_id, sales_order_id)`, `(netting_run_id)`, `(s
 - Zod validators in `data/validators.ts` for API create/update.
 - Roots created idempotently from sales order webhook/command bus (`sales.orders.confirmed`) behind feature flag `production_planning.genesis_auto`.
 
+**Market parity:**
+- **P2:** One `genesis_root` per demand line — **P2 differentiator** (materialized demand genesis vs batch MRP roots in Oracle ASCP).
+- **P0:** Idempotent root per `(demand_source_type, demand_source_id)` — P0 demand pegging anchor (Oracle ASCP sales peg, IFS CO line).
+- **P1:** Auto-create from `sales.orders.confirmed` — Kinaxis / o9 event-driven replan trigger pattern.
+
 ---
 
 ## Step 24 — Entity & migration: `production_planning_genesis_nodes`
@@ -142,6 +163,11 @@ Indexes: `(genesis_root_id, level)`, `(genesis_root_id, node_key)` unique, `(pro
 - API `GET /api/production_planning/genesis/roots/[rootId]/nodes?format=tree` returns nested JSON for UI explorer.
 - Node count per root within scale targets (p95 ≤120).
 
+**Market parity:**
+- **P2:** Persisted `genesis_nodes` explosion graph — **P2 differentiator** for explorer UX and audit vs ASCP flat peg lists.
+- **P0:** Atomic re-explosion per root — P0 concurrent netting safe graph refresh unit (Kinaxis propagation scope).
+- **P1:** Nested tree API — o9 Digital Brain demand-tree visualization parity.
+
 ---
 
 ## Step 25 — Time-bucket gross requirements
@@ -156,6 +182,11 @@ Indexes: `(genesis_root_id, level)`, `(genesis_root_id, node_key)` unique, `(pro
 - Bucket boundaries respect org timezone (tests include DST transition).
 - Config `bucketPolicy: weekly | daily_hybrid` validated in org setup; invalid config returns 422 on netting run start.
 - Gross req report API: `GET /api/production_planning/mrp/gross-requirements?runId=&bucketId=`.
+
+**Market parity:**
+- **P0:** Multi-horizon time buckets (weekly default, daily hybrid final 14d) — P0 SAP IBP HPA / o9 bucket policies.
+- **P1:** `computeNeedDate()` lead-time backward offset — Oracle ASCP bucket assignment from due date.
+- **P1:** ISO Monday org-TZ boundaries with DST tests — PlanetTogether / OMP+ fiscal calendar alignment.
 
 ---
 
@@ -180,6 +211,11 @@ Persist snapshot ref on `production_planning_mrp_runs.snapshot_json` + `snapshot
 - Supply lines keyed by `(sku, availableAt)`; WIP qty reduces net requirement for same SKU when `availableAt ≤ bucket.start`.
 - Unit tests: partial stock covers partial gross → net positive remainder; over-supply clamps net to zero.
 
+**Market parity:**
+- **P0:** Immutable supply snapshot frozen for run duration — P0 SAP IBP / Kinaxis snapshot isolation for concurrent netting.
+- **P1:** On-hand + WIP + scheduled receipts composition matches Oracle ASCP ATP-style supply visibility.
+- **P1:** Soft allocation subtract from existing pegging mirrors IFS `SUPPLY_DEMAND` reserved-qty semantics (Module 1).
+
 ---
 
 ## Step 27 — Net requirements & lot sizing
@@ -200,6 +236,11 @@ Optional lot sizing rules from org config: `lot_for_lot`, `fixed_lot`, `min_max`
 - Buy items emit **purchase requisitions** stub records (`production_planning_purchase_reqs`) — no PO write in M2.
 - Make items with `net_req > 0` forwarded to Step 29 MO generator with peg metadata.
 - Deterministic: same snapshot + gross → identical net lines hash.
+
+**Market parity:**
+- **P0:** Net requirements (`gross − supply`) — P0 MRP netting parity (SAP IBP, Oracle ASCP, OMP+, Kinaxis).
+- **P1:** Lot sizing (`lot_for_lot`, `fixed_lot`, `min_max`) — SAP IBP / Opcenter standard lot rules.
+- **P0:** Buy-item purchase requisition stubs — Oracle ASCP planned-order requisition pattern (no PO write in M2).
 
 ---
 
@@ -226,6 +267,11 @@ Documented in `docs/production-planning/pool-mo-rules.md`.
 - SME sign-off on default rules recorded in spec appendix before Step 40 gate.
 - Unit tests for merge, split at maxPoolQty, and discrete override on FG.
 
+**Market parity:**
+- **P0:** Pool MO consolidation by `(sku, timeBucket, routing)` — **P0 SAP IBP OBP** / Kinaxis pooled supply parity.
+- **P1:** Discrete FG override per sales-order line — Oracle ASCP make-to-order vs make-to-stock split.
+- **P1:** Versioned `pool_mo_rules_version` on run — o9 rules-engine audit trail.
+
 ---
 
 ## Step 29 — MO proposal generator (discrete + pool)
@@ -250,6 +296,11 @@ Does **not** call CP-SAT; sets `due_at` from bucket end minus finish buffer.
 - Generator emits `production_planning.mo.proposed` event per MO with `{ moId, poolKey?, peggedRootIds[] }`.
 - Naive baseline comparator script proves ≥60% MO count reduction on golden 100-SO fixture.
 - Zero operations on routing → `MO_NO_ROUTING_OPS` error on proposal, root flagged.
+
+**Market parity:**
+- **P0:** Pool MO emission (`POOL-{sku}-{bucket}`) — P0 SAP IBP OBP / Opcenter APS pooled MO proposal pattern.
+- **P1:** Idempotent draft update; released MO gets delta adjustment — Kinaxis concurrent netting non-destructive replan.
+- **P1:** ≥60% MO count reduction vs naive baseline — market benchmark for IBP OBP consolidation case studies.
 
 ---
 
@@ -279,6 +330,11 @@ Many roots/nodes → one pool MO allowed; one root → multiple MOs allowed (mul
 - Links from prior run superseded: old `planned` links archived (`superseded_at`) not deleted; `firm` links preserved.
 - Downstream M3: `build-cpsat-payload.ts` can derive `assemblyLinks` from pegging closure (handoff documented Step 40).
 
+**Market parity:**
+- **P0:** Many-to-one `pegging_links` — **P0 IFS `SUPPLY_DEMAND` + Kinaxis concurrent propagation** pegging parity.
+- **P1:** `firm` vs `planned` supersession lifecycle — Oracle ASCP firm-planned peg behavior.
+- **P0:** Σ `pegged_qty` ≤ `net_req_qty` enforcement — SAP IBP pegging integrity gate.
+
 ---
 
 ## Step 31 — MO provenance audit (`production_planning_mo_provenance`)
@@ -304,6 +360,11 @@ Many roots/nodes → one pool MO allowed; one root → multiple MOs allowed (mul
 - API `GET /api/production_planning/orders/[orderId]/provenance` paginated newest-first.
 - Audit trail sufficient to answer: *which SO lines contributed qty X to pool MO Y in run Z*.
 
+**Market parity:**
+- **P0:** Audit answers *which SO lines contributed qty X to pool MO Y in run Z* — P0 Oracle ASCP peg trace / Kinaxis peg inquiry.
+- **P1:** Append-only provenance (no silent MO updates) — enterprise IBP change-audit requirement (o9, SAP IBP).
+- **P1:** Paginated provenance API — Opcenter APS MO change-history parity.
+
 ---
 
 ## Step 32 — Incremental replan (delta genesis roots)
@@ -326,6 +387,11 @@ Unaffected roots skip re-explosion if `content_hash` unchanged. Persist `delta_r
 - Full replan and incremental produce identical final state when all roots dirty.
 - `content_hash` mismatch on unchanged demand still re-runs if supply snapshot age > `maxSnapshotStaleMinutes` (default 240).
 - Incremental run p95 ≤3 min on 1,000 SO/month dataset (Step 37 load test).
+
+**Market parity:**
+- **P0:** Incremental delta replan by trigger scope — **P0 exception-driven replan** (Kinaxis Maestro, o9 delta propagation).
+- **P1:** BOM revision effective → all roots with affected SKU — SAP IBP engineering-change impact scoping.
+- **P1:** `content_hash` skip for unchanged roots — concurrent netting efficiency parity with Kinaxis incremental MRP.
 
 ---
 
@@ -353,6 +419,11 @@ Pipeline stages: `resolve_roots → explode → bucket_gross → snapshot_supply
 - Events: `production_planning.mrp.run.started`, `.completed`, `.failed`.
 - CLI/dev trigger: `yarn mercato production-planning mrp-run --org=<id> --mode=full`.
 
+**Market parity:**
+- **P0:** Staged async `mrp-netting-run` pipeline — P0 SAP IBP / Oracle ASCP planning-run orchestration.
+- **P1:** Concurrency 1 per org — Kinaxis single concurrent netting session guard.
+- **P1:** `dryRun` preview without MO/pegging write — o9 scenario planning preview pattern.
+
 ---
 
 ## Step 34 — UI: Genesis explorer
@@ -373,6 +444,11 @@ Pipeline stages: `resolve_roots → explode → bucket_gross → snapshot_supply
 - ACL: `production_planning.view` read; `production_planning.manage` triggers replan button.
 - Registered in module sidebar menu via `setup.ts`.
 
+**Market parity:**
+- **P1:** Interactive genesis tree explorer — o9 demand tree / Kinaxis scenario peg explorer parity.
+- **P2:** Collapsible make/buy graph with gross/net qty — **P2 differentiator** vs batch MRP list views in Oracle ASCP.
+- **P1:** Virtualized 250-node render — PlanetTogether large BOM tree UX benchmark.
+
 ---
 
 ## Step 35 — UI: Pegging tab on sales order
@@ -391,6 +467,11 @@ Pipeline stages: `resolve_roots → explode → bucket_gross → snapshot_supply
 - Tab loads ≤500ms for SO with 20 lines (server-side aggregation API from Step 30).
 - i18n keys in `production_planning/i18n/en.json`; follows existing sales tab injection pattern from `AGENTS.md`.
 
+**Market parity:**
+- **P0:** Sales-order pegging tab (discrete/pool, shared badge) — P0 Oracle ASCP / IFS sales-order peg inquiry.
+- **P1:** Server-side aggregation ≤500ms for 20 lines — Kinaxis peg-tab performance SLO.
+- **P1:** Pool MO "shared" tooltip with contributor count — SAP IBP OBP multi-demand attribution UX.
+
 ---
 
 ## Step 36 — UI: Pool MO workbench
@@ -408,6 +489,11 @@ Pipeline stages: `resolve_roots → explode → bucket_gross → snapshot_supply
 - Split requires `production_planning.admin` ACL; rewrites pegging links atomically.
 - Workbench shows rule version used (`pool_mo_rules_version` from run).
 - Released pool MOs appear in existing production orders list with `POOL` prefix filter.
+
+**Market parity:**
+- **P0:** Pool MO workbench release and split — P0 SAP IBP OBP planner workbench actions.
+- **P1:** Drill-down to all contributing SO lines / genesis roots — Kinaxis pooled-order demand contributors.
+- **P1:** Display `pool_mo_rules_version` — o9 policy transparency on consolidated orders.
 
 ---
 
@@ -429,6 +515,11 @@ Pipeline stages: `resolve_roots → explode → bucket_gross → snapshot_supply
 - Results committed as `loadtest/results/module2-netting-baseline.json`.
 - CI smoke (optional nightly `SCALE_TEST=1`): 200-SO subset completes ≤5 min.
 - Batch explode uses chunked DB writes (500 nodes per insert batch) documented in worker.
+
+**Market parity:**
+- **P0:** Full run ≤15 min / incremental p95 ≤3 min — P0 Class A APS concurrent netting performance (Kinaxis, SAP IBP at scale).
+- **P1:** 1,200 SO / 3,600 lines load test — Oracle ASCP mid-market volume benchmark.
+- **P1:** Chunked DB writes (500 nodes/batch) — Opcenter APS batch persistence pattern.
 
 ---
 
@@ -456,6 +547,11 @@ Structured logs: `{ runId, stage, rootId?, sku?, durationMs, errorCode? }`. Opti
 - i18n operator messages for all codes in `en.json`.
 - Dashboard queries documented (LogQL/SQL) for exception rate and run duration p95.
 
+**Market parity:**
+- **P0:** Exception catalog + run summary counts — **P0 exception-driven replan** parity (Kinaxis alerts, o9 exceptions).
+- **P1:** `completed_with_warnings` vs `failed` outcome taxonomy — SAP IBP planning-run result classes.
+- **P1:** LogQL/SQL dashboard queries for exception rate — enterprise IBP observability standard.
+
 ---
 
 ## Step 39 — Golden integration tests & CI gate
@@ -479,6 +575,11 @@ CI job `mrp-netting-golden` on PRs touching `lib/mrp/*` or genesis entities.
 - Tests use real MikroORM test DB (not mocked explosion logic).
 - Pegging → `assemblyLinks` projection test validates handoff contract for Module 3 Step 42.
 - Regression: MO count vs naive baseline encoded in fixture assertions.
+
+**Market parity:**
+- **P0:** Golden pegging → Module 3 `assemblyLinks` projection — P0 Oracle ASCP / Kinaxis schedule-peg handoff contract.
+- **P1:** 50:1 pool MO fixture — SAP IBP OBP regression standard scenario.
+- **P1:** CI gate on `lib/mrp/*` changes — Opcenter APS MRP regression automation pattern.
 
 ---
 
@@ -505,6 +606,11 @@ CI job `mrp-netting-golden` on PRs touching `lib/mrp/*` or genesis entities.
 - Product / Planning SME sign-off recorded in acceptance report.
 - `AGENTS.md` updated with MRP worker, genesis entities, and netting API references.
 - Module 3 team confirms pegging → `assemblyLinks` sample payload reviewed in joint walkthrough.
+
+**Market parity:**
+- **P0:** F1 gates (pool ≥60%, peg integrity, ≤15 min) — P0 market cutover checklist (SAP IBP, Kinaxis go-live).
+- **P2:** 100% genesis-root coverage bundled with pool MO parity — **P2 differentiator** for Mercato vs ASCP-only MRP.
+- **P0:** Joint pegging → CP-SAT `assemblyLinks` walkthrough — PlanetTogether / Asprova peg-aware scheduling handoff.
 
 ---
 

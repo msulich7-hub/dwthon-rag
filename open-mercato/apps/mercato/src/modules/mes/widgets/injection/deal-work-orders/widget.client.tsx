@@ -4,24 +4,26 @@ import * as React from 'react'
 import type { InjectionWidgetComponentProps } from '@open-mercato/shared/modules/widgets/injection'
 import { apiCall, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { useGuardedMutation } from '@open-mercato/ui/backend/injection/useGuardedMutation'
+import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
-
-type WorkOrderItem = {
-  id: string
-  orderNumber: string
-  productCode: string
-  quantity: number
-  status: string
-  dealId: string | null
-  notes: string | null
-  updatedAt: string
-}
+import { MesEmptyState } from '../../../components/MesEmptyState'
+import { MesListSkeleton } from '../../../components/MesListSkeleton'
+import { MesProgressBar } from '../../../components/MesProgressBar'
+import { WorkOrderCard, type WorkOrderCardItem } from '../../../components/WorkOrderCard'
 
 type WorkOrdersResponse = {
-  workOrders: WorkOrderItem[]
+  workOrders: WorkOrderCardItem[]
+}
+
+type ProgressResponse = {
+  progress: {
+    percentComplete: number
+    totalOperations: number
+    completedOperations: number
+  }
 }
 
 type HostContext = {
@@ -40,20 +42,14 @@ function readDealId(context: HostContext | undefined, data: HostContext['data'] 
   return id && id.length > 0 ? id : null
 }
 
-function statusTone(status: string): string {
-  if (status === 'in_progress') return 'border-sky-500/40 bg-sky-500/10 text-sky-900 dark:text-sky-100'
-  if (status === 'completed') return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100'
-  if (status === 'cancelled') return 'border-muted bg-muted/40 text-muted-foreground'
-  return 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-100'
-}
-
 export default function DealWorkOrdersWidget({
   context,
   data,
 }: InjectionWidgetComponentProps<HostContext, HostContext['data']>) {
   const t = useT()
   const dealId = readDealId(context, data)
-  const [workOrders, setWorkOrders] = React.useState<WorkOrderItem[]>([])
+  const [workOrders, setWorkOrders] = React.useState<WorkOrderCardItem[]>([])
+  const [progress, setProgress] = React.useState<ProgressResponse['progress'] | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [productCode, setProductCode] = React.useState('')
@@ -71,10 +67,16 @@ export default function DealWorkOrdersWidget({
     setLoading(true)
     setError(null)
     try {
-      const payload = await readApiResultOrThrow<WorkOrdersResponse>(
-        `/api/mes/work-orders?dealId=${encodeURIComponent(dealId)}`,
-      )
-      setWorkOrders(Array.isArray(payload.workOrders) ? payload.workOrders : [])
+      const [woPayload, progressPayload] = await Promise.all([
+        readApiResultOrThrow<WorkOrdersResponse>(
+          `/api/mes/work-orders?dealId=${encodeURIComponent(dealId)}`,
+        ),
+        readApiResultOrThrow<ProgressResponse>(
+          `/api/mes/deals/${encodeURIComponent(dealId)}/production-progress`,
+        ).catch(() => null),
+      ])
+      setWorkOrders(Array.isArray(woPayload.workOrders) ? woPayload.workOrders : [])
+      setProgress(progressPayload?.progress ?? null)
     } catch {
       setError(t('mes.dealWorkOrders.loadError', 'Failed to load work orders'))
     } finally {
@@ -96,7 +98,7 @@ export default function DealWorkOrdersWidget({
 
       setError(null)
       await runMutation(async () => {
-        const { result } = await apiCall<{ workOrder: WorkOrderItem }>('/api/mes/work-orders', {
+        const { result } = await apiCall<{ workOrder: WorkOrderCardItem }>('/api/mes/work-orders', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
@@ -108,12 +110,14 @@ export default function DealWorkOrdersWidget({
 
         if (result?.workOrder) {
           setWorkOrders((prev) => [result.workOrder, ...prev])
+          flash(t('mes.dealWorkOrders.created', 'Work order created'), 'success')
         }
         setProductCode('')
         setQuantity('1')
+        await loadWorkOrders()
       })
     },
-    [dealId, productCode, quantity, runMutation],
+    [dealId, loadWorkOrders, productCode, quantity, runMutation, t],
   )
 
   if (!dealId) {
@@ -126,6 +130,13 @@ export default function DealWorkOrdersWidget({
 
   return (
     <div className="space-y-4" data-mes-deal-work-orders="">
+      {progress && progress.totalOperations > 0 ? (
+        <MesProgressBar
+          percent={progress.percentComplete}
+          label={t('mes.dealWorkOrders.progress', 'Shop-floor progress')}
+        />
+      ) : null}
+
       <form className="space-y-3 rounded-lg border bg-card p-4" onSubmit={handleCreate}>
         <div>
           <h3 className="text-sm font-medium">{t('mes.dealWorkOrders.createTitle', 'New work order')}</h3>
@@ -162,23 +173,16 @@ export default function DealWorkOrdersWidget({
       {error ? <div className="text-sm text-destructive">{error}</div> : null}
 
       {loading ? (
-        <div className="text-sm text-muted-foreground">{t('mes.dealWorkOrders.loading', 'Loading…')}</div>
+        <MesListSkeleton />
       ) : workOrders.length === 0 ? (
-        <div className="text-sm text-muted-foreground">{t('mes.dealWorkOrders.empty', 'No work orders yet.')}</div>
+        <MesEmptyState
+          title={t('mes.dealWorkOrders.empty', 'No work orders yet.')}
+          description={t('mes.dealWorkOrders.emptyHint', 'Create a work order and release routing to start production.')}
+        />
       ) : (
         <ul className="space-y-2">
           {workOrders.map((wo) => (
-            <li key={wo.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
-              <div>
-                <div className="text-sm font-medium">{wo.orderNumber}</div>
-                <div className="text-xs text-muted-foreground">
-                  {wo.productCode} × {wo.quantity}
-                </div>
-              </div>
-              <span className={`text-xs rounded-full border px-2 py-0.5 ${statusTone(wo.status)}`}>
-                {wo.status}
-              </span>
-            </li>
+            <WorkOrderCard key={wo.id} workOrder={wo} onRoutingReleased={() => void loadWorkOrders()} />
           ))}
         </ul>
       )}

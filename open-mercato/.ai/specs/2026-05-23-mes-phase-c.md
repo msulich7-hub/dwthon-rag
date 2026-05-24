@@ -1,6 +1,6 @@
 # SPEC: MES Phase C — Trace
 
-**Status:** planned  
+**Status:** complete (lots, consumption, recall, genealogy graph, serials, production output, trace UI)  
 **Parent:** `2026-05-23-mes-world-class-roadmap.md`
 
 Lots, serials, material consumption, genealogy graph, recall search API. See council Phase C design in roadmap PR notes.

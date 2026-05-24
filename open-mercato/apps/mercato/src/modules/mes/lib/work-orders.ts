@@ -4,6 +4,7 @@ import { CustomerDeal } from '@open-mercato/core/modules/customers/data/entities
 import { assertSalesOrderExists } from './sales-order-context'
 import { MesWorkOrder, type MesWorkOrderStatus } from '../data/entities'
 import type { CreateWorkOrderBody } from '../data/validators'
+import { assertWorkOrderNotOnHold } from './quality-holds'
 import { canTransitionWorkOrderStatus } from './work-order-status'
 import { emitMesEvent } from '../events'
 
@@ -56,6 +57,19 @@ async function assertDealExists(
   if (!deals[0]) {
     throw new Error('DEAL_NOT_FOUND')
   }
+}
+
+export async function getWorkOrder(
+  em: EntityManager,
+  scope: MesScope,
+  workOrderId: string,
+): Promise<WorkOrderDto | null> {
+  const order = await em.findOne(MesWorkOrder, {
+    id: workOrderId,
+    tenantId: scope.tenantId,
+    organizationId: scope.organizationId,
+  })
+  return order ? toDto(order) : null
 }
 
 export async function listWorkOrders(
@@ -141,6 +155,10 @@ export async function updateWorkOrderStatus(
 
   if (!canTransitionWorkOrderStatus(order.status, nextStatus)) {
     throw new Error('INVALID_STATUS_TRANSITION')
+  }
+
+  if (nextStatus === 'in_progress' || nextStatus === 'completed') {
+    await assertWorkOrderNotOnHold(em, scope, workOrderId)
   }
 
   const previousStatus = order.status

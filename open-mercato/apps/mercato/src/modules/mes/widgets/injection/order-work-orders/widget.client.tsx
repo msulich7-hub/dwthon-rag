@@ -1,30 +1,31 @@
 "use client"
 
 import * as React from 'react'
-import Link from 'next/link'
 import type { InjectionWidgetComponentProps } from '@open-mercato/shared/modules/widgets/injection'
 import { apiCall, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { useGuardedMutation } from '@open-mercato/ui/backend/injection/useGuardedMutation'
+import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
-
-type WorkOrderItem = {
-  id: string
-  orderNumber: string
-  productCode: string
-  quantity: number
-  status: string
-  salesOrderId: string | null
-  dealId: string | null
-  updatedAt: string
-}
+import { MesEmptyState } from '../../../components/MesEmptyState'
+import { MesListSkeleton } from '../../../components/MesListSkeleton'
+import { MesProgressBar } from '../../../components/MesProgressBar'
+import { WorkOrderCard, type WorkOrderCardItem } from '../../../components/WorkOrderCard'
 
 type SalesOrderWorkOrdersResponse = {
   salesOrderId: string
   orderNumber: string | null
-  workOrders: WorkOrderItem[]
+  workOrders: WorkOrderCardItem[]
+}
+
+type ProgressResponse = {
+  progress: {
+    percentComplete: number
+    totalOperations: number
+    completedOperations: number
+  }
 }
 
 type SalesOrderHostContext = {
@@ -51,21 +52,15 @@ function readSalesOrderId(
   return id && id.length > 0 ? id : null
 }
 
-function statusTone(status: string): string {
-  if (status === 'in_progress') return 'border-sky-500/40 bg-sky-500/10 text-sky-900 dark:text-sky-100'
-  if (status === 'completed') return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100'
-  if (status === 'cancelled') return 'border-muted bg-muted/40 text-muted-foreground'
-  return 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-100'
-}
-
 export default function OrderWorkOrdersWidget({
   context,
   data,
 }: InjectionWidgetComponentProps<SalesOrderHostContext, SalesOrderRecord>) {
   const t = useT()
   const salesOrderId = readSalesOrderId(context, data)
-  const [workOrders, setWorkOrders] = React.useState<WorkOrderItem[]>([])
+  const [workOrders, setWorkOrders] = React.useState<WorkOrderCardItem[]>([])
   const [orderNumber, setOrderNumber] = React.useState<string | null>(null)
+  const [progress, setProgress] = React.useState<ProgressResponse['progress'] | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [productCode, setProductCode] = React.useState('')
@@ -83,11 +78,17 @@ export default function OrderWorkOrdersWidget({
     setLoading(true)
     setError(null)
     try {
-      const payload = await readApiResultOrThrow<SalesOrderWorkOrdersResponse>(
-        `/api/mes/sales-orders/${encodeURIComponent(salesOrderId)}/work-orders`,
-      )
-      setWorkOrders(Array.isArray(payload.workOrders) ? payload.workOrders : [])
-      setOrderNumber(payload.orderNumber ?? null)
+      const [woPayload, progressPayload] = await Promise.all([
+        readApiResultOrThrow<SalesOrderWorkOrdersResponse>(
+          `/api/mes/sales-orders/${encodeURIComponent(salesOrderId)}/work-orders`,
+        ),
+        readApiResultOrThrow<ProgressResponse>(
+          `/api/mes/sales-orders/${encodeURIComponent(salesOrderId)}/production-progress`,
+        ).catch(() => null),
+      ])
+      setWorkOrders(Array.isArray(woPayload.workOrders) ? woPayload.workOrders : [])
+      setOrderNumber(woPayload.orderNumber ?? null)
+      setProgress(progressPayload?.progress ?? null)
     } catch {
       setError(t('mes.orderWorkOrders.loadError', 'Failed to load work orders'))
     } finally {
@@ -103,7 +104,7 @@ export default function OrderWorkOrdersWidget({
     if (!salesOrderId) return
     setError(null)
     await runMutation(async () => {
-      await apiCall(
+      const call = await apiCall(
         `/api/mes/sales-orders/${encodeURIComponent(salesOrderId)}/work-orders`,
         {
           method: 'POST',
@@ -111,9 +112,14 @@ export default function OrderWorkOrdersWidget({
           body: JSON.stringify({ skipExistingProductCodes: true }),
         },
       )
+      if (!call.ok) {
+        flash(t('mes.orderWorkOrders.importError', 'Import failed'), 'error')
+        return
+      }
+      flash(t('mes.orderWorkOrders.importSuccess', 'Work orders created from lines'), 'success')
       await loadWorkOrders()
     })
-  }, [loadWorkOrders, runMutation, salesOrderId])
+  }, [loadWorkOrders, runMutation, salesOrderId, t])
 
   const handleCreate = React.useCallback(
     async (event?: React.FormEvent) => {
@@ -125,7 +131,7 @@ export default function OrderWorkOrdersWidget({
 
       setError(null)
       await runMutation(async () => {
-        const { result } = await apiCall<{ workOrder: WorkOrderItem }>('/api/mes/work-orders', {
+        const { result } = await apiCall<{ workOrder: WorkOrderCardItem }>('/api/mes/work-orders', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
@@ -137,12 +143,14 @@ export default function OrderWorkOrdersWidget({
 
         if (result?.workOrder) {
           setWorkOrders((prev) => [result.workOrder, ...prev])
+          flash(t('mes.orderWorkOrders.created', 'Work order created'), 'success')
         }
         setProductCode('')
         setQuantity('1')
+        await loadWorkOrders()
       })
     },
-    [productCode, quantity, runMutation, salesOrderId],
+    [loadWorkOrders, productCode, quantity, runMutation, salesOrderId, t],
   )
 
   if (!salesOrderId) {
@@ -165,6 +173,13 @@ export default function OrderWorkOrdersWidget({
           {t('mes.orderWorkOrders.importLines', 'Create from line items')}
         </Button>
       </div>
+
+      {progress && progress.totalOperations > 0 ? (
+        <MesProgressBar
+          percent={progress.percentComplete}
+          label={t('mes.orderWorkOrders.progress', 'Order production progress')}
+        />
+      ) : null}
 
       <form className="space-y-3 rounded-lg border bg-card p-4" onSubmit={handleCreate}>
         <div>
@@ -202,31 +217,19 @@ export default function OrderWorkOrdersWidget({
       {error ? <div className="text-sm text-destructive">{error}</div> : null}
 
       {loading ? (
-        <div className="text-sm text-muted-foreground">{t('mes.orderWorkOrders.loading', 'Loading…')}</div>
+        <MesListSkeleton />
       ) : workOrders.length === 0 ? (
-        <div className="text-sm text-muted-foreground">{t('mes.orderWorkOrders.empty', 'No work orders yet.')}</div>
+        <MesEmptyState
+          title={t('mes.orderWorkOrders.empty', 'No work orders yet.')}
+          description={t(
+            'mes.orderWorkOrders.emptyHint',
+            'Import from order lines or create a work order, then release routing.',
+          )}
+        />
       ) : (
         <ul className="space-y-2">
           {workOrders.map((wo) => (
-            <li key={wo.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
-              <div>
-                <div className="text-sm font-medium">{wo.orderNumber}</div>
-                <div className="text-xs text-muted-foreground">
-                  {wo.productCode} × {wo.quantity}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`text-xs rounded-full border px-2 py-0.5 ${statusTone(wo.status)}`}>
-                  {wo.status}
-                </span>
-                <Link
-                  href="/backend/mes/operator"
-                  className="text-xs text-primary hover:underline"
-                >
-                  {t('mes.orderWorkOrders.operator', 'Operator')}
-                </Link>
-              </div>
-            </li>
+            <WorkOrderCard key={wo.id} workOrder={wo} onRoutingReleased={() => void loadWorkOrders()} />
           ))}
         </ul>
       )}

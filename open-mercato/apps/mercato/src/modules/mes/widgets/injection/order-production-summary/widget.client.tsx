@@ -5,11 +5,24 @@ import Link from 'next/link'
 import type { InjectionWidgetComponentProps } from '@open-mercato/shared/modules/widgets/injection'
 import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { MesProgressBar } from '../../../components/MesProgressBar'
+import { MES_ROUTES } from '../../../lib/mes-routes'
+import { Skeleton } from '@open-mercato/ui/primitives/skeleton'
 
 type WorkOrderItem = { id: string; status: string }
 
 type SalesOrderWorkOrdersResponse = {
   workOrders: WorkOrderItem[]
+}
+
+type ProgressResponse = {
+  progress: {
+    totalOperations: number
+    completedOperations: number
+    inProgressOperations: number
+    percentComplete: number
+    workOrderCount: number
+  }
 }
 
 type SalesOrderHostContext = {
@@ -40,26 +53,40 @@ export default function OrderProductionSummaryWidget({
   const [summary, setSummary] = React.useState<{ active: number; completed: number; total: number } | null>(
     null,
   )
+  const [progress, setProgress] = React.useState<ProgressResponse['progress'] | null>(null)
+  const [loading, setLoading] = React.useState(true)
 
   React.useEffect(() => {
     if (!salesOrderId) return
     let cancelled = false
 
     void (async () => {
+      setLoading(true)
       try {
-        const payload = await readApiResultOrThrow<SalesOrderWorkOrdersResponse>(
-          `/api/mes/sales-orders/${encodeURIComponent(salesOrderId)}/work-orders`,
-        )
-        const list = payload.workOrders ?? []
+        const [woPayload, progressPayload] = await Promise.all([
+          readApiResultOrThrow<SalesOrderWorkOrdersResponse>(
+            `/api/mes/sales-orders/${encodeURIComponent(salesOrderId)}/work-orders`,
+          ),
+          readApiResultOrThrow<ProgressResponse>(
+            `/api/mes/sales-orders/${encodeURIComponent(salesOrderId)}/production-progress`,
+          ).catch(() => null),
+        ])
+        const list = woPayload.workOrders ?? []
         if (!cancelled) {
           setSummary({
             total: list.length,
             active: list.filter((wo) => ['planned', 'in_progress'].includes(wo.status)).length,
             completed: list.filter((wo) => wo.status === 'completed').length,
           })
+          setProgress(progressPayload?.progress ?? null)
         }
       } catch {
-        if (!cancelled) setSummary(null)
+        if (!cancelled) {
+          setSummary(null)
+          setProgress(null)
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
       }
     })()
 
@@ -68,26 +95,45 @@ export default function OrderProductionSummaryWidget({
     }
   }, [salesOrderId])
 
-  if (!salesOrderId || !summary || summary.total === 0) {
+  if (!salesOrderId) return null
+
+  if (loading) {
+    return (
+      <div className="rounded-lg border p-3 space-y-2" data-mes-order-production-summary="">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-2 w-full" />
+      </div>
+    )
+  }
+
+  if (!summary || summary.total === 0) {
     return null
   }
 
   return (
     <div
-      className="rounded-lg border border-sky-500/30 bg-sky-500/5 p-3 text-sm"
+      className="rounded-lg border border-sky-500/30 bg-sky-500/5 dark:bg-sky-500/10 p-3 text-sm space-y-3"
       data-mes-order-production-summary=""
     >
       <div className="font-medium">{t('mes.orderProductionSummary.title', 'Manufacturing')}</div>
-      <p className="text-xs text-muted-foreground mt-1">
+      <p className="text-xs text-muted-foreground">
         {t('mes.orderProductionSummary.stats', '{active} active · {completed} completed · {total} total', {
           active: summary.active,
           completed: summary.completed,
           total: summary.total,
         })}
       </p>
-      <Link href="/backend/mes/operator" className="text-xs text-primary hover:underline mt-2 inline-block">
-        {t('mes.orderProductionSummary.operator', 'Open operator queue')}
-      </Link>
+      {progress && progress.totalOperations > 0 ? (
+        <MesProgressBar percent={progress.percentComplete} showPercent />
+      ) : null}
+      <div className="flex flex-wrap gap-3 text-xs">
+        <Link href={MES_ROUTES.operator} className="text-primary hover:underline">
+          {t('mes.orderProductionSummary.operator', 'Open operator queue')}
+        </Link>
+        <Link href={MES_ROUTES.pulse} className="text-primary hover:underline">
+          {t('mes.orderProductionSummary.pulse', 'Pulse board')}
+        </Link>
+      </div>
     </div>
   )
 }

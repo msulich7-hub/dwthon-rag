@@ -14,6 +14,14 @@ jest.mock('../work-orders', () => ({
   updateWorkOrderStatus: jest.fn(),
 }))
 
+jest.mock('../production-output', () => ({
+  recordProductionOutput: jest.fn().mockResolvedValue(null),
+}))
+
+jest.mock('../quality-holds', () => ({
+  assertWorkOrderNotOnHold: jest.fn().mockResolvedValue(undefined),
+}))
+
 import { emitMesEvent } from '../../events'
 import { updateWorkOrderStatus } from '../work-orders'
 

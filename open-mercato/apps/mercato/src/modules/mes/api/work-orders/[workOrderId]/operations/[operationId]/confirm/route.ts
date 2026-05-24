@@ -47,6 +47,9 @@ export async function POST(
         INVALID_STATUS_TRANSITION: { status: 400, error: 'Invalid status transition' },
         INVALID_CONFIRMATION_QTY: { status: 400, error: 'Invalid confirmation quantity' },
         PRIOR_OPERATIONS_INCOMPLETE: { status: 400, error: 'Prior operations must be completed' },
+        LOT_NOT_FOUND: { status: 404, error: 'Lot not found' },
+        LOT_NOT_ACTIVE: { status: 400, error: 'Lot is not active' },
+        INSUFFICIENT_LOT_QTY: { status: 400, error: 'Insufficient lot quantity' },
       }
       const mapped = map[error.message]
       if (mapped) throw new CrudHttpError(mapped.status, { error: mapped.error })

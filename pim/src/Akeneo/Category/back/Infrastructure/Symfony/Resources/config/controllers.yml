@@ -1,0 +1,89 @@
+#parameters:
+#    pim_enrich.controller.category_tree.class: Akeneo\Pim\Enrichment\Bundle\Controller\Ui\CategoryTreeController
+
+services:
+    pim_api.controller.category:
+        public: true
+        class: 'Akeneo\Category\Infrastructure\Controller\ExternalApi\CategoryController'
+        arguments:
+            - '@pim_api.repository.category'
+            - '@pim_external_api_serializer'
+            - '@pim_catalog.factory.category'
+            - '@pim_catalog.updater.category'
+            - '@validator'
+            - '@pim_catalog.saver.category'
+            - '@router'
+            - '@pim_api.pagination.offset_hal_paginator'
+            - '@pim_api.pagination.parameter_validator'
+            - '@pim_api.stream.category_partial_update_stream'
+            - '%pim_api.configuration%'
+
+    pim_enrich.controller.rest.category:
+        public: true
+        class: 'Akeneo\Category\Infrastructure\Controller\InternalApi\CategoryController'
+        arguments:
+            - '@pim_catalog.repository.category'
+            - '@pim_enrich.twig.category_extension'
+            - '@pim_internal_api_serializer'
+            - '@pim_catalog.filter.chained'
+
+    Akeneo\Category\Infrastructure\Controller\InternalApi\UpdateCategoryController:
+        public: true
+        arguments:
+            - '@category.command.message_bus'
+            - '@oro_security.security_facade'
+            - '@Akeneo\Category\Application\Converter\ConverterInterface'
+            - '@Akeneo\Category\Application\Filter\CategoryEditAclFilter'
+            - '@Akeneo\Category\Application\Converter\StandardFormatToUserIntentsInterface'
+            - '@Akeneo\Category\Application\Filter\CategoryEditUserIntentFilter'
+            - '@Akeneo\Category\Domain\Query\GetCategoryInterface'
+
+    Akeneo\Category\Infrastructure\Controller\InternalApi\GetCategoryController:
+        public: true
+        arguments:
+            - '@oro_security.security_facade'
+            - '@Akeneo\Category\Domain\Query\GetCategoryInterface'
+
+    Akeneo\Category\Infrastructure\Controller\InternalApi\GetTemplateController:
+        public: true
+        arguments:
+            - '@oro_security.security_facade'
+            - '@Akeneo\Category\Application\Query\GetTemplate'
+            - '@Akeneo\Category\Application\Query\GetAttribute'
+            - '@Akeneo\Category\Infrastructure\Storage\InMemory\GetTemplateInMemory'
+            - '@Akeneo\Category\Infrastructure\Storage\InMemory\GetAttributeInMemory'
+
+
+    Akeneo\Category\Infrastructure\Controller\InternalApi\CreateTemplateController:
+        public: true
+        arguments:
+            - '@oro_security.security_facade'
+            - '@Akeneo\Category\Domain\Query\GetCategoryInterface'
+            - '@Akeneo\Category\Application\ActivateTemplate'
+
+    Akeneo\Category\Infrastructure\Controller\InternalApi\UploadController:
+        public: true
+        arguments:
+            - '@validator'
+            - '@category_serializer'
+            - '@Akeneo\Category\Application\Handler\StoreUploadedFile'
+
+    Akeneo\Category\Infrastructure\Controller\InternalApi\ImagePreviewController:
+        public: true
+        arguments:
+            - '@Akeneo\Category\Application\Query\GetAttribute'
+            - '@pim_category.infrastructure.registry.preview_generator'
+            - '@Akeneo\Category\Infrastructure\FileSystem\Loader\ImageLoader'
+
+    Akeneo\Category\Infrastructure\Controller\ExternalApi\ListCategoriesController:
+        public: true
+        arguments:
+            - '@pim_api.pagination.offset_hal_paginator'
+            - '@pim_api.pagination.parameter_validator'
+            - '@feature_flags'
+            - '@Akeneo\Category\Application\Query\GetCategoriesParametersBuilder'
+            - '@Akeneo\Category\Application\Query\GetCategoriesInterface'
+            - '@Akeneo\Category\Application\Handler\GetPositionInterface'
+            - '%pim_api.configuration%'
+        calls:
+            - [ 'setContainer', [ '@service_container' ] ]

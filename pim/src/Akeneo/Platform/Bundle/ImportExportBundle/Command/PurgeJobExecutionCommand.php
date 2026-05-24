@@ -1,0 +1,87 @@
+<?php
+
+namespace Akeneo\Platform\Bundle\ImportExportBundle\Command;
+
+use Akeneo\Platform\Bundle\ImportExportBundle\Purge\PurgeJobExecution;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Helper\QuestionHelper;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\ConfirmationQuestion;
+
+/**
+ * Purge Jobs Execution history.
+ *
+ * @author    Philippe Mossière <philippe.mossiere@akeneo.com>
+ * @copyright 2016 Akeneo SAS (http://www.akeneo.com)
+ * @license   http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+ */
+class PurgeJobExecutionCommand extends Command
+{
+    public const JOB_CODE = 'job_executions_purge';
+
+    protected static $defaultName = 'akeneo:batch:purge-job-execution';
+
+    private const DEFAULT_NUMBER_OF_DAYS = 90;
+
+    public function __construct(
+        private PurgeJobExecution $purgeJobExecution,
+    ) {
+        parent::__construct();
+    }
+
+    protected function configure()
+    {
+        $this->setDescription(
+            'Purge jobs execution older than number of days you want except the last one.
+             If the value is equals to 0, it will delete everything. By default 90 days, minimum is 0 day'
+        );
+        $this->addOption(
+            'days',
+            'd',
+            InputOption::VALUE_OPTIONAL,
+            'How many days of jobs execution you want to keep',
+            self::DEFAULT_NUMBER_OF_DAYS
+        );
+    }
+
+    protected function execute(InputInterface $input, OutputInterface $output): int
+    {
+        $days = $input->getOption('days');
+        if (!is_numeric($days)) {
+            $output->writeln(
+                sprintf('<error>Option --days must be a number, "%s" given.</error>', $input->getOption('days'))
+            );
+
+            return Command::FAILURE;
+        }
+
+        $days = (int) $days;
+
+        if (0 === $days) {
+            /** @var QuestionHelper $helper */
+            $helper = $this->getHelper('question');
+            $confirmation = new ConfirmationQuestion(
+                'This will delete ALL job executions. Do you confirm? ',
+                false
+            );
+            if (!$helper->ask($input, $output, $confirmation)) {
+                $output->write("Operation aborted\n");
+
+                return Command::FAILURE;
+            }
+        }
+
+        if (0 === $days) {
+            $numberOfDeletedJobExecutions = $this->purgeJobExecution->all();
+            $output->writeln('All jobs execution deleted');
+        } else {
+            $numberOfDeletedJobExecutions = $this->purgeJobExecution->olderThanDays($days);
+            $output->writeln(sprintf('Purged jobs execution older than %d days', $days));
+        }
+        $output->writeln(sprintf('%d jobs execution deleted', $numberOfDeletedJobExecutions));
+
+        return Command::SUCCESS;
+    }
+}

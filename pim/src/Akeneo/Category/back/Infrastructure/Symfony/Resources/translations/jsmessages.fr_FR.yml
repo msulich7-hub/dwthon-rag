@@ -1,0 +1,33 @@
+akeneo.category:
+  tree_list:
+    column:
+      category_templates: Templates de catégorie
+  attributes: Attributs
+  edition_form:
+    error:
+      unhandled_attribute_type: Impossible de trouver le constructeur de champ d'attribut pour le type d'attribut "{{type}}"
+    template:
+      title: Modèle
+      fetching_failed: Une erreur est survenue lors de la récupération du modèle
+    unsaved_changes: Vous perdrez les modifications apportées à la catégorie si vous quittez la page.
+  tree:
+    create: Créer un arbre
+    delete: Supprimer l'arbre
+  template:
+    create: Activer le template
+    edit: Afficher le template
+    delete: Supprimer le modèle
+    notification_success: "Le template a été activé avec succès.\n"
+    notification_error: Le template n’a pas pu être activé
+    attribute:
+      description_title: Paramètres de la description
+      type:
+        text: Texte
+        textarea: Zone de texte
+        richtext: Éditeur de texte enrichi
+        image: Image
+  template_list:
+    columns:
+      header: Libellé
+      code: Code
+      type: Type

@@ -1,0 +1,10 @@
+src/**/lib/**/*.js
+src/**/DataGridBundle/**/*.js
+src/Oro/**/**/*.js
+src/Akeneo/Connectivity/Connection
+src/Akeneo/Pim/Enrichment/AssetManager/tests/front
+src/Akeneo/Pim/Automation/RuleEngine/front
+src/Akeneo/Pim/TableAttribute/front
+src/Akeneo/Platform/Job/front/process-tracker
+src/Oro/Bundle/ConfigBundle/front
+components/**/front

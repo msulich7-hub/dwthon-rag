@@ -49,13 +49,15 @@ async def schedule(
         timeout_seconds=settings.solver_timeout_seconds,
         num_workers=settings.solver_num_workers,
     )
+    executor_timeout = (settings.solver_timeout_seconds or 300) + 5
 
     try:
         return await asyncio.wait_for(
             loop.run_in_executor(None, solve),
-            timeout=settings.solver_timeout_seconds + 5,
+            timeout=executor_timeout,
         )
     except asyncio.TimeoutError as exc:
+        limit = settings.solver_timeout_seconds or 300
         raise SchedulerError(
-            f"Scheduling exceeded wall-clock limit of {settings.solver_timeout_seconds}s"
+            f"Scheduling exceeded wall-clock limit of {limit}s"
         ) from exc

@@ -12,8 +12,8 @@ class Settings(BaseSettings):
     port: int = 8080
     log_level: str = "info"
 
-    # Solver wall-clock limit (seconds). Matches Mercato HEXALY_BRIDGE_TIMEOUT_MS default.
-    solver_timeout_seconds: int = Field(default=120, ge=1, le=600)
+    # Solver wall-clock limit (seconds). None selects tier defaults (30/120/300).
+    solver_timeout_seconds: int | None = Field(default=None, ge=1, le=600)
 
     # Optional bearer token (HEXALY_BRIDGE_API_KEY compatible).
     api_key: str | None = None

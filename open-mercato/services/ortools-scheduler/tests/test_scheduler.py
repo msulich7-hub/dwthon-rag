@@ -8,7 +8,13 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.schemas import ProductionOperation, ProductionOrder, ScheduleRequest
-from app.solver.scheduler import solve_schedule
+from app.solver.scheduler import (
+    CPSAT_PROFILES,
+    SolverSizeTier,
+    _apply_cpsat_profile,
+    _tier_for_operation_count,
+    solve_schedule,
+)
 
 
 def _sample_order(*, wc_a: str = "WC-CUT", wc_b: str = "WC-ASM") -> ProductionOrder:
@@ -39,6 +45,31 @@ def _sample_order(*, wc_a: str = "WC-CUT", wc_b: str = "WC-ASM") -> ProductionOr
             ),
         ],
     )
+
+
+def test_tier_boundaries() -> None:
+    assert _tier_for_operation_count(1) == SolverSizeTier.SMALL
+    assert _tier_for_operation_count(100) == SolverSizeTier.SMALL
+    assert _tier_for_operation_count(101) == SolverSizeTier.MEDIUM
+    assert _tier_for_operation_count(1000) == SolverSizeTier.MEDIUM
+    assert _tier_for_operation_count(1001) == SolverSizeTier.LARGE
+    assert _tier_for_operation_count(5000) == SolverSizeTier.LARGE
+
+
+def test_cpsat_profile_application() -> None:
+    from ortools.sat.python import cp_model
+
+    solver = cp_model.CpSolver()
+    profile = CPSAT_PROFILES[SolverSizeTier.LARGE]
+    _apply_cpsat_profile(solver, profile, timeout_seconds=None, num_workers=0)
+
+    params = solver.parameters
+    assert params.max_time_in_seconds == profile.max_time_in_seconds
+    assert params.search_branching == profile.search_branching
+    assert params.linearization_level == 2
+    assert params.use_lns is True
+    assert params.relative_gap_limit == 0.02
+    assert params.probing_deterministic_time_limit == 0.5
 
 
 def test_health_endpoint() -> None:

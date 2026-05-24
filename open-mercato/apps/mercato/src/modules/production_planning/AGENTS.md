@@ -18,6 +18,7 @@ Heavy scheduling runs in **`open-mercato/services/ortools-scheduler`** (Python, 
 | HTTP bridge | `lib/ortools-bridge.ts` → `ORTOOLS_BRIDGE_URL` (default `…/schedule`) |
 | Solve | Python `app/solver/scheduler.py` (CP-SAT) |
 | Apply result | `lib/apply-cpsat-schedule.ts` via `POST /api/production_planning/optimize` |
+| What-if scenarios | `data/what-if-scenarios.registry.json` · `lib/what-if-scenario-runner.ts` · `POST /api/production_planning/scenarios/runs` |
 
 Env: `ORTOOLS_BRIDGE_URL`, `ORTOOLS_BRIDGE_API_KEY`, `ORTOOLS_BRIDGE_TIMEOUT_MS`.
 

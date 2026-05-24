@@ -107,7 +107,7 @@ export default function ProductionGenesisPage() {
       .catch(() => setTree(null))
   }, [selectedRootId])
 
-  const runNetting = React.useCallback(async () => {
+  const runNetting = React.useCallback(async (mode: 'full' | 'incremental', bootstrapFromSilver: boolean) => {
     setBusy(true)
     setMessage(null)
     try {
@@ -115,13 +115,14 @@ export default function ProductionGenesisPage() {
         rootsProcessed: number
         poolMoCreated: number
         peggingLinksCreated: number
+        consolidationPct: number
       }>('/api/production_planning/mrp/netting/runs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: 'full' }),
+        body: JSON.stringify({ mode, bootstrapFromSilver }),
       })
       setMessage(
-        `Netting: ${result?.rootsProcessed ?? 0} korzeni · ${result?.poolMoCreated ?? 0} pool MO · ${result?.peggingLinksCreated ?? 0} pegów`,
+        `Netting (${mode}): ${result?.rootsProcessed ?? 0} korzeni · ${result?.poolMoCreated ?? 0} pool MO · ${result?.consolidationPct ?? 0}% konsolidacji`,
       )
       loadRoots()
       loadRuns()
@@ -131,6 +132,24 @@ export default function ProductionGenesisPage() {
       setBusy(false)
     }
   }, [loadRoots, loadRuns])
+
+  const bootstrapSilver = React.useCallback(async () => {
+    setBusy(true)
+    try {
+      const { result } = await apiCall<{ rootsCreated: number; silverLinesRead: number }>(
+        '/api/production_planning/mrp/silver/bootstrap',
+        { method: 'POST' },
+      )
+      setMessage(
+        `Silver bootstrap: ${result?.silverLinesRead ?? 0} linii · ${result?.rootsCreated ?? 0} nowych korzeni`,
+      )
+      loadRoots()
+    } catch {
+      setMessage('Bootstrap silver nie powiódł się.')
+    } finally {
+      setBusy(false)
+    }
+  }, [loadRoots])
 
   const runIfsExtract = React.useCallback(async () => {
     setBusy(true)
@@ -201,12 +220,41 @@ export default function ProductionGenesisPage() {
         <section className="rounded-lg border p-4 space-y-3">
           <h2 className="font-medium text-sm">Akcje</h2>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" disabled={busy} onClick={() => void runNetting()}>
-              Uruchom netting (full)
+            <Button
+              type="button"
+              size="sm"
+              disabled={busy}
+              onClick={() => void runNetting('full', false)}
+            >
+              Netting full
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => void runNetting('incremental', false)}
+            >
+              Netting incremental
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => void runNetting('full', true)}
+            >
+              Netting + silver bootstrap
+            </Button>
+            <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void bootstrapSilver()}>
+              Bootstrap genesis z silver
             </Button>
             <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void runIfsExtract()}>
-              IFS silver extract (pilot)
+              Mercato → silver extract
             </Button>
+            <Link href={PP_ROUTES.poolWorkbench} className="text-xs underline self-center text-muted-foreground">
+              Pool workbench
+            </Link>
           </div>
         </section>
 

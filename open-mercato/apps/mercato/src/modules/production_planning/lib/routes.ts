@@ -6,4 +6,6 @@ export const PP_ROUTES = {
   controlTower: '/backend/production_planning/control-tower',
   gantt: '/backend/production_planning/gantt',
   genesis: '/backend/production_planning/genesis',
+  hindsight: '/backend/production_planning/hindsight',
+  poolWorkbench: '/backend/production_planning/pool-workbench',
 } as const

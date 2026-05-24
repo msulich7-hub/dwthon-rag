@@ -1,5 +1,7 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import {
+  ProductionPlanningGenesisRoot,
+  ProductionPlanningIfsSilverExtractWatermark,
   ProductionPlanningOptimizeJob,
   ProductionPlanningOrder,
   ProductionPlanningPlanScenario,
@@ -19,6 +21,8 @@ export type PlanningException = {
     | 'failed_scenario'
     | 'failed_optimize'
     | 'bridge_unconfigured'
+    | 'silver_stale'
+    | 'genesis_empty'
   title: string
   message: string
   entityType: string
@@ -186,6 +190,53 @@ export async function listControlTowerExceptions(
     },
     { orderBy: { updatedAt: 'DESC' }, limit: 20 },
   )
+  const genesisCount = await em.count(ProductionPlanningGenesisRoot, {
+    tenantId: scope.tenantId,
+    organizationId: scope.organizationId,
+  })
+  const openOrders = await em.count(ProductionPlanningOrder, {
+    tenantId: scope.tenantId,
+    organizationId: scope.organizationId,
+    status: { $in: ['planned', 'in_progress', 'draft'] },
+  })
+  if (openOrders > 5 && genesisCount === 0) {
+    exceptions.push({
+      id: 'genesis-empty',
+      severity: 'medium',
+      category: 'genesis_empty',
+      title: 'No genesis roots — run MRP netting',
+      message: `${openOrders} open MO without genesis demand trees.`,
+      entityType: 'system',
+      entityId: 'genesis',
+      detectedAt: now.toISOString(),
+      ageMinutes: 0,
+      drillPath: '/backend/production_planning/genesis',
+    })
+  }
+
+  const silverWm = await em.find(ProductionPlanningIfsSilverExtractWatermark, {
+    tenantId: scope.tenantId,
+    organizationId: scope.organizationId,
+  })
+  const staleHours = 24
+  for (const wm of silverWm) {
+    if (!wm.lastSuccessAt) continue
+    const ageH = (now.getTime() - wm.lastSuccessAt.getTime()) / 3_600_000
+    if (ageH <= staleHours) continue
+    exceptions.push({
+      id: `silver-stale:${wm.entityName}`,
+      severity: 'medium',
+      category: 'silver_stale',
+      title: `Silver extract stale: ${wm.entityName}`,
+      message: `Last success ${Math.round(ageH)}h ago (Mercato pilot, not IFS JDBC).`,
+      entityType: 'ifs_silver',
+      entityId: wm.entityName,
+      detectedAt: wm.lastSuccessAt.toISOString(),
+      ageMinutes: Math.round(ageH * 60),
+      drillPath: '/backend/production_planning/genesis',
+    })
+  }
+
   for (const job of failedJobs) {
     exceptions.push({
       id: `optimize-failed:${job.id}`,

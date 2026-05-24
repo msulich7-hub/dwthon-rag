@@ -44,6 +44,16 @@ export default function ProductionPlanningHubPage() {
               Korzenie popytu · netting · IFS silver pilot
             </div>
           </Link>
+          <Link href={PP_ROUTES.poolWorkbench} className="rounded-lg border p-4 hover:bg-muted/50">
+            <div className="font-medium">Pool MO workbench</div>
+            <div className="text-xs text-muted-foreground mt-1">Pegi · skonsolidowane zlecenia</div>
+          </Link>
+          <Link href={PP_ROUTES.hindsight} className="rounded-lg border p-4 hover:bg-muted/50">
+            <div className="font-medium">Hindsight (chaos premium)</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              Porównanie scenariuszy · PLN bez actuals IFS
+            </div>
+          </Link>
         </div>
         <p className="text-sm text-muted-foreground">
           Integracja ze sprzedażą: zakładka „Produkcja” na szczegółach zamówienia oraz chipy statusu na pasku etapów.

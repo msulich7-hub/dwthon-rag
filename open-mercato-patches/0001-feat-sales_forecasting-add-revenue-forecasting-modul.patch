@@ -1,0 +1,1853 @@
+From 7469b1ae8085609924b5dd52c4f9da8b5024960a Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Sun, 24 May 2026 08:29:11 +0000
+Subject: [PATCH] feat(sales_forecasting): add revenue forecasting module with
+ ARIMA engines
+
+Introduce @open-mercato/sales-forecasting package that aggregates sales
+order gross revenue into time buckets and runs pluggable forecast models
+(naive, moving average, seasonal naive, AutoARIMA via arima npm).
+
+Includes spec, migration, predict/runs APIs, admin UI, i18n, and unit tests.
+Wires module into mercato app and create-app template.
+---
+ ...sales-forecasting-module-starter-prompt.md | 176 +++++++++++++++++
+ .../docs/architecture/module-dependencies.mdx |   1 +
+ apps/mercato/package.json                     |   1 +
+ apps/mercato/src/modules.ts                   |   1 +
+ .../create-app/template/package.json.template |   1 +
+ packages/create-app/template/src/modules.ts   |   1 +
+ packages/sales-forecasting/AGENTS.md          |  33 ++++
+ packages/sales-forecasting/build.mjs          |   7 +
+ packages/sales-forecasting/jest.config.cjs    |  34 ++++
+ packages/sales-forecasting/package.json       | 102 ++++++++++
+ packages/sales-forecasting/src/index.ts       |   1 +
+ .../src/modules/sales_forecasting/acl.ts      |   7 +
+ .../modules/sales_forecasting/api/helpers.ts  |  49 +++++
+ .../sales_forecasting/api/predict/route.ts    |  67 +++++++
+ .../sales_forecasting/api/runs/route.ts       |  84 ++++++++
+ .../backend/sales_forecasting/page.meta.ts    |  29 +++
+ .../backend/sales_forecasting/page.tsx        | 179 ++++++++++++++++++
+ .../sales_forecasting/data/entities.ts        |  46 +++++
+ .../sales_forecasting/data/validators.ts      |  22 +++
+ .../src/modules/sales_forecasting/di.ts       |   6 +
+ .../modules/sales_forecasting/i18n/de.json    |  23 +++
+ .../modules/sales_forecasting/i18n/en.json    |  23 +++
+ .../modules/sales_forecasting/i18n/es.json    |  23 +++
+ .../modules/sales_forecasting/i18n/pl.json    |  23 +++
+ .../src/modules/sales_forecasting/index.ts    |  14 ++
+ .../lib/aggregateSalesHistory.ts              |  50 +++++
+ .../lib/engines/__tests__/engines.test.ts     |  53 ++++++
+ .../sales_forecasting/lib/engines/arima.ts    |  60 ++++++
+ .../sales_forecasting/lib/engines/index.ts    |   5 +
+ .../lib/engines/movingAverage.ts              |  35 ++++
+ .../sales_forecasting/lib/engines/naive.ts    |  21 ++
+ .../sales_forecasting/lib/engines/period.ts   |  31 +++
+ .../sales_forecasting/lib/engines/registry.ts |  28 +++
+ .../lib/engines/seasonalNaive.ts              |  28 +++
+ .../modules/sales_forecasting/lib/types.ts    |  34 ++++
+ .../migrations/Migration20260524120000.ts     |  28 +++
+ .../services/forecastService.ts               |  98 ++++++++++
+ .../src/modules/sales_forecasting/setup.ts    |  11 ++
+ packages/sales-forecasting/tsconfig.json      |   9 +
+ yarn.lock                                     |  33 ++++
+ 40 files changed, 1477 insertions(+)
+ create mode 100644 .ai/specs/2026-05-24-sales-forecasting-module-starter-prompt.md
+ create mode 100644 packages/sales-forecasting/AGENTS.md
+ create mode 100644 packages/sales-forecasting/build.mjs
+ create mode 100644 packages/sales-forecasting/jest.config.cjs
+ create mode 100644 packages/sales-forecasting/package.json
+ create mode 100644 packages/sales-forecasting/src/index.ts
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/acl.ts
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/api/helpers.ts
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/api/predict/route.ts
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/api/runs/route.ts
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/backend/sales_forecasting/page.meta.ts
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/backend/sales_forecasting/page.tsx
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/data/entities.ts
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/data/validators.ts
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/di.ts
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/i18n/de.json
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/i18n/en.json
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/i18n/es.json
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/i18n/pl.json
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/index.ts
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/lib/aggregateSalesHistory.ts
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/__tests__/engines.test.ts
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/arima.ts
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/index.ts
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/movingAverage.ts
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/naive.ts
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/period.ts
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/registry.ts
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/seasonalNaive.ts
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/lib/types.ts
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/migrations/Migration20260524120000.ts
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/services/forecastService.ts
+ create mode 100644 packages/sales-forecasting/src/modules/sales_forecasting/setup.ts
+ create mode 100644 packages/sales-forecasting/tsconfig.json
+
+diff --git a/.ai/specs/2026-05-24-sales-forecasting-module-starter-prompt.md b/.ai/specs/2026-05-24-sales-forecasting-module-starter-prompt.md
+new file mode 100644
+index 0000000..de7b03b
+--- /dev/null
++++ b/.ai/specs/2026-05-24-sales-forecasting-module-starter-prompt.md
+@@ -0,0 +1,176 @@
++# Sales Forecasting Module — Starter Prompt & Specification
++
++**Date:** 2026-05-24  
++**Module:** `sales_forecasting` (`@open-mercato/sales-forecasting`)  
++**Status:** In progress (MVP implemented)  
++**Depends on:** `sales` (order revenue history), `directory` (tenant/org scope)
++
++## TLDR
++
++Add an optional Open Mercato package that aggregates historical **sales order revenue** into time buckets, runs pluggable forecasting engines (baseline + ARIMA via open-source npm), persists forecast runs for audit, and exposes admin UI + API for revenue planning.
++
++## Overview
++
++Sales and operations teams need forward-looking revenue views without exporting data to spreadsheets or external BI tools. This module sits on top of existing `sales_orders` data, respects multi-tenant organization scoping, and keeps forecasting logic isolated in a dedicated package so core `sales` stays transactional.
++
++## Problem Statement
++
++- Open Mercato has rich sales documents (orders, quotes, invoices) but no first-class **time-series forecasting**.
++- Teams currently rely on external tools (Excel, Python notebooks, Prophet) with manual exports — breaking tenancy, RBAC, and audit trails.
++- Embedding heavy ML in core would bloat the platform; a **separate ejectable module** matches the official-modules pattern.
++
++## Proposed Solution (MVP)
++
++1. **History aggregation** — bucket `SalesOrder.grandTotalGrossAmount` by day/week/month using `COALESCE(placed_at, created_at)`.
++2. **Forecast engines** (registry pattern):
++   - `naive` — repeat last observed value
++   - `moving_average` — windowed mean (default window 3)
++   - `seasonal_naive` — repeat value from one season ago (weekly/monthly)
++   - `arima` — AutoARIMA via [`arima`](https://www.npmjs.com/package/arima) (MIT, WASM, Node + browser)
++3. **Persistence** — `sales_forecast_runs` stores parameters, historical points, forecast points, and diagnostics.
++4. **API** — `POST /api/sales_forecasting/predict` (on-demand), `GET /api/sales_forecasting/runs` (paginated history).
++5. **Admin UI** — `/backend/sales_forecasting` with metric/horizon/engine selectors and results table.
++
++## Open-Source Forecasting Landscape (evaluation)
++
++| Library | Runtime | License | Fit for Open Mercato | Notes |
++|---------|---------|---------|----------------------|-------|
++| [**arima**](https://github.com/zemlyansky/arima) | Node (WASM) | MIT | **MVP choice** | ARIMA/SARIMA/AutoARIMA, no native deps, ~16k weekly npm downloads |
++| [**@sipemu/anofox-forecast**](https://www.npmjs.com/package/@sipemu/anofox-forecast) | Node (WASM) | MIT | Phase 2 | 50+ models, AutoEnsemble; newer, smaller ecosystem |
++| [**Prophet**](https://github.com/facebook/prophet) | Python | MIT | Sidecar / worker | Best for strong seasonality + holidays; requires Python service or queue worker |
++| **statsmodels** (ARIMA/ETS) | Python | BSD | Sidecar | Common in Django stacks; not in-process for TS monolith |
++| **simple-statistics** / hand-rolled | Node | Various | Baselines only | Good for naive/MA; insufficient alone for seasonality |
++
++**Recommendation:** Ship **in-process baselines + `arima` AutoARIMA** in MVP. Add optional **Prophet sidecar** (HTTP worker or queue job) in a follow-up spec when holiday calendars and changepoint detection are required.
++
++## Architecture
++
++```
++┌─────────────────────────────────────────────────────────────┐
++│  @open-mercato/sales-forecasting (package)                  │
++│  ┌─────────────────┐  ┌──────────────────────────────────┐  │
++│  │ aggregateSales  │→ │ forecast engines (registry)      │  │
++│  │ History (sales) │  │ naive | moving_avg | seasonal |  │  │
++│  └────────┬────────┘  │ arima (npm arima)                │  │
++│           │           └──────────────┬───────────────────┘  │
++│           │                          │                      │
++│           ▼                          ▼                      │
++│  ┌────────────────────────────────────────────────────────┐ │
++│  │ SalesForecastRun entity + forecastService              │ │
++│  └────────────────────────────────────────────────────────┘ │
++│           │ API predict / runs  │  Backend UI page         │
++└───────────┴─────────────────────┴──────────────────────────┘
++            │ reads SalesOrder (@open-mercato/core)
++            ▼
++```
++
++- **Package:** `packages/sales-forecasting` — mirrors `webhooks` layout.
++- **Registration:** `{ id: 'sales_forecasting', from: '@open-mercato/sales-forecasting' }` in `apps/mercato/src/modules.ts`.
++- **RBAC:** `sales_forecasting.view`, `sales_forecasting.run`, `sales_forecasting.manage`.
++
++## Data Models
++
++### `SalesForecastRun` (`sales_forecast_runs`)
++
++| Field | Type | Description |
++|-------|------|-------------|
++| `id` | uuid | PK |
++| `tenant_id`, `organization_id` | uuid | Scope |
++| `metric` | text | `revenue_gross` (MVP) |
++| `granularity` | text | `day` \| `week` \| `month` |
++| `engine` | text | Engine key |
++| `horizon` | int | Forecast steps |
++| `history_points` | jsonb | `{ periodStart, value }[]` |
++| `forecast_points` | jsonb | `{ periodStart, value, lower?, upper? }[]` |
++| `diagnostics` | jsonb | Engine metadata, point counts, errors |
++| `created_by_user_id` | uuid? | Actor |
++| `created_at`, `updated_at` | timestamptz | Audit |
++
++## API Contracts
++
++### `POST /api/sales_forecasting/predict`
++
++**Auth:** `sales_forecasting.run`
++
++**Body:**
++```json
++{
++  "metric": "revenue_gross",
++  "granularity": "week",
++  "engine": "arima",
++  "horizon": 12,
++  "historyPeriods": 52,
++  "engineOptions": { "auto": true }
++}
++```
++
++**Response:**
++```json
++{
++  "runId": "uuid",
++  "engine": "arima",
++  "history": [{ "periodStart": "2025-06-02", "value": 12000.5 }],
++  "forecast": [{ "periodStart": "2026-05-26", "value": 13500.2 }],
++  "diagnostics": { "historyCount": 52, "minimumPoints": 8 }
++}
++```
++
++### `GET /api/sales_forecasting/runs`
++
++**Auth:** `sales_forecasting.view` — paginated list of persisted runs.
++
++## UI/UX
++
++- **Nav:** Sales group → “Sales forecasting” (`/backend/sales_forecasting`).
++- Controls: granularity, horizon, engine, history depth.
++- Results: historical + forecast tables; future chart widget (dashboard injection) out of MVP scope.
++
++## Risks & Impact Review
++
++| Risk | Severity | Mitigation | Residual |
++|------|----------|------------|----------|
++| Sparse order history → poor forecasts | Medium | Minimum point guard; clear diagnostics | Users must interpret low-data warnings |
++| ARIMA WASM perf on large horizons | Low | Cap horizon (e.g. 52); run async in phase 2 | Large tenants may need queue worker |
++| Currency mixing | Medium | MVP: single-currency org assumption; filter by dominant `currency_code` in phase 2 | Multi-currency orgs see blended series |
++| Deleted/cancelled orders skew history | Medium | Exclude `deleted_at` + optional status filter in phase 2 | MVP includes all non-deleted orders |
++
++## Phase 2 (out of MVP)
++
++- Deal pipeline weighted forecast (`customer_deals` × stage probability)
++- Prophet / anofox sidecar + ensemble picker
++- Dashboard widget + AI assistant tool
++- Scheduled refresh via `scheduler` module
++- Confidence intervals from ARIMA variance
++
++## Agent Starter Prompt
++
++Use this block when implementing or extending the module:
++
++```
++You are adding or extending the Open Mercato `sales_forecasting` module in
++`packages/sales-forecasting/`.
++
++Before coding:
++1. Read `.ai/specs/2026-05-24-sales-forecasting-module-starter-prompt.md`
++2. Read `packages/sales-forecasting/AGENTS.md`
++3. Mirror patterns from `packages/webhooks` (package layout, ACL, setup, API scope helpers)
++4. Read `packages/core/src/modules/sales/data/entities.ts` for SalesOrder fields
++
++Rules:
++- MUST depend on `sales` module data via DI (`SalesOrder`) — no duplicated order tables
++- MUST scope all queries by tenantId + organizationId (see api/helpers.ts)
++- MUST register engines in `lib/engines/registry.ts` — no ad hoc model calls from routes
++- Prefer MIT/Apache OSS engines runnable in Node; document Python sidecars in spec only
++- Add unit tests for each engine in `lib/engines/__tests__/`
++- Update i18n: en, pl, de, es
++
++Deliverables for a feature slice:
++- Entity/migration if persistence changes
++- API route + zod validators + openapi export
++- Backend page under `backend/sales_forecasting/`
++- Tests + `yarn workspace @open-mercato/sales-forecasting test`
++```
++
++## Changelog
++
++- **2026-05-24** — Initial spec + MVP package (`@open-mercato/sales-forecasting`): engines, predict API, runs list, admin page, migration.
+diff --git a/apps/docs/docs/architecture/module-dependencies.mdx b/apps/docs/docs/architecture/module-dependencies.mdx
+index f50aac3..feca587 100644
+--- a/apps/docs/docs/architecture/module-dependencies.mdx
++++ b/apps/docs/docs/architecture/module-dependencies.mdx
+@@ -103,6 +103,7 @@ The tables below enumerate every module discovered under `packages/*/src/modules
+ | `scheduler` | `@open-mercato/scheduler` | — | |
+ | `search` | `@open-mercato/search` | — | |
+ | `sync_akeneo` | `@open-mercato/sync-akeneo` | `integrations`, `data_sync`, `catalog`, `sales` | |
++| `sales_forecasting` | `@open-mercato/sales-forecasting` | `sales`, `directory` | Revenue time-series forecasting |
+ | `webhooks` | `@open-mercato/webhooks` | — | |
+ 
+ ### Enterprise (`@open-mercato/enterprise`)
+diff --git a/apps/mercato/package.json b/apps/mercato/package.json
+index 4e7a07c..7a616e5 100644
+--- a/apps/mercato/package.json
++++ b/apps/mercato/package.json
+@@ -42,6 +42,7 @@
+     "@open-mercato/gateway-stripe": "workspace:*",
+     "@open-mercato/onboarding": "workspace:*",
+     "@open-mercato/queue": "workspace:*",
++    "@open-mercato/sales-forecasting": "workspace:*",
+     "@open-mercato/scheduler": "workspace:*",
+     "@open-mercato/search": "workspace:*",
+     "@open-mercato/shared": "workspace:*",
+diff --git a/apps/mercato/src/modules.ts b/apps/mercato/src/modules.ts
+index 14f345d..80d580c 100644
+--- a/apps/mercato/src/modules.ts
++++ b/apps/mercato/src/modules.ts
+@@ -75,6 +75,7 @@ export const enabledModules: ModuleEntry[] = [
+   { id: 'attachments', from: '@open-mercato/core' },
+   { id: 'catalog', from: '@open-mercato/core' },
+   { id: 'sales', from: '@open-mercato/core' },
++  { id: 'sales_forecasting', from: '@open-mercato/sales-forecasting' },
+   { id: 'api_keys', from: '@open-mercato/core' },
+   { id: 'dictionaries', from: '@open-mercato/core' },
+   { id: 'content', from: '@open-mercato/content' },
+diff --git a/packages/create-app/template/package.json.template b/packages/create-app/template/package.json.template
+index a6ab4b0..931c508 100644
+--- a/packages/create-app/template/package.json.template
++++ b/packages/create-app/template/package.json.template
+@@ -52,6 +52,7 @@
+     "@open-mercato/search": "{{PACKAGE_VERSION}}",
+     "@open-mercato/shared": "{{PACKAGE_VERSION}}",
+     "@open-mercato/ui": "{{PACKAGE_VERSION}}",
++    "@open-mercato/sales-forecasting": "{{PACKAGE_VERSION}}",
+     "@open-mercato/webhooks": "{{PACKAGE_VERSION}}",
+     "@radix-ui/react-popover": "^1.1.6",
+     "@dnd-kit/core": "^6.3.1",
+diff --git a/packages/create-app/template/src/modules.ts b/packages/create-app/template/src/modules.ts
+index 14f345d..80d580c 100644
+--- a/packages/create-app/template/src/modules.ts
++++ b/packages/create-app/template/src/modules.ts
+@@ -75,6 +75,7 @@ export const enabledModules: ModuleEntry[] = [
+   { id: 'attachments', from: '@open-mercato/core' },
+   { id: 'catalog', from: '@open-mercato/core' },
+   { id: 'sales', from: '@open-mercato/core' },
++  { id: 'sales_forecasting', from: '@open-mercato/sales-forecasting' },
+   { id: 'api_keys', from: '@open-mercato/core' },
+   { id: 'dictionaries', from: '@open-mercato/core' },
+   { id: 'content', from: '@open-mercato/content' },
+diff --git a/packages/sales-forecasting/AGENTS.md b/packages/sales-forecasting/AGENTS.md
+new file mode 100644
+index 0000000..44707c1
+--- /dev/null
++++ b/packages/sales-forecasting/AGENTS.md
+@@ -0,0 +1,33 @@
++# Sales Forecasting Package — Agent Guidelines
++
++Use `@open-mercato/sales-forecasting` for revenue time-series aggregation, forecasting engines, and forecast run persistence.
++
++## MUST Rules
++
++1. **MUST require the `sales` module** — historical series are built from `SalesOrder`; do not duplicate order tables.
++2. **MUST scope every query by `tenantId` and `organizationId`** — use `api/helpers.ts` request scope resolution.
++3. **MUST add new engines via `lib/engines/registry.ts`** — routes and services call the registry, not engine implementations directly.
++4. **MUST keep engines pure** — no database access inside `lib/engines/*`; pass `TimeSeriesPoint[]` only.
++5. **MUST add unit tests** for each engine under `lib/engines/__tests__/`.
++6. **MUST update i18n** in `en`, `pl`, `de`, `es` when adding user-facing strings.
++
++## Structure
++
++```text
++packages/sales-forecasting/src/modules/sales_forecasting/
++├── api/                      # predict + runs list
++├── backend/sales_forecasting/ # Admin UI
++├── data/                     # Entities and validators
++├── lib/engines/              # Forecast engine registry
++├── lib/aggregateSalesHistory.ts
++├── services/forecastService.ts
++└── migrations/
++```
++
++## Checklist
++
++1. Read `.ai/specs/2026-05-24-sales-forecasting-module-starter-prompt.md`
++2. Implement engine + tests
++3. `yarn workspace @open-mercato/sales-forecasting test`
++4. `yarn workspace @open-mercato/sales-forecasting build`
++5. Enable module in `apps/mercato/src/modules.ts` if not already present
+diff --git a/packages/sales-forecasting/build.mjs b/packages/sales-forecasting/build.mjs
+new file mode 100644
+index 0000000..f446985
+--- /dev/null
++++ b/packages/sales-forecasting/build.mjs
+@@ -0,0 +1,7 @@
++import { dirname } from 'node:path'
++import { fileURLToPath } from 'node:url'
++import { buildPackage } from '../../scripts/build-package.mjs'
++
++const packageDir = dirname(fileURLToPath(import.meta.url))
++
++await buildPackage(packageDir, { name: 'sales-forecasting' })
+diff --git a/packages/sales-forecasting/jest.config.cjs b/packages/sales-forecasting/jest.config.cjs
+new file mode 100644
+index 0000000..7787d75
+--- /dev/null
++++ b/packages/sales-forecasting/jest.config.cjs
+@@ -0,0 +1,34 @@
++/** @type {import('jest').Config} */
++module.exports = {
++  testEnvironment: 'node',
++  watchman: false,
++  rootDir: '.',
++  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
++  moduleNameMapper: {
++    '^@open-mercato/cache$': '<rootDir>/../cache/src/index.ts',
++    '^@open-mercato/cache/(.*)$': '<rootDir>/../cache/src/$1',
++    '^@open-mercato/core$': '<rootDir>/../core/src/index.ts',
++    '^@open-mercato/core/(.*)$': '<rootDir>/../core/src/$1',
++    '^@open-mercato/shared$': '<rootDir>/../shared/src/index.ts',
++    '^@open-mercato/shared/(.*)$': '<rootDir>/../shared/src/$1',
++    '^@open-mercato/ui$': '<rootDir>/../ui/src/index.ts',
++    '^@open-mercato/ui/(.*)$': '<rootDir>/../ui/src/$1',
++  },
++  transform: {
++    '^.+\\.(t|j)sx?$': [
++      '<rootDir>/../../scripts/jest-mikroorm-transformer.cjs',
++      {
++        tsconfig: {
++          jsx: 'react-jsx',
++          rootDir: '.',
++          ignoreDeprecations: '6.0',
++        },
++      },
++    ],
++  },
++  transformIgnorePatterns: [
++    'node_modules/(?!(@mikro-orm|kysely|arima)/)',
++  ],
++  testMatch: ['<rootDir>/src/**/__tests__/**/*.test.(ts|tsx)'],
++  passWithNoTests: true,
++}
+diff --git a/packages/sales-forecasting/package.json b/packages/sales-forecasting/package.json
+new file mode 100644
+index 0000000..495108b
+--- /dev/null
++++ b/packages/sales-forecasting/package.json
+@@ -0,0 +1,102 @@
++{
++  "name": "@open-mercato/sales-forecasting",
++  "version": "0.6.2",
++  "description": "Sales revenue forecasting for Open Mercato — time-series engines on sales order history",
++  "type": "module",
++  "main": "./dist/index.js",
++  "scripts": {
++    "build": "node build.mjs",
++    "test": "jest --config jest.config.cjs",
++    "typecheck": "tsc --noEmit"
++  },
++  "exports": {
++    ".": "./dist/index.js",
++    "./*.ts": {
++      "types": "./src/*.ts",
++      "default": "./dist/*.js"
++    },
++    "./*.tsx": {
++      "types": "./src/*.tsx",
++      "default": "./dist/*.js"
++    },
++    "./*.json": "./src/*.json",
++    "./*": {
++      "types": [
++        "./src/*.ts",
++        "./src/*.tsx"
++      ],
++      "default": "./dist/*.js"
++    },
++    "./*/*.json": "./src/*/*.json",
++    "./*/*": {
++      "types": [
++        "./src/*/*.ts",
++        "./src/*/*.tsx"
++      ],
++      "default": "./dist/*/*.js"
++    },
++    "./*/*/*.json": "./src/*/*/*.json",
++    "./*/*/*": {
++      "types": [
++        "./src/*/*/*.ts",
++        "./src/*/*/*.tsx"
++      ],
++      "default": "./dist/*/*/*.js"
++    },
++    "./*/*/*/*.json": "./src/*/*/*/*.json",
++    "./*/*/*/*": {
++      "types": [
++        "./src/*/*/*/*.ts",
++        "./src/*/*/*/*.tsx"
++      ],
++      "default": "./dist/*/*/*/*.js"
++    },
++    "./*/*/*/*/*.json": "./src/*/*/*/*/*.json",
++    "./*/*/*/*/*": {
++      "types": [
++        "./src/*/*/*/*/*.ts",
++        "./src/*/*/*/*/*.tsx"
++      ],
++      "default": "./dist/*/*/*/*/*.js"
++    },
++    "./*/*/*/*/*/*.json": "./src/*/*/*/*/*/*.json",
++    "./*/*/*/*/*/*": {
++      "types": [
++        "./src/*/*/*/*/*/*.ts",
++        "./src/*/*/*/*/*/*.tsx"
++      ],
++      "default": "./dist/*/*/*/*/*/*.js"
++    }
++  },
++  "dependencies": {
++    "@open-mercato/core": "workspace:*",
++    "@open-mercato/ui": "workspace:*",
++    "arima": "^0.2.8"
++  },
++  "peerDependencies": {
++    "@mikro-orm/postgresql": "^7.0.14",
++    "@open-mercato/shared": "workspace:*",
++    "react": "^19.0.0",
++    "react-dom": "^19.0.0"
++  },
++  "devDependencies": {
++    "@open-mercato/shared": "workspace:*",
++    "@types/jest": "^30.0.0",
++    "@types/react": "^19.2.14",
++    "@types/react-dom": "^19.2.3",
++    "esbuild": "^0.28.0",
++    "glob": "^13.0.6",
++    "jest": "^30.4.2",
++    "react": "19.2.6",
++    "react-dom": "19.2.6",
++    "ts-jest": "^29.4.9"
++  },
++  "publishConfig": {
++    "access": "public"
++  },
++  "repository": {
++    "type": "git",
++    "url": "https://github.com/open-mercato/open-mercato",
++    "directory": "packages/sales-forecasting"
++  }
++}
+diff --git a/packages/sales-forecasting/src/index.ts b/packages/sales-forecasting/src/index.ts
+new file mode 100644
+index 0000000..f179596
+--- /dev/null
++++ b/packages/sales-forecasting/src/index.ts
+@@ -0,0 +1 @@
++export { metadata } from './modules/sales_forecasting/index'
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/acl.ts b/packages/sales-forecasting/src/modules/sales_forecasting/acl.ts
+new file mode 100644
+index 0000000..c64ccea
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/acl.ts
+@@ -0,0 +1,7 @@
++export const features = [
++  { id: 'sales_forecasting.view', title: 'View sales forecasts', module: 'sales_forecasting' },
++  { id: 'sales_forecasting.run', title: 'Run sales forecasts', module: 'sales_forecasting' },
++  { id: 'sales_forecasting.manage', title: 'Manage sales forecast settings', module: 'sales_forecasting' },
++]
++
++export default features
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/api/helpers.ts b/packages/sales-forecasting/src/modules/sales_forecasting/api/helpers.ts
+new file mode 100644
+index 0000000..8f0c532
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/api/helpers.ts
+@@ -0,0 +1,49 @@
++import type { EntityManager } from '@mikro-orm/postgresql'
++import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
++import { getAuthFromRequest } from '@open-mercato/shared/lib/auth/server'
++import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
++import { resolveOrganizationScopeForRequest } from '@open-mercato/core/modules/directory/utils/organizationScope'
++
++export type ForecastRequestScope = {
++  container: Awaited<ReturnType<typeof createRequestContainer>>
++  em: EntityManager
++  tenantId: string
++  organizationId: string
++  userId: string | null
++}
++
++export function json(payload: unknown, init: ResponseInit = { status: 200 }): Response {
++  return new Response(JSON.stringify(payload), {
++    ...init,
++    headers: { 'content-type': 'application/json', ...(init.headers || {}) },
++  })
++}
++
++export async function resolveForecastRequestScope(request: Request): Promise<ForecastRequestScope | Response> {
++  const container = await createRequestContainer()
++  const auth = await getAuthFromRequest(request)
++  const { translate } = await resolveTranslations()
++
++  if (!auth) {
++    return json({ error: translate('api.errors.unauthorized', 'Unauthorized') }, { status: 401 })
++  }
++
++  const scope = await resolveOrganizationScopeForRequest({ container, auth, request })
++  const tenantId = scope?.tenantId ?? auth.tenantId ?? null
++  const organizationId = scope?.selectedId ?? auth.orgId ?? null
++
++  if (!tenantId || !organizationId) {
++    return json(
++      { error: translate('sales_forecasting.errors.scopeRequired', 'Organization context required') },
++      { status: 400 },
++    )
++  }
++
++  return {
++    container,
++    em: container.resolve('em') as EntityManager,
++    tenantId,
++    organizationId,
++    userId: auth.sub ?? null,
++  }
++}
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/api/predict/route.ts b/packages/sales-forecasting/src/modules/sales_forecasting/api/predict/route.ts
+new file mode 100644
+index 0000000..de11d38
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/api/predict/route.ts
+@@ -0,0 +1,67 @@
++import { z } from 'zod'
++import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
++import { predictBodySchema } from '../../data/validators'
++import { runSalesForecast } from '../../services/forecastService'
++import { json, resolveForecastRequestScope } from '../helpers'
++
++export const metadata = {
++  POST: { requireAuth: true, requireFeatures: ['sales_forecasting.run'] },
++}
++
++const responseSchema = z.object({
++  runId: z.string().uuid().nullable(),
++  engine: z.string(),
++  metric: z.string(),
++  granularity: z.string(),
++  history: z.array(z.object({ periodStart: z.string(), value: z.number() })),
++  forecast: z.array(z.object({
++    periodStart: z.string(),
++    value: z.number(),
++    lower: z.number().optional(),
++    upper: z.number().optional(),
++  })),
++  diagnostics: z.record(z.string(), z.unknown()),
++})
++
++const errorSchema = z.object({ error: z.string() })
++
++export async function POST(request: Request): Promise<Response> {
++  const scope = await resolveForecastRequestScope(request)
++  if (scope instanceof Response) return scope
++
++  const parsed = predictBodySchema.safeParse(await request.json().catch(() => ({})))
++  if (!parsed.success) {
++    return json({ error: 'Invalid request payload' }, { status: 400 })
++  }
++
++  const em = scope.em.fork()
++  try {
++    const result = await runSalesForecast({
++      em,
++      tenantId: scope.tenantId,
++      organizationId: scope.organizationId,
++      userId: scope.userId,
++      input: parsed.data,
++    })
++    return json(result)
++  } catch (error) {
++    const message = error instanceof Error ? error.message : 'Forecast failed'
++    return json({ error: message }, { status: 500 })
++  }
++}
++
++export const openApi: OpenApiRouteDoc = {
++  summary: 'Run sales revenue forecast',
++  description: 'Aggregates sales order history and runs the selected forecasting engine.',
++  methods: {
++    POST: {
++      requestBody: predictBodySchema,
++      responses: {
++        200: { schema: responseSchema },
++        400: { schema: errorSchema },
++        401: { schema: errorSchema },
++        500: { schema: errorSchema },
++      },
++    },
++  },
++}
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/api/runs/route.ts b/packages/sales-forecasting/src/modules/sales_forecasting/api/runs/route.ts
+new file mode 100644
+index 0000000..d39f0c3
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/api/runs/route.ts
+@@ -0,0 +1,84 @@
++import { z } from 'zod'
++import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
++import { SalesForecastRun } from '../../data/entities'
++import { runsListQuerySchema } from '../../data/validators'
++import { json, resolveForecastRequestScope } from '../helpers'
++
++export const metadata = {
++  GET: { requireAuth: true, requireFeatures: ['sales_forecasting.view'] },
++}
++
++const runItemSchema = z.object({
++  id: z.string().uuid(),
++  metric: z.string(),
++  granularity: z.string(),
++  engine: z.string(),
++  horizon: z.number(),
++  createdAt: z.string(),
++  diagnostics: z.record(z.string(), z.unknown()).nullable(),
++})
++
++const listResponseSchema = z.object({
++  items: z.array(runItemSchema),
++  total: z.number(),
++  page: z.number(),
++  pageSize: z.number(),
++  totalPages: z.number(),
++})
++
++export async function GET(request: Request): Promise<Response> {
++  const scope = await resolveForecastRequestScope(request)
++  if (scope instanceof Response) return scope
++
++  const url = new URL(request.url)
++  const parsed = runsListQuerySchema.safeParse({
++    page: url.searchParams.get('page') ?? undefined,
++    pageSize: url.searchParams.get('pageSize') ?? undefined,
++  })
++  if (!parsed.success) {
++    return json({ error: 'Invalid query parameters' }, { status: 400 })
++  }
++
++  const { page, pageSize } = parsed.data
++  const em = scope.em.fork()
++  const where = {
++    tenantId: scope.tenantId,
++    organizationId: scope.organizationId,
++  }
++
++  const [items, total] = await em.findAndCount(SalesForecastRun, where, {
++    orderBy: { createdAt: 'DESC' },
++    limit: pageSize,
++    offset: (page - 1) * pageSize,
++  })
++
++  const totalPages = Math.max(1, Math.ceil(total / pageSize))
++
++  return json({
++    items: items.map((run) => ({
++      id: run.id,
++      metric: run.metric,
++      granularity: run.granularity,
++      engine: run.engine,
++      horizon: run.horizon,
++      createdAt: run.createdAt.toISOString(),
++      diagnostics: run.diagnostics ?? null,
++    })),
++    total,
++    page,
++    pageSize,
++    totalPages,
++  })
++}
++
++export const openApi: OpenApiRouteDoc = {
++  summary: 'List sales forecast runs',
++  description: 'Returns paginated forecast run history for the current organization.',
++  methods: {
++    GET: {
++      responses: {
++        200: { schema: listResponseSchema },
++      },
++    },
++  },
++}
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/backend/sales_forecasting/page.meta.ts b/packages/sales-forecasting/src/modules/sales_forecasting/backend/sales_forecasting/page.meta.ts
+new file mode 100644
+index 0000000..205864f
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/backend/sales_forecasting/page.meta.ts
+@@ -0,0 +1,29 @@
++import React from 'react'
++
++const forecastIcon = React.createElement(
++  'svg',
++  {
++    width: 16,
++    height: 16,
++    viewBox: '0 0 24 24',
++    fill: 'none',
++    stroke: 'currentColor',
++    strokeWidth: 2,
++    strokeLinecap: 'round',
++    strokeLinejoin: 'round',
++  },
++  React.createElement('path', { d: 'M3 3v18h18' }),
++  React.createElement('path', { d: 'm7 14 4-4 4 4 5-6' }),
++)
++
++export const metadata = {
++  requireAuth: true,
++  requireFeatures: ['sales_forecasting.view'],
++  pageTitle: 'Sales forecasting',
++  pageTitleKey: 'sales_forecasting.nav.title',
++  pageGroup: 'Sales',
++  pageGroupKey: 'backend.nav.sales',
++  pageOrder: 50,
++  icon: forecastIcon,
++  breadcrumb: [{ label: 'Sales forecasting', labelKey: 'sales_forecasting.nav.title' }],
++}
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/backend/sales_forecasting/page.tsx b/packages/sales-forecasting/src/modules/sales_forecasting/backend/sales_forecasting/page.tsx
+new file mode 100644
+index 0000000..ec64a2c
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/backend/sales_forecasting/page.tsx
+@@ -0,0 +1,179 @@
++"use client"
++
++import * as React from 'react'
++import { Page, PageBody } from '@open-mercato/ui/backend/Page'
++import { Button } from '@open-mercato/ui/primitives/button'
++import { Input } from '@open-mercato/ui/primitives/input'
++import { Label } from '@open-mercato/ui/primitives/label'
++import {
++  Select,
++  SelectContent,
++  SelectItem,
++  SelectTrigger,
++  SelectValue,
++} from '@open-mercato/ui/primitives/select'
++import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
++import { Spinner } from '@open-mercato/ui/primitives/spinner'
++import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
++import { flash } from '@open-mercato/ui/backend/FlashMessages'
++import { useT } from '@open-mercato/shared/lib/i18n/context'
++import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
++
++type SeriesPoint = { periodStart: string; value: number }
++
++type PredictResponse = {
++  runId: string | null
++  engine: string
++  metric: string
++  granularity: string
++  history: SeriesPoint[]
++  forecast: SeriesPoint[]
++  diagnostics: Record<string, unknown>
++  error?: string
++}
++
++function formatValue(value: number): string {
++  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value)
++}
++
++export default function SalesForecastingPage() {
++  const t = useT()
++  const scopeVersion = useOrganizationScopeVersion()
++  const [granularity, setGranularity] = React.useState<'day' | 'week' | 'month'>('week')
++  const [engine, setEngine] = React.useState('moving_average')
++  const [horizon, setHorizon] = React.useState('12')
++  const [historyPeriods, setHistoryPeriods] = React.useState('52')
++  const [isRunning, setIsRunning] = React.useState(false)
++  const [result, setResult] = React.useState<PredictResponse | null>(null)
++
++  const runForecast = React.useCallback(async () => {
++    setIsRunning(true)
++    try {
++      const call = await apiCall<PredictResponse>('/api/sales_forecasting/predict', {
++        method: 'POST',
++        headers: { 'content-type': 'application/json' },
++        body: JSON.stringify({
++          granularity,
++          engine,
++          horizon: Number.parseInt(horizon, 10) || 12,
++          historyPeriods: Number.parseInt(historyPeriods, 10) || 52,
++          metric: 'revenue_gross',
++          persist: true,
++        }),
++      })
++      if (!call.ok) {
++        const message = (call.result as { error?: string } | undefined)?.error
++          ?? t('sales_forecasting.page.runError')
++        flash(message, 'error')
++        return
++      }
++      setResult(call.result ?? null)
++      flash(t('sales_forecasting.page.runSuccess'), 'success')
++    } finally {
++      setIsRunning(false)
++    }
++  }, [engine, granularity, historyPeriods, horizon, t])
++
++  React.useEffect(() => {
++    setResult(null)
++  }, [scopeVersion])
++
++  const insufficientHistory = result?.diagnostics?.error === 'insufficient_history'
++
++  return (
++    <Page>
++      <PageBody>
++        <div className="flex flex-col gap-6 max-w-4xl">
++          <div>
++            <h1 className="text-2xl font-semibold">{t('sales_forecasting.nav.title')}</h1>
++            <p className="text-muted-foreground mt-1">{t('sales_forecasting.page.description')}</p>
++          </div>
++
++          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
++            <div className="space-y-2">
++              <Label>{t('sales_forecasting.page.granularity')}</Label>
++              <Select value={granularity} onValueChange={(v) => setGranularity(v as typeof granularity)}>
++                <SelectTrigger>
++                  <SelectValue />
++                </SelectTrigger>
++                <SelectContent>
++                  <SelectItem value="day">{t('sales_forecasting.granularity.day')}</SelectItem>
++                  <SelectItem value="week">{t('sales_forecasting.granularity.week')}</SelectItem>
++                  <SelectItem value="month">{t('sales_forecasting.granularity.month')}</SelectItem>
++                </SelectContent>
++              </Select>
++            </div>
++            <div className="space-y-2">
++              <Label>{t('sales_forecasting.page.engine')}</Label>
++              <Select value={engine} onValueChange={setEngine}>
++                <SelectTrigger>
++                  <SelectValue />
++                </SelectTrigger>
++                <SelectContent>
++                  <SelectItem value="naive">{t('sales_forecasting.engine.naive')}</SelectItem>
++                  <SelectItem value="moving_average">{t('sales_forecasting.engine.moving_average')}</SelectItem>
++                  <SelectItem value="seasonal_naive">{t('sales_forecasting.engine.seasonal_naive')}</SelectItem>
++                  <SelectItem value="arima">{t('sales_forecasting.engine.arima')}</SelectItem>
++                </SelectContent>
++              </Select>
++            </div>
++            <div className="space-y-2">
++              <Label htmlFor="horizon">{t('sales_forecasting.page.horizon')}</Label>
++              <Input id="horizon" type="number" min={1} max={52} value={horizon} onChange={(e) => setHorizon(e.target.value)} />
++            </div>
++            <div className="space-y-2">
++              <Label htmlFor="history">{t('sales_forecasting.page.historyPeriods')}</Label>
++              <Input id="history" type="number" min={4} max={156} value={historyPeriods} onChange={(e) => setHistoryPeriods(e.target.value)} />
++            </div>
++          </div>
++
++          <div>
++            <Button onClick={() => void runForecast()} disabled={isRunning}>
++              {isRunning ? <Spinner className="mr-2 h-4 w-4" /> : null}
++              {t('sales_forecasting.page.run')}
++            </Button>
++          </div>
++
++          {insufficientHistory ? (
++            <Alert variant="destructive">
++              <AlertTitle>{t('sales_forecasting.page.insufficientTitle')}</AlertTitle>
++              <AlertDescription>
++                {t('sales_forecasting.page.insufficientDescription', {
++                  count: String(result?.diagnostics?.historyCount ?? 0),
++                  minimum: String(result?.diagnostics?.minimumPoints ?? 0),
++                })}
++              </AlertDescription>
++            </Alert>
++          ) : null}
++
++          {result && !insufficientHistory ? (
++            <div className="grid gap-6 md:grid-cols-2">
++              <section>
++                <h2 className="text-lg font-medium mb-2">{t('sales_forecasting.page.historySection')}</h2>
++                <div className="border rounded-md divide-y max-h-80 overflow-auto">
++                  {result.history.map((point) => (
++                    <div key={point.periodStart} className="flex justify-between px-3 py-2 text-sm">
++                      <span>{point.periodStart}</span>
++                      <span className="font-mono">{formatValue(point.value)}</span>
++                    </div>
++                  ))}
++                </div>
++              </section>
++              <section>
++                <h2 className="text-lg font-medium mb-2">{t('sales_forecasting.page.forecastSection')}</h2>
++                <div className="border rounded-md divide-y max-h-80 overflow-auto">
++                  {result.forecast.map((point) => (
++                    <div key={point.periodStart} className="flex justify-between px-3 py-2 text-sm">
++                      <span>{point.periodStart}</span>
++                      <span className="font-mono">{formatValue(point.value)}</span>
++                    </div>
++                  ))}
++                </div>
++              </section>
++            </div>
++          ) : null}
++        </div>
++      </PageBody>
++    </Page>
++  )
++}
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/data/entities.ts b/packages/sales-forecasting/src/modules/sales_forecasting/data/entities.ts
+new file mode 100644
+index 0000000..29167c1
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/data/entities.ts
+@@ -0,0 +1,46 @@
++import { Entity, Index, PrimaryKey, Property } from '@mikro-orm/decorators/legacy'
++import type { ForecastEngineKey, ForecastGranularity, ForecastMetric, ForecastPoint, TimeSeriesPoint } from '../lib/types'
++
++@Entity({ tableName: 'sales_forecast_runs' })
++@Index({ name: 'sales_forecast_runs_org_tenant_idx', properties: ['organizationId', 'tenantId'] })
++@Index({ name: 'sales_forecast_runs_created_idx', properties: ['organizationId', 'tenantId', 'createdAt'] })
++export class SalesForecastRun {
++  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
++  id!: string
++
++  @Property({ name: 'organization_id', type: 'uuid' })
++  organizationId!: string
++
++  @Property({ name: 'tenant_id', type: 'uuid' })
++  tenantId!: string
++
++  @Property({ type: 'text' })
++  metric!: ForecastMetric
++
++  @Property({ type: 'text' })
++  granularity!: ForecastGranularity
++
++  @Property({ type: 'text' })
++  engine!: ForecastEngineKey
++
++  @Property({ type: 'int' })
++  horizon!: number
++
++  @Property({ name: 'history_points', type: 'jsonb' })
++  historyPoints!: TimeSeriesPoint[]
++
++  @Property({ name: 'forecast_points', type: 'jsonb' })
++  forecastPoints!: ForecastPoint[]
++
++  @Property({ type: 'jsonb', nullable: true })
++  diagnostics?: Record<string, unknown> | null
++
++  @Property({ name: 'created_by_user_id', type: 'uuid', nullable: true })
++  createdByUserId?: string | null
++
++  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
++  createdAt: Date = new Date()
++
++  @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
++  updatedAt: Date = new Date()
++}
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/data/validators.ts b/packages/sales-forecasting/src/modules/sales_forecasting/data/validators.ts
+new file mode 100644
+index 0000000..1665986
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/data/validators.ts
+@@ -0,0 +1,22 @@
++import { z } from 'zod'
++
++export const forecastGranularitySchema = z.enum(['day', 'week', 'month'])
++export const forecastMetricSchema = z.enum(['revenue_gross'])
++export const forecastEngineSchema = z.enum(['naive', 'moving_average', 'seasonal_naive', 'arima'])
++
++export const predictBodySchema = z.object({
++  metric: forecastMetricSchema.default('revenue_gross'),
++  granularity: forecastGranularitySchema.default('week'),
++  engine: forecastEngineSchema.default('moving_average'),
++  horizon: z.number().int().min(1).max(52).default(12),
++  historyPeriods: z.number().int().min(4).max(156).default(52),
++  engineOptions: z.record(z.string(), z.unknown()).optional(),
++  persist: z.boolean().default(true),
++})
++
++export type PredictBody = z.infer<typeof predictBodySchema>
++
++export const runsListQuerySchema = z.object({
++  page: z.coerce.number().int().positive().default(1),
++  pageSize: z.coerce.number().int().positive().max(100).default(20),
++})
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/di.ts b/packages/sales-forecasting/src/modules/sales_forecasting/di.ts
+new file mode 100644
+index 0000000..cb273a7
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/di.ts
+@@ -0,0 +1,6 @@
++import { asValue } from 'awilix'
++import { SalesForecastRun } from './data/entities'
++
++export default {
++  SalesForecastRun: asValue(SalesForecastRun),
++}
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/i18n/de.json b/packages/sales-forecasting/src/modules/sales_forecasting/i18n/de.json
+new file mode 100644
+index 0000000..980b5fe
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/i18n/de.json
+@@ -0,0 +1,23 @@
++{
++  "sales_forecasting.nav.title": "Umsatzprognose",
++  "sales_forecasting.errors.scopeRequired": "Organisationskontext erforderlich",
++  "sales_forecasting.page.description": "Prognostizieren Sie den Bruttoumsatz aus Verkaufsaufträgen mit Open-Source-Zeitreihenmodellen.",
++  "sales_forecasting.page.granularity": "Granularität",
++  "sales_forecasting.page.engine": "Modell",
++  "sales_forecasting.page.horizon": "Prognoseperioden",
++  "sales_forecasting.page.historyPeriods": "Historische Perioden",
++  "sales_forecasting.page.run": "Prognose starten",
++  "sales_forecasting.page.runSuccess": "Prognose abgeschlossen",
++  "sales_forecasting.page.runError": "Prognose fehlgeschlagen",
++  "sales_forecasting.page.historySection": "Historischer Umsatz",
++  "sales_forecasting.page.forecastSection": "Prognose",
++  "sales_forecasting.page.insufficientTitle": "Zu wenig Verlaufsdaten",
++  "sales_forecasting.page.insufficientDescription": "Nur {count} Perioden verfügbar; dieses Modell benötigt mindestens {minimum}.",
++  "sales_forecasting.granularity.day": "Täglich",
++  "sales_forecasting.granularity.week": "Wöchentlich",
++  "sales_forecasting.granularity.month": "Monatlich",
++  "sales_forecasting.engine.naive": "Naiv (letzter Wert)",
++  "sales_forecasting.engine.moving_average": "Gleitender Durchschnitt",
++  "sales_forecasting.engine.seasonal_naive": "Saisonal naiv",
++  "sales_forecasting.engine.arima": "ARIMA (AutoARIMA)"
++}
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/i18n/en.json b/packages/sales-forecasting/src/modules/sales_forecasting/i18n/en.json
+new file mode 100644
+index 0000000..f6e0417
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/i18n/en.json
+@@ -0,0 +1,23 @@
++{
++  "sales_forecasting.nav.title": "Sales forecasting",
++  "sales_forecasting.errors.scopeRequired": "Organization context required",
++  "sales_forecasting.page.description": "Forecast gross revenue from confirmed sales orders using open-source time-series models.",
++  "sales_forecasting.page.granularity": "Granularity",
++  "sales_forecasting.page.engine": "Model",
++  "sales_forecasting.page.horizon": "Forecast periods",
++  "sales_forecasting.page.historyPeriods": "History periods",
++  "sales_forecasting.page.run": "Run forecast",
++  "sales_forecasting.page.runSuccess": "Forecast completed",
++  "sales_forecasting.page.runError": "Forecast failed",
++  "sales_forecasting.page.historySection": "Historical revenue",
++  "sales_forecasting.page.forecastSection": "Forecast",
++  "sales_forecasting.page.insufficientTitle": "Not enough history",
++  "sales_forecasting.page.insufficientDescription": "Only {count} periods available; this model needs at least {minimum}.",
++  "sales_forecasting.granularity.day": "Daily",
++  "sales_forecasting.granularity.week": "Weekly",
++  "sales_forecasting.granularity.month": "Monthly",
++  "sales_forecasting.engine.naive": "Naive (last value)",
++  "sales_forecasting.engine.moving_average": "Moving average",
++  "sales_forecasting.engine.seasonal_naive": "Seasonal naive",
++  "sales_forecasting.engine.arima": "ARIMA (AutoARIMA)"
++}
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/i18n/es.json b/packages/sales-forecasting/src/modules/sales_forecasting/i18n/es.json
+new file mode 100644
+index 0000000..8192e28
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/i18n/es.json
+@@ -0,0 +1,23 @@
++{
++  "sales_forecasting.nav.title": "Previsión de ventas",
++  "sales_forecasting.errors.scopeRequired": "Se requiere contexto de organización",
++  "sales_forecasting.page.description": "Prevea los ingresos brutos de pedidos de venta con modelos de series temporales de código abierto.",
++  "sales_forecasting.page.granularity": "Granularidad",
++  "sales_forecasting.page.engine": "Modelo",
++  "sales_forecasting.page.horizon": "Períodos de previsión",
++  "sales_forecasting.page.historyPeriods": "Períodos históricos",
++  "sales_forecasting.page.run": "Ejecutar previsión",
++  "sales_forecasting.page.runSuccess": "Previsión completada",
++  "sales_forecasting.page.runError": "Error en la previsión",
++  "sales_forecasting.page.historySection": "Ingresos históricos",
++  "sales_forecasting.page.forecastSection": "Previsión",
++  "sales_forecasting.page.insufficientTitle": "Historial insuficiente",
++  "sales_forecasting.page.insufficientDescription": "Solo hay {count} períodos; este modelo necesita al menos {minimum}.",
++  "sales_forecasting.granularity.day": "Diario",
++  "sales_forecasting.granularity.week": "Semanal",
++  "sales_forecasting.granularity.month": "Mensual",
++  "sales_forecasting.engine.naive": "Naive (último valor)",
++  "sales_forecasting.engine.moving_average": "Media móvil",
++  "sales_forecasting.engine.seasonal_naive": "Naive estacional",
++  "sales_forecasting.engine.arima": "ARIMA (AutoARIMA)"
++}
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/i18n/pl.json b/packages/sales-forecasting/src/modules/sales_forecasting/i18n/pl.json
+new file mode 100644
+index 0000000..abfa6c8
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/i18n/pl.json
+@@ -0,0 +1,23 @@
++{
++  "sales_forecasting.nav.title": "Prognoza sprzedaży",
++  "sales_forecasting.errors.scopeRequired": "Wymagany kontekst organizacji",
++  "sales_forecasting.page.description": "Prognozuj przychód brutto z zamówień sprzedaży przy użyciu modeli szeregów czasowych open source.",
++  "sales_forecasting.page.granularity": "Granulacja",
++  "sales_forecasting.page.engine": "Model",
++  "sales_forecasting.page.horizon": "Okresy prognozy",
++  "sales_forecasting.page.historyPeriods": "Okresy historii",
++  "sales_forecasting.page.run": "Uruchom prognozę",
++  "sales_forecasting.page.runSuccess": "Prognoza zakończona",
++  "sales_forecasting.page.runError": "Prognoza nie powiodła się",
++  "sales_forecasting.page.historySection": "Przychód historyczny",
++  "sales_forecasting.page.forecastSection": "Prognoza",
++  "sales_forecasting.page.insufficientTitle": "Za mało danych historycznych",
++  "sales_forecasting.page.insufficientDescription": "Dostępnych jest tylko {count} okresów; ten model wymaga co najmniej {minimum}.",
++  "sales_forecasting.granularity.day": "Dziennie",
++  "sales_forecasting.granularity.week": "Tygodniowo",
++  "sales_forecasting.granularity.month": "Miesięcznie",
++  "sales_forecasting.engine.naive": "Naive (ostatnia wartość)",
++  "sales_forecasting.engine.moving_average": "Średnia krocząca",
++  "sales_forecasting.engine.seasonal_naive": "Sezonowa naive",
++  "sales_forecasting.engine.arima": "ARIMA (AutoARIMA)"
++}
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/index.ts b/packages/sales-forecasting/src/modules/sales_forecasting/index.ts
+new file mode 100644
+index 0000000..b3489a7
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/index.ts
+@@ -0,0 +1,14 @@
++import type { ModuleInfo } from '@open-mercato/shared/modules/registry'
++
++export const metadata: ModuleInfo = {
++  name: 'sales_forecasting',
++  title: 'Sales Forecasting',
++  version: '0.1.0',
++  description:
++    'Revenue forecasting from sales order history using pluggable time-series engines (naive, moving average, seasonal naive, ARIMA).',
++  author: 'Open Mercato Team',
++  license: 'MIT',
++  requires: ['sales', 'directory'],
++}
++
++export { features } from './acl'
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/lib/aggregateSalesHistory.ts b/packages/sales-forecasting/src/modules/sales_forecasting/lib/aggregateSalesHistory.ts
+new file mode 100644
+index 0000000..d50268f
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/lib/aggregateSalesHistory.ts
+@@ -0,0 +1,50 @@
++import type { EntityManager } from '@mikro-orm/postgresql'
++import type { ForecastGranularity, ForecastMetric, TimeSeriesPoint } from './types'
++
++const GRANULARITY_TRUNC: Record<ForecastGranularity, string> = {
++  day: 'day',
++  week: 'week',
++  month: 'month',
++}
++
++function metricExpression(metric: ForecastMetric): string {
++  if (metric === 'revenue_gross') {
++    return 'coalesce(sum(cast(so.grand_total_gross_amount as numeric)), 0)'
++  }
++  return '0'
++}
++
++export async function aggregateSalesHistory(params: {
++  em: EntityManager
++  tenantId: string
++  organizationId: string
++  metric: ForecastMetric
++  granularity: ForecastGranularity
++  historyPeriods: number
++}): Promise<TimeSeriesPoint[]> {
++  const { em, tenantId, organizationId, metric, granularity, historyPeriods } = params
++  const trunc = GRANULARITY_TRUNC[granularity]
++  const metricSql = metricExpression(metric)
++
++  const knex = em.getKnex()
++  const rows = await knex
++    .select(knex.raw(`date_trunc('${trunc}', coalesce(so.placed_at, so.created_at)) as period_start`))
++    .select(knex.raw(`${metricSql} as value`))
++    .from({ so: 'sales_orders' })
++    .where('so.tenant_id', tenantId)
++    .where('so.organization_id', organizationId)
++    .whereNull('so.deleted_at')
++    .groupByRaw(`date_trunc('${trunc}', coalesce(so.placed_at, so.created_at))`)
++    .orderBy('period_start', 'asc')
++
++  const points = rows.map((row: { period_start: Date | string; value: string | number }) => {
++    const periodDate = row.period_start instanceof Date ? row.period_start : new Date(row.period_start)
++    const value = typeof row.value === 'string' ? Number.parseFloat(row.value) : Number(row.value)
++    return {
++      periodStart: periodDate.toISOString().slice(0, 10),
++      value: Number.isFinite(value) ? value : 0,
++    }
++  })
++
++  return points.slice(-historyPeriods)
++}
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/__tests__/engines.test.ts b/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/__tests__/engines.test.ts
+new file mode 100644
+index 0000000..733da56
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/__tests__/engines.test.ts
+@@ -0,0 +1,53 @@
++import { arimaEngine } from '../arima'
++import { movingAverageEngine } from '../movingAverage'
++import { naiveEngine } from '../naive'
++import { seasonalNaiveEngine } from '../seasonalNaive'
++
++const sampleHistory = Array.from({ length: 24 }, (_, index) => ({
++  periodStart: `2025-01-${String((index % 28) + 1).padStart(2, '0')}`,
++  value: 1000 + index * 10 + (index % 4) * 50,
++}))
++
++describe('forecast engines', () => {
++  it('naive repeats last value', () => {
++    const result = naiveEngine.run({
++      history: sampleHistory,
++      horizon: 3,
++      granularity: 'week',
++    })
++    expect(result.forecast).toHaveLength(3)
++    const lastValue = sampleHistory[sampleHistory.length - 1]!.value
++    expect(result.forecast.every((point) => point.value === lastValue)).toBe(true)
++  })
++
++  it('moving average produces horizon points', () => {
++    const result = movingAverageEngine.run({
++      history: sampleHistory,
++      horizon: 4,
++      granularity: 'week',
++      options: { window: 4 },
++    })
++    expect(result.forecast).toHaveLength(4)
++    expect(result.forecast[0]!.value).toBeGreaterThan(0)
++  })
++
++  it('seasonal naive produces horizon points', () => {
++    const result = seasonalNaiveEngine.run({
++      history: sampleHistory,
++      horizon: 2,
++      granularity: 'month',
++    })
++    expect(result.forecast).toHaveLength(2)
++  })
++
++  it('arima runs without throwing on sufficient history', () => {
++    const result = arimaEngine.run({
++      history: sampleHistory,
++      horizon: 3,
++      granularity: 'week',
++      options: { auto: true },
++    })
++    expect(result.forecast).toHaveLength(3)
++    expect(result.diagnostics.method).toBe('arima')
++  })
++})
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/arima.ts b/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/arima.ts
+new file mode 100644
+index 0000000..2653906
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/arima.ts
+@@ -0,0 +1,60 @@
++import ARIMA from 'arima'
++import type { ForecastEngine, ForecastEngineInput, ForecastEngineResult } from '../types'
++import { advancePeriodStart, lastHistoryPoint } from './period'
++
++export const arimaEngine: ForecastEngine = {
++  key: 'arima',
++  label: 'ARIMA (AutoARIMA)',
++  minimumHistoryPoints: 8,
++  run(input: ForecastEngineInput): ForecastEngineResult {
++    const values = input.history.map((point) => point.value)
++    const last = lastHistoryPoint(input.history)
++    const anchor = last?.periodStart ?? new Date().toISOString().slice(0, 10)
++    const auto = input.options?.auto !== false
++    const seasonal = input.granularity === 'month'
++    try {
++      const model = new ARIMA({
++        auto,
++        verbose: false,
++        ...(seasonal ? { P: 1, D: 0, Q: 1, s: 12 } : {}),
++      }).train(values)
++      const predicted = model.predict(input.horizon) as number[] | number[][]
++      const flat = Array.isArray(predicted[0])
++        ? (predicted as number[][]).map((row) => row[0] ?? 0)
++        : (predicted as number[])
++      const padded = [...flat]
++      const lastValue = values[values.length - 1] ?? 0
++      while (padded.length < input.horizon) {
++        padded.push(lastValue)
++      }
++      const forecast = padded.slice(0, input.horizon).map((value, index) => ({
++        periodStart: advancePeriodStart(anchor, input.granularity, index + 1),
++        value: Number.isFinite(value) ? value : 0,
++      }))
++      return {
++        forecast,
++        diagnostics: {
++          method: 'arima',
++          auto,
++          seasonal,
++          library: 'arima@npm',
++        },
++      }
++    } catch (error) {
++      const message = error instanceof Error ? error.message : 'ARIMA failed'
++      const fallbackValue = values[values.length - 1] ?? 0
++      const forecast = Array.from({ length: input.horizon }, (_, index) => ({
++        periodStart: advancePeriodStart(anchor, input.granularity, index + 1),
++        value: fallbackValue,
++      }))
++      return {
++        forecast,
++        diagnostics: {
++          method: 'arima',
++          error: message,
++          fallback: 'naive_last_value',
++        },
++      }
++    }
++  },
++}
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/index.ts b/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/index.ts
+new file mode 100644
+index 0000000..d8522b6
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/index.ts
+@@ -0,0 +1,5 @@
++export { listForecastEngines, getForecastEngine, isForecastEngineKey } from './registry'
++export { naiveEngine } from './naive'
++export { movingAverageEngine } from './movingAverage'
++export { seasonalNaiveEngine } from './seasonalNaive'
++export { arimaEngine } from './arima'
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/movingAverage.ts b/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/movingAverage.ts
+new file mode 100644
+index 0000000..fe21c5f
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/movingAverage.ts
+@@ -0,0 +1,35 @@
++import type { ForecastEngine, ForecastEngineInput, ForecastEngineResult } from '../types'
++import { advancePeriodStart, lastHistoryPoint } from './period'
++
++function movingAverage(values: number[], window: number): number {
++  if (values.length === 0) return 0
++  const slice = values.slice(-window)
++  const sum = slice.reduce((acc, value) => acc + value, 0)
++  return sum / slice.length
++}
++
++export const movingAverageEngine: ForecastEngine = {
++  key: 'moving_average',
++  label: 'Moving average',
++  minimumHistoryPoints: 3,
++  run(input: ForecastEngineInput): ForecastEngineResult {
++    const windowRaw = input.options?.window
++    const window = typeof windowRaw === 'number' && windowRaw > 0 ? Math.floor(windowRaw) : 3
++    const values = input.history.map((point) => point.value)
++    const last = lastHistoryPoint(input.history)
++    const anchor = last?.periodStart ?? new Date().toISOString().slice(0, 10)
++    let rolling = [...values]
++    const forecast = Array.from({ length: input.horizon }, (_, index) => {
++      const value = movingAverage(rolling, window)
++      rolling = [...rolling, value]
++      return {
++        periodStart: advancePeriodStart(anchor, input.granularity, index + 1),
++        value,
++      }
++    })
++    return {
++      forecast,
++      diagnostics: { method: 'moving_average', window },
++    }
++  },
++}
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/naive.ts b/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/naive.ts
+new file mode 100644
+index 0000000..0663974
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/naive.ts
+@@ -0,0 +1,21 @@
++import type { ForecastEngine, ForecastEngineInput, ForecastEngineResult } from '../types'
++import { advancePeriodStart, lastHistoryPoint } from './period'
++
++export const naiveEngine: ForecastEngine = {
++  key: 'naive',
++  label: 'Naive (last value)',
++  minimumHistoryPoints: 2,
++  run(input: ForecastEngineInput): ForecastEngineResult {
++    const last = lastHistoryPoint(input.history)
++    const anchor = last?.periodStart ?? new Date().toISOString().slice(0, 10)
++    const value = last?.value ?? 0
++    const forecast = Array.from({ length: input.horizon }, (_, index) => ({
++      periodStart: advancePeriodStart(anchor, input.granularity, index + 1),
++      value,
++    }))
++    return {
++      forecast,
++      diagnostics: { method: 'naive', repeatedValue: value },
++    }
++  },
++}
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/period.ts b/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/period.ts
+new file mode 100644
+index 0000000..d603ac9
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/period.ts
+@@ -0,0 +1,31 @@
++import type { ForecastGranularity } from '../types'
++
++export function advancePeriodStart(
++  anchorIsoDate: string,
++  granularity: ForecastGranularity,
++  steps: number,
++): string {
++  const date = new Date(`${anchorIsoDate}T00:00:00.000Z`)
++  if (Number.isNaN(date.getTime())) {
++    return anchorIsoDate
++  }
++  if (granularity === 'day') {
++    date.setUTCDate(date.getUTCDate() + steps)
++  } else if (granularity === 'week') {
++    date.setUTCDate(date.getUTCDate() + steps * 7)
++  } else {
++    date.setUTCMonth(date.getUTCMonth() + steps)
++  }
++  return date.toISOString().slice(0, 10)
++}
++
++export function lastHistoryPoint<T extends { periodStart: string }>(history: T[]): T | undefined {
++  if (history.length === 0) return undefined
++  return history[history.length - 1]
++}
++
++export function seasonLengthForGranularity(granularity: ForecastGranularity): number {
++  if (granularity === 'day') return 7
++  if (granularity === 'week') return 52
++  return 12
++}
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/registry.ts b/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/registry.ts
+new file mode 100644
+index 0000000..ef7abb6
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/registry.ts
+@@ -0,0 +1,28 @@
++import type { ForecastEngine, ForecastEngineKey } from '../types'
++import { arimaEngine } from './arima'
++import { movingAverageEngine } from './movingAverage'
++import { naiveEngine } from './naive'
++import { seasonalNaiveEngine } from './seasonalNaive'
++
++const engines: ForecastEngine[] = [
++  naiveEngine,
++  movingAverageEngine,
++  seasonalNaiveEngine,
++  arimaEngine,
++]
++
++const engineByKey = new Map<ForecastEngineKey, ForecastEngine>(
++  engines.map((engine) => [engine.key, engine]),
++)
++
++export function listForecastEngines(): ForecastEngine[] {
++  return [...engines]
++}
++
++export function getForecastEngine(key: ForecastEngineKey): ForecastEngine | undefined {
++  return engineByKey.get(key)
++}
++
++export function isForecastEngineKey(value: string): value is ForecastEngineKey {
++  return engineByKey.has(value as ForecastEngineKey)
++}
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/seasonalNaive.ts b/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/seasonalNaive.ts
+new file mode 100644
+index 0000000..e959035
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/lib/engines/seasonalNaive.ts
+@@ -0,0 +1,28 @@
++import type { ForecastEngine, ForecastEngineInput, ForecastEngineResult } from '../types'
++import { advancePeriodStart, lastHistoryPoint, seasonLengthForGranularity } from './period'
++
++export const seasonalNaiveEngine: ForecastEngine = {
++  key: 'seasonal_naive',
++  label: 'Seasonal naive',
++  minimumHistoryPoints: 8,
++  run(input: ForecastEngineInput): ForecastEngineResult {
++    const seasonLength = seasonLengthForGranularity(input.granularity)
++    const values = input.history.map((point) => point.value)
++    const last = lastHistoryPoint(input.history)
++    const anchor = last?.periodStart ?? new Date().toISOString().slice(0, 10)
++    const forecast = Array.from({ length: input.horizon }, (_, index) => {
++      const historyIndex = values.length - seasonLength + index
++      const value = historyIndex >= 0 && historyIndex < values.length
++        ? values[historyIndex]!
++        : values[values.length - 1] ?? 0
++      return {
++        periodStart: advancePeriodStart(anchor, input.granularity, index + 1),
++        value,
++      }
++    })
++    return {
++      forecast,
++      diagnostics: { method: 'seasonal_naive', seasonLength },
++    }
++  },
++}
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/lib/types.ts b/packages/sales-forecasting/src/modules/sales_forecasting/lib/types.ts
+new file mode 100644
+index 0000000..da519e0
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/lib/types.ts
+@@ -0,0 +1,34 @@
++export type ForecastGranularity = 'day' | 'week' | 'month'
++
++export type ForecastMetric = 'revenue_gross'
++
++export type ForecastEngineKey = 'naive' | 'moving_average' | 'seasonal_naive' | 'arima'
++
++export type TimeSeriesPoint = {
++  periodStart: string
++  value: number
++}
++
++export type ForecastPoint = TimeSeriesPoint & {
++  lower?: number
++  upper?: number
++}
++
++export type ForecastEngineInput = {
++  history: TimeSeriesPoint[]
++  horizon: number
++  granularity: ForecastGranularity
++  options?: Record<string, unknown>
++}
++
++export type ForecastEngineResult = {
++  forecast: ForecastPoint[]
++  diagnostics: Record<string, unknown>
++}
++
++export type ForecastEngine = {
++  key: ForecastEngineKey
++  label: string
++  minimumHistoryPoints: number
++  run: (input: ForecastEngineInput) => ForecastEngineResult | Promise<ForecastEngineResult>
++}
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/migrations/Migration20260524120000.ts b/packages/sales-forecasting/src/modules/sales_forecasting/migrations/Migration20260524120000.ts
+new file mode 100644
+index 0000000..119df06
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/migrations/Migration20260524120000.ts
+@@ -0,0 +1,28 @@
++import { Migration } from '@mikro-orm/migrations'
++
++export class Migration20260524120000 extends Migration {
++  override async up(): Promise<void> {
++    this.addSql(`create table "sales_forecast_runs" (
++      "id" uuid not null default gen_random_uuid(),
++      "organization_id" uuid not null,
++      "tenant_id" uuid not null,
++      "metric" text not null,
++      "granularity" text not null,
++      "engine" text not null,
++      "horizon" int not null,
++      "history_points" jsonb not null,
++      "forecast_points" jsonb not null,
++      "diagnostics" jsonb null,
++      "created_by_user_id" uuid null,
++      "created_at" timestamptz not null,
++      "updated_at" timestamptz not null,
++      constraint "sales_forecast_runs_pkey" primary key ("id")
++    );`)
++    this.addSql(`create index "sales_forecast_runs_org_tenant_idx" on "sales_forecast_runs" ("organization_id", "tenant_id");`)
++    this.addSql(`create index "sales_forecast_runs_created_idx" on "sales_forecast_runs" ("organization_id", "tenant_id", "created_at");`)
++  }
++
++  override async down(): Promise<void> {
++    this.addSql(`drop table if exists "sales_forecast_runs";`)
++  }
++}
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/services/forecastService.ts b/packages/sales-forecasting/src/modules/sales_forecasting/services/forecastService.ts
+new file mode 100644
+index 0000000..11e9352
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/services/forecastService.ts
+@@ -0,0 +1,98 @@
++import type { EntityManager } from '@mikro-orm/postgresql'
++import { SalesForecastRun } from '../data/entities'
++import type { PredictBody } from '../data/validators'
++import { aggregateSalesHistory } from '../lib/aggregateSalesHistory'
++import { getForecastEngine } from '../lib/engines/registry'
++import type { ForecastEngineKey, ForecastPoint, TimeSeriesPoint } from '../lib/types'
++
++export type RunForecastParams = {
++  em: EntityManager
++  tenantId: string
++  organizationId: string
++  userId?: string | null
++  input: PredictBody
++}
++
++export type RunForecastResult = {
++  runId: string | null
++  engine: ForecastEngineKey
++  metric: PredictBody['metric']
++  granularity: PredictBody['granularity']
++  history: TimeSeriesPoint[]
++  forecast: ForecastPoint[]
++  diagnostics: Record<string, unknown>
++}
++
++export async function runSalesForecast(params: RunForecastParams): Promise<RunForecastResult> {
++  const { em, tenantId, organizationId, userId, input } = params
++  const engine = getForecastEngine(input.engine)
++  if (!engine) {
++    throw new Error(`Unknown forecast engine: ${input.engine}`)
++  }
++
++  const history = await aggregateSalesHistory({
++    em,
++    tenantId,
++    organizationId,
++    metric: input.metric,
++    granularity: input.granularity,
++    historyPeriods: input.historyPeriods,
++  })
++
++  if (history.length < engine.minimumHistoryPoints) {
++    return {
++      runId: null,
++      engine: input.engine,
++      metric: input.metric,
++      granularity: input.granularity,
++      history,
++      forecast: [],
++      diagnostics: {
++        error: 'insufficient_history',
++        historyCount: history.length,
++        minimumPoints: engine.minimumHistoryPoints,
++      },
++    }
++  }
++
++  const engineResult = await engine.run({
++    history,
++    horizon: input.horizon,
++    granularity: input.granularity,
++    options: input.engineOptions,
++  })
++
++  const diagnostics: Record<string, unknown> = {
++    historyCount: history.length,
++    minimumPoints: engine.minimumHistoryPoints,
++    ...engineResult.diagnostics,
++  }
++
++  let runId: string | null = null
++  if (input.persist) {
++    const run = em.create(SalesForecastRun, {
++      tenantId,
++      organizationId,
++      metric: input.metric,
++      granularity: input.granularity,
++      engine: input.engine,
++      horizon: input.horizon,
++      historyPoints: history,
++      forecastPoints: engineResult.forecast,
++      diagnostics,
++      createdByUserId: userId ?? null,
++    })
++    await em.persistAndFlush(run)
++    runId = run.id
++  }
++
++  return {
++    runId,
++    engine: input.engine,
++    metric: input.metric,
++    granularity: input.granularity,
++    history,
++    forecast: engineResult.forecast,
++    diagnostics,
++  }
++}
+diff --git a/packages/sales-forecasting/src/modules/sales_forecasting/setup.ts b/packages/sales-forecasting/src/modules/sales_forecasting/setup.ts
+new file mode 100644
+index 0000000..5ca2d90
+--- /dev/null
++++ b/packages/sales-forecasting/src/modules/sales_forecasting/setup.ts
+@@ -0,0 +1,11 @@
++import type { ModuleSetupConfig } from '@open-mercato/shared/modules/setup'
++
++export const setup: ModuleSetupConfig = {
++  defaultRoleFeatures: {
++    superadmin: ['sales_forecasting.*'],
++    admin: ['sales_forecasting.view', 'sales_forecasting.run'],
++    employee: ['sales_forecasting.view'],
++  },
++}
++
++export default setup
+diff --git a/packages/sales-forecasting/tsconfig.json b/packages/sales-forecasting/tsconfig.json
+new file mode 100644
+index 0000000..c13153c
+--- /dev/null
++++ b/packages/sales-forecasting/tsconfig.json
+@@ -0,0 +1,9 @@
++{
++  "$schema": "https://json.schemastore.org/tsconfig",
++  "extends": "../../tsconfig.base.json",
++  "compilerOptions": {
++    "noEmit": true
++  },
++  "include": ["src/**/*"],
++  "exclude": ["node_modules", "dist", "**/__tests__/**"]
++}
+diff --git a/yarn.lock b/yarn.lock
+index eec7aa9..196e5a9 100644
+--- a/yarn.lock
++++ b/yarn.lock
+@@ -7088,6 +7088,7 @@ __metadata:
+     "@open-mercato/gateway-stripe": "workspace:*"
+     "@open-mercato/onboarding": "workspace:*"
+     "@open-mercato/queue": "workspace:*"
++    "@open-mercato/sales-forecasting": "workspace:*"
+     "@open-mercato/scheduler": "workspace:*"
+     "@open-mercato/search": "workspace:*"
+     "@open-mercato/shared": "workspace:*"
+@@ -7382,6 +7383,31 @@ __metadata:
+   languageName: unknown
+   linkType: soft
+ 
++"@open-mercato/sales-forecasting@workspace:*, @open-mercato/sales-forecasting@workspace:packages/sales-forecasting":
++  version: 0.0.0-use.local
++  resolution: "@open-mercato/sales-forecasting@workspace:packages/sales-forecasting"
++  dependencies:
++    "@open-mercato/core": "workspace:*"
++    "@open-mercato/shared": "workspace:*"
++    "@open-mercato/ui": "workspace:*"
++    "@types/jest": "npm:^30.0.0"
++    "@types/react": "npm:^19.2.14"
++    "@types/react-dom": "npm:^19.2.3"
++    arima: "npm:^0.2.8"
++    esbuild: "npm:^0.28.0"
++    glob: "npm:^13.0.6"
++    jest: "npm:^30.4.2"
++    react: "npm:19.2.6"
++    react-dom: "npm:19.2.6"
++    ts-jest: "npm:^29.4.9"
++  peerDependencies:
++    "@mikro-orm/postgresql": ^7.0.14
++    "@open-mercato/shared": "workspace:*"
++    react: ^19.0.0
++    react-dom: ^19.0.0
++  languageName: unknown
++  linkType: soft
++
+ "@open-mercato/scheduler@workspace:*, @open-mercato/scheduler@workspace:packages/scheduler":
+   version: 0.0.0-use.local
+   resolution: "@open-mercato/scheduler@workspace:packages/scheduler"
+@@ -12564,6 +12590,13 @@ __metadata:
+   languageName: node
+   linkType: hard
+ 
++"arima@npm:^0.2.8":
++  version: 0.2.8
++  resolution: "arima@npm:0.2.8"
++  checksum: 10/962e4bc1a578db223cf4e35bb13627b6f96a050cb6399168b4e2a1045dfab35d8d4c4781e1a87ce6366cab942d041098a18dfdeb61e32ab11f40ca2516172c5e
++  languageName: node
++  linkType: hard
++
+ "array-buffer-byte-length@npm:^1.0.1, array-buffer-byte-length@npm:^1.0.2":
+   version: 1.0.2
+   resolution: "array-buffer-byte-length@npm:1.0.2"
+-- 
+2.43.0
+

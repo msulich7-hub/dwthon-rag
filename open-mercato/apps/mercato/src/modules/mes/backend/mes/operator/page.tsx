@@ -14,6 +14,7 @@ import { MesShell } from '../../../components/MesShell'
 import { MesEmptyState } from '../../../components/MesEmptyState'
 import { MesListSkeleton } from '../../../components/MesListSkeleton'
 import { MesStatusBadge } from '../../../components/MesStatusBadge'
+import { MesScanField } from '../../../components/MesScanField'
 import { MES_ROUTES } from '../../../lib/mes-routes'
 
 type DispatchQueueItem = {
@@ -22,6 +23,7 @@ type DispatchQueueItem = {
   productCode: string
   operation: {
     id: string
+    operationCode: string
     operationName: string
     status: string
     workCenterCode: string | null
@@ -42,6 +44,8 @@ export default function MesOperatorPage() {
   const [error, setError] = React.useState<string | null>(null)
   const [busyId, setBusyId] = React.useState<string | null>(null)
   const [workCenter, setWorkCenter] = React.useState('')
+  const [highlightedId, setHighlightedId] = React.useState<string | null>(null)
+  const rowRefs = React.useRef<Record<string, HTMLLIElement | null>>({})
 
   const loadQueue = React.useCallback(async () => {
     setLoading(true)
@@ -92,6 +96,32 @@ export default function MesOperatorPage() {
     }
   }
 
+  const handleScan = React.useCallback(
+    (scan: string) => {
+      const match = queue.find(
+        (item) =>
+          item.orderNumber.toUpperCase() === scan ||
+          item.productCode.toUpperCase() === scan ||
+          item.operation.operationCode.toUpperCase() === scan,
+      )
+      if (!match) {
+        flash(t('mes.scan.notFound', 'No matching operation in queue'), 'error')
+        setHighlightedId(null)
+        return
+      }
+      setHighlightedId(match.operation.id)
+      rowRefs.current[match.operation.id]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      flash(
+        t('mes.scan.found', 'Found {order} — {operation}', {
+          order: match.orderNumber,
+          operation: match.operation.operationName,
+        }),
+        'success',
+      )
+    },
+    [queue, t],
+  )
+
   const handleComplete = async (item: DispatchQueueItem) => {
     if (item.operation.status !== 'in_progress') return
     setBusyId(item.operation.id)
@@ -123,6 +153,8 @@ export default function MesOperatorPage() {
 
   const body = (
     <PageBody className={`space-y-4 ${kiosk ? 'max-w-3xl mx-auto' : ''}`}>
+      <MesScanField kiosk={kiosk} autoFocus={kiosk} onScan={handleScan} />
+
       <div className={`flex flex-wrap gap-3 items-end ${kiosk ? 'text-lg' : ''}`}>
         <div className="space-y-1 flex-1 min-w-[200px]">
           <Label htmlFor="mes-wc-filter">{t('mes.operator.workCenter', 'Work center')}</Label>
@@ -153,7 +185,12 @@ export default function MesOperatorPage() {
           {queue.map((item) => (
             <li
               key={item.operation.id}
-              className={`rounded-lg border p-4 space-y-3 bg-card ${kiosk ? 'p-6 shadow-sm' : ''}`}
+              ref={(el) => {
+                rowRefs.current[item.operation.id] = el
+              }}
+              className={`rounded-lg border p-4 space-y-3 bg-card ${kiosk ? 'p-6 shadow-sm' : ''} ${
+                highlightedId === item.operation.id ? 'ring-2 ring-primary border-primary' : ''
+              }`}
             >
               <div>
                 <div className={`font-medium ${kiosk ? 'text-xl' : ''}`}>{item.orderNumber}</div>

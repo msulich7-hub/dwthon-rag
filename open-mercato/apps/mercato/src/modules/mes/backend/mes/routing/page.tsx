@@ -6,10 +6,15 @@ import { Page, PageBody, PageHeader } from '@open-mercato/ui/backend/Page'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
 import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
+import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { MesShell } from '../../../components/MesShell'
 import { MesEmptyState } from '../../../components/MesEmptyState'
 import { MesListSkeleton } from '../../../components/MesListSkeleton'
+import {
+  RoutingTemplateEditor,
+  type RoutingStepDraft,
+} from '../../../components/RoutingTemplateEditor'
 
 type RoutingStep = {
   sequence: number
@@ -37,6 +42,7 @@ export default function MesRoutingPage() {
   const [rows, setRows] = React.useState<RoutingTemplateRow[]>([])
   const [loading, setLoading] = React.useState(true)
   const [expandedId, setExpandedId] = React.useState<string | null>(null)
+  const [editorMode, setEditorMode] = React.useState<'none' | 'create' | 'edit'>('none')
 
   const load = React.useCallback(async () => {
     setLoading(true)
@@ -78,6 +84,13 @@ export default function MesRoutingPage() {
 
   const expanded = rows.find((row) => row.id === expandedId)
 
+  const expandedSteps: RoutingStepDraft[] | undefined = expanded?.steps.map((step) => ({
+    sequence: step.sequence,
+    operationCode: step.operationCode,
+    operationName: step.operationName,
+    workCenterCode: step.workCenterCode ?? '',
+  }))
+
   return (
     <Page>
       <MesShell>
@@ -87,17 +100,41 @@ export default function MesRoutingPage() {
             'mes.routing.description',
             'Product routings used when releasing work orders to the shop floor.',
           )}
+          actions={
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                setEditorMode('create')
+                setExpandedId(null)
+              }}
+            >
+              {t('mes.routing.newTemplate', 'New template')}
+            </Button>
+          }
         />
         <PageBody className="space-y-6">
+          {editorMode === 'create' ? (
+            <RoutingTemplateEditor
+              onSaved={() => {
+                setEditorMode('none')
+                void load()
+              }}
+              onCancel={() => setEditorMode('none')}
+            />
+          ) : null}
+
           {loading ? (
             <MesListSkeleton rows={4} />
-          ) : rows.length === 0 ? (
+          ) : rows.length === 0 && editorMode !== 'create' ? (
             <MesEmptyState
               title={t('mes.routing.empty', 'No routing templates')}
-              description={t(
-                'mes.routing.emptyHint',
-                'Create templates via API or seed data for your products.',
-              )}
+              description={t('mes.routing.emptyHint', 'Create a template to release operations to the shop floor.')}
+              action={
+                <Button type="button" size="sm" onClick={() => setEditorMode('create')}>
+                  {t('mes.routing.newTemplate', 'New template')}
+                </Button>
+              }
             />
           ) : (
             <>
@@ -106,33 +143,64 @@ export default function MesRoutingPage() {
                 columns={columns}
                 data={rows}
                 isLoading={false}
-                onRowClick={(row) => setExpandedId((id) => (id === row.id ? null : row.id))}
-                emptyMessage={t('mes.routing.empty', 'No routing templates')}
+                onRowClick={(row) => {
+                  setExpandedId((id) => (id === row.id ? null : row.id))
+                  setEditorMode('none')
+                }}
+                emptyState={
+                  <p className="text-sm text-muted-foreground py-6 text-center">
+                    {t('mes.routing.empty', 'No routing templates')}
+                  </p>
+                }
               />
               {expanded ? (
-                <section className="rounded-lg border p-4">
-                  <h3 className="text-sm font-medium mb-3">
-                    {t('mes.routing.stepsFor', 'Steps for {code}', { code: expanded.code })}
-                  </h3>
-                  <ol className="space-y-2">
-                    {expanded.steps.map((step) => (
-                      <li
-                        key={`${expanded.id}-${step.sequence}`}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted/30 px-3 py-2 text-sm"
-                      >
-                        <span>
-                          <span className="font-mono text-muted-foreground mr-2">{step.sequence}</span>
-                          {step.operationName}
-                          <span className="text-xs text-muted-foreground ml-2">({step.operationCode})</span>
-                        </span>
-                        {step.workCenterCode ? (
-                          <span className="text-xs rounded-full border px-2 py-0.5 bg-background">
-                            {step.workCenterCode}
+                <section className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-sm font-medium">
+                      {t('mes.routing.stepsFor', 'Steps for {code}', { code: expanded.code })}
+                    </h3>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditorMode(editorMode === 'edit' ? 'none' : 'edit')}
+                    >
+                      {editorMode === 'edit'
+                        ? t('mes.routing.closeEditor', 'Close editor')
+                        : t('mes.routing.editSteps', 'Edit steps')}
+                    </Button>
+                  </div>
+                  {editorMode === 'edit' ? (
+                    <RoutingTemplateEditor
+                      templateId={expanded.id}
+                      initialSteps={expandedSteps}
+                      onSaved={() => {
+                        setEditorMode('none')
+                        void load()
+                      }}
+                      onCancel={() => setEditorMode('none')}
+                    />
+                  ) : (
+                    <ol className="space-y-2">
+                      {expanded.steps.map((step) => (
+                        <li
+                          key={`${expanded.id}-${step.sequence}`}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted/30 px-3 py-2 text-sm"
+                        >
+                          <span>
+                            <span className="font-mono text-muted-foreground mr-2">{step.sequence}</span>
+                            {step.operationName}
+                            <span className="text-xs text-muted-foreground ml-2">({step.operationCode})</span>
                           </span>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ol>
+                          {step.workCenterCode ? (
+                            <span className="text-xs rounded-full border px-2 py-0.5 bg-background">
+                              {step.workCenterCode}
+                            </span>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ol>
+                  )}
                 </section>
               ) : null}
             </>

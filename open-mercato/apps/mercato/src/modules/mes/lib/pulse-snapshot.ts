@@ -1,5 +1,7 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { listDispatchQueue } from './dispatch-queue'
+import { buildPulseEscalation, type AndonAlert } from './pulse-escalation'
+import { buildWorkOrderActivityTrend, type PulseTrendPoint } from './pulse-trend'
 import { aggregateWorkOrderDashboard } from './work-order-status'
 import { listWorkOrderStatusesForDashboard } from './work-orders'
 
@@ -25,6 +27,9 @@ export type PulseSnapshot = {
   }
   workCenters: PulseWorkCenterStat[]
   andon: 'green' | 'amber' | 'red'
+  escalationLevel: 0 | 1 | 2 | 3
+  alerts: AndonAlert[]
+  trend: PulseTrendPoint[]
   generatedAt: string
 }
 
@@ -52,15 +57,29 @@ export async function buildPulseSnapshot(
     a.workCenterCode.localeCompare(b.workCenterCode),
   )
 
-  let andon: PulseSnapshot['andon'] = 'green'
-  if (inProgress > 8 || ready > 15) andon = 'red'
-  else if (inProgress > 3 || ready > 5 || dashboard.active > dashboard.completed) andon = 'amber'
+  const queue = { ready, inProgress, total: queueItems.length }
+  const base = {
+    dashboard,
+    queue,
+    workCenters,
+    generatedAt: new Date().toISOString(),
+  }
+
+  const escalation = buildPulseEscalation({
+    ...base,
+    andon: 'green',
+    escalationLevel: 0,
+    alerts: [],
+    trend: [],
+  })
+
+  const trend = await buildWorkOrderActivityTrend(em, scope, 14)
 
   return {
-    dashboard,
-    queue: { ready, inProgress, total: queueItems.length },
-    workCenters,
-    andon,
-    generatedAt: new Date().toISOString(),
+    ...base,
+    andon: escalation.andon,
+    escalationLevel: escalation.escalationLevel,
+    alerts: escalation.alerts,
+    trend,
   }
 }

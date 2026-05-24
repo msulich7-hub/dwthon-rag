@@ -1,10 +1,12 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import {
+  ProductionPlanningIfsSilverCustomerOrderLine,
   ProductionPlanningIfsSilverShopOrder,
   ProductionPlanningIfsSilverShopOrderOperation,
   ProductionPlanningOperation,
   ProductionPlanningOrder,
 } from '../../data/entities'
+import { isPoolNettingOrderCode } from './extract-pilot'
 import type { OrgScope } from '../production-order'
 
 export type IfsSilverReconcileResult = {
@@ -28,21 +30,39 @@ export async function reconcileIfsSilverPilot(
 ): Promise<IfsSilverReconcileResult> {
   const tolerancePct = options?.tolerancePct ?? DEFAULT_TOLERANCE_PCT
 
-  const liveOrders = await em.count(ProductionPlanningOrder, {
-    tenantId: scope.tenantId,
-    organizationId: scope.organizationId,
-    status: { $nin: ['cancelled'] },
-  })
+  const allLiveOrders = await em.find(
+    ProductionPlanningOrder,
+    {
+      tenantId: scope.tenantId,
+      organizationId: scope.organizationId,
+      status: { $nin: ['cancelled'] },
+    },
+    { fields: ['id', 'code', 'salesOrderId', 'quantity'] },
+  )
+  const liveOrders = allLiveOrders.filter((o) => !isPoolNettingOrderCode(o.code))
+  const liveOrderCount = liveOrders.length
+  const liveCoDemandCount = liveOrders.filter((o) => Boolean(o.salesOrderId)).length
+
   const silverOrders = await em.count(ProductionPlanningIfsSilverShopOrder, {
     tenantId: scope.tenantId,
     organizationId: scope.organizationId,
     isDeleted: false,
   })
 
-  const liveOps = await em.count(ProductionPlanningOperation, {
+  const liveOrderIds = liveOrders.map((o) => o.id)
+  const liveOps =
+    liveOrderIds.length > 0
+      ? await em.count(ProductionPlanningOperation, {
+          tenantId: scope.tenantId,
+          organizationId: scope.organizationId,
+          status: { $nin: ['cancelled'] },
+          productionOrderId: { $in: liveOrderIds },
+        })
+      : 0
+  const silverCoLines = await em.count(ProductionPlanningIfsSilverCustomerOrderLine, {
     tenantId: scope.tenantId,
     organizationId: scope.organizationId,
-    status: { $nin: ['cancelled'] },
+    isDeleted: false,
   })
   const silverOps = await em.count(ProductionPlanningIfsSilverShopOrderOperation, {
     tenantId: scope.tenantId,
@@ -51,8 +71,9 @@ export async function reconcileIfsSilverPilot(
   })
 
   const checks = [
-    compareCounts('shop_orders', liveOrders, silverOrders, tolerancePct),
+    compareCounts('shop_orders', liveOrderCount, silverOrders, tolerancePct),
     compareCounts('shop_order_operations', liveOps, silverOps, tolerancePct),
+    compareCounts('customer_order_lines', liveCoDemandCount, silverCoLines, tolerancePct),
   ]
 
   return {

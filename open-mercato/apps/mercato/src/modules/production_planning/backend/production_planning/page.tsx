@@ -38,11 +38,13 @@ export default function ProductionPlanningHubPage() {
               Wyjątki · KPI · status CP-SAT
             </div>
           </Link>
+          <Link href={PP_ROUTES.genesis} className="rounded-lg border p-4 hover:bg-muted/50">
+            <div className="font-medium">Genesis & MRP</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              Korzenie popytu · netting · IFS silver pilot
+            </div>
+          </Link>
         </div>
-        <p className="text-sm text-muted-foreground">
-          MRP: <code className="text-xs">POST /api/production_planning/mrp/netting/runs</code> · genesis:{' '}
-          <code className="text-xs">GET /api/production_planning/genesis/roots</code>
-        </p>
         <p className="text-sm text-muted-foreground">
           Integracja ze sprzedażą: zakładka „Produkcja” na szczegółach zamówienia oraz chipy statusu na pasku etapów.
         </p>

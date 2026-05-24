@@ -6,28 +6,37 @@ import {
 } from '../data/entities'
 import type { OrgScope } from './production-order'
 import { mapProductionOrder, mapProductionOperation } from './production-order'
+import {
+  buildScheduleBatch,
+  type CpsatScheduleBatch,
+  DEFAULT_MAX_OPERATIONS_PER_SOLVE,
+  type PayloadOrder,
+} from './cpsat-chunking'
 import type { CpsatObjective, CpsatScheduleRequest } from './ortools-bridge'
+
+export { buildScheduleBatch, DEFAULT_MAX_OPERATIONS_PER_SOLVE }
+export type { CpsatScheduleBatch }
 
 export type BuildCpsatPayloadOptions = {
   productionOrderIds: string[]
   horizonHours?: number
   objective?: CpsatObjective
   planningStartAt?: Date
+  maxOperationsPerSolve?: number
+  enableRolling?: boolean
 }
 
-export async function buildCpsatScheduleRequest(
+type PayloadBase = Omit<CpsatScheduleRequest, 'orders' | 'chunk' | 'fixedOperations' | 'workCenterFloors'>
+
+async function loadPayloadOrders(
   em: EntityManager,
   scope: OrgScope,
-  options: BuildCpsatPayloadOptions,
-): Promise<CpsatScheduleRequest> {
-  const planningStartAt = options.planningStartAt ?? new Date()
-  const horizonHours = options.horizonHours ?? 168
-  const objective = options.objective ?? 'minimize_lateness'
-
+  productionOrderIds: string[],
+): Promise<PayloadOrder[]> {
   const orders = await em.find(ProductionPlanningOrder, {
     tenantId: scope.tenantId,
     organizationId: scope.organizationId,
-    id: { $in: options.productionOrderIds },
+    id: { $in: productionOrderIds },
     status: { $nin: ['completed', 'cancelled'] },
   })
 
@@ -77,21 +86,83 @@ export async function buildCpsatScheduleRequest(
         }),
       }
     })
-    .filter((o): o is NonNullable<typeof o> => o !== null)
+    .filter((o): o is PayloadOrder => o !== null)
 
   if (payloadOrders.length === 0) {
     throw new Error('NO_SCHEDULABLE_OPERATIONS')
   }
 
+  return payloadOrders
+}
+
+function buildPayloadBase(
+  scope: OrgScope,
+  options: BuildCpsatPayloadOptions,
+  planningStartAt: Date,
+): PayloadBase {
+  const horizonHours = options.horizonHours ?? 168
+  const objective = options.objective ?? 'minimize_lateness'
+
   return {
     tenantId: scope.tenantId,
     organizationId: scope.organizationId,
     productionOrderIds: options.productionOrderIds,
-    orders: payloadOrders,
     horizonHours,
     objective,
     planningStartAt: planningStartAt.toISOString(),
+    slotSizeMinutes: 5,
+    maxOperationsPerSolve: options.maxOperationsPerSolve ?? DEFAULT_MAX_OPERATIONS_PER_SOLVE,
+    rolling:
+      options.enableRolling !== false
+        ? {
+            enabled: undefined as boolean | undefined,
+            windowHours: 168,
+            overlapHours: 24,
+          }
+        : { enabled: false },
   }
+}
+
+export async function buildCpsatScheduleRequest(
+  em: EntityManager,
+  scope: OrgScope,
+  options: BuildCpsatPayloadOptions,
+): Promise<CpsatScheduleRequest> {
+  const planningStartAt = options.planningStartAt ?? new Date()
+  const payloadOrders = await loadPayloadOrders(em, scope, options.productionOrderIds)
+  const base = buildPayloadBase(scope, options, planningStartAt)
+
+  return {
+    ...base,
+    orders: payloadOrders,
+  }
+}
+
+export async function buildCpsatScheduleBatchFromDb(
+  em: EntityManager,
+  scope: OrgScope,
+  options: BuildCpsatPayloadOptions,
+): Promise<CpsatScheduleBatch> {
+  const planningStartAt = options.planningStartAt ?? new Date()
+  const payloadOrders = await loadPayloadOrders(em, scope, options.productionOrderIds)
+  const base = buildPayloadBase(scope, options, planningStartAt)
+  const maxOps = options.maxOperationsPerSolve ?? DEFAULT_MAX_OPERATIONS_PER_SOLVE
+  const totalOps = payloadOrders.reduce((s, o) => s + o.operations.length, 0)
+
+  if (totalOps <= maxOps) {
+    return {
+      batchId: createCpsatJobId(),
+      totalOperations: totalOps,
+      chunkCount: 1,
+      maxOperationsPerSolve: maxOps,
+      chunks: [{ ...base, orders: payloadOrders }],
+    }
+  }
+
+  return buildScheduleBatch(base, payloadOrders, {
+    maxOperationsPerSolve: maxOps,
+    batchId: createCpsatJobId(),
+  })
 }
 
 export function createCpsatJobId(): string {

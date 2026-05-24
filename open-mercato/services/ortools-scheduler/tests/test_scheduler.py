@@ -8,13 +8,13 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.schemas import ProductionOperation, ProductionOrder, ScheduleRequest
-from app.solver.scheduler import (
+from app.solver.profiles import (
     CPSAT_PROFILES,
     SolverSizeTier,
-    _apply_cpsat_profile,
-    _tier_for_operation_count,
-    solve_schedule,
+    apply_cpsat_profile,
+    tier_for_operation_count,
 )
+from app.solver.scheduler import solve_schedule
 
 
 def _sample_order(*, wc_a: str = "WC-CUT", wc_b: str = "WC-ASM") -> ProductionOrder:
@@ -48,12 +48,12 @@ def _sample_order(*, wc_a: str = "WC-CUT", wc_b: str = "WC-ASM") -> ProductionOr
 
 
 def test_tier_boundaries() -> None:
-    assert _tier_for_operation_count(1) == SolverSizeTier.SMALL
-    assert _tier_for_operation_count(100) == SolverSizeTier.SMALL
-    assert _tier_for_operation_count(101) == SolverSizeTier.MEDIUM
-    assert _tier_for_operation_count(1000) == SolverSizeTier.MEDIUM
-    assert _tier_for_operation_count(1001) == SolverSizeTier.LARGE
-    assert _tier_for_operation_count(5000) == SolverSizeTier.LARGE
+    assert tier_for_operation_count(1) == SolverSizeTier.SMALL
+    assert tier_for_operation_count(100) == SolverSizeTier.SMALL
+    assert tier_for_operation_count(101) == SolverSizeTier.MEDIUM
+    assert tier_for_operation_count(1000) == SolverSizeTier.MEDIUM
+    assert tier_for_operation_count(1001) == SolverSizeTier.LARGE
+    assert tier_for_operation_count(5000) == SolverSizeTier.LARGE
 
 
 def test_cpsat_profile_application() -> None:
@@ -61,7 +61,7 @@ def test_cpsat_profile_application() -> None:
 
     solver = cp_model.CpSolver()
     profile = CPSAT_PROFILES[SolverSizeTier.LARGE]
-    _apply_cpsat_profile(solver, profile, timeout_seconds=None, num_workers=0)
+    apply_cpsat_profile(solver, profile, timeout_seconds=None, num_workers=0)
 
     params = solver.parameters
     assert params.max_time_in_seconds == profile.max_time_in_seconds

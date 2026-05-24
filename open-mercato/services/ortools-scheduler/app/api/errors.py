@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from app.schemas import ScheduleResponse
-from app.solver.scheduler import SchedulerError
+from app.solver.ops import SchedulerError
 
 
 async def scheduler_error_handler(_request: Request, exc: SchedulerError) -> JSONResponse:

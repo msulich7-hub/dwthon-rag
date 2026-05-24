@@ -2,16 +2,22 @@ import { NextResponse } from 'next/server'
 import { CrudHttpError, isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import { z } from 'zod'
 import { applyCpsatSchedule } from '../../lib/apply-cpsat-schedule'
-import { buildCpsatScheduleRequest } from '../../lib/build-cpsat-payload'
+import { buildCpsatScheduleRequest, createCpsatJobId } from '../../lib/build-cpsat-payload'
+import { shouldRunCpsatAsync, partitionProductionOrderChunks } from '../../lib/cpsat-chunking'
+import { createCpsatOptimizeJob } from '../../lib/cpsat-optimize-job'
+import { runCpsatOptimizeJob } from '../../lib/cpsat-optimize-runner'
 import { buildCapacitySnapshot } from '../../lib/capacity-snapshot'
 import {
   isOrtoolsBridgeConfigured,
-  requestOrtoolsOptimization,
   type CpsatObjective,
 } from '../../lib/ortools-bridge'
 import { listProductionOrders } from '../../lib/production-order'
+import {
+  getProductionPlanningQueue,
+  PRODUCTION_PLANNING_CPSAT_OPTIMIZE_QUEUE,
+  type CpsatOptimizeJobPayload,
+} from '../../lib/queue'
 import { resolveProductionPlanningRequestContext } from '../../lib/request-context'
-import { emitProductionPlanningEvent } from '../../events'
 
 const optimizeBodySchema = z.object({
   productionOrderIds: z.array(z.string().uuid()).min(1).max(500).optional(),
@@ -19,6 +25,8 @@ const optimizeBodySchema = z.object({
   objective: z.enum(['minimize_lateness', 'minimize_changeover', 'balance_load']).optional(),
   applySync: z.boolean().optional(),
   dryRun: z.boolean().optional(),
+  mode: z.enum(['sync', 'async', 'auto']).default('auto'),
+  chunkSize: z.number().int().min(1).max(100).optional(),
 })
 
 export const metadata = {
@@ -27,14 +35,16 @@ export const metadata = {
 
 export const openApi = {
   POST: {
-    summary: 'Run CP-SAT production scheduling (OR-Tools bridge) and optionally apply results',
+    summary: 'Run CP-SAT production scheduling (sync or async via queue)',
     tags: ['production_planning'],
   },
 }
 
 export async function POST(request: Request) {
   try {
-    const { tenantId, organizationId, em } = await resolveProductionPlanningRequestContext(request)
+    const { tenantId, organizationId, em, commandContext } =
+      await resolveProductionPlanningRequestContext(request)
+    const requestedByUserId = commandContext.auth?.userId ?? null
     const json = await request.json().catch(() => ({}))
     const body = optimizeBodySchema.parse(json)
 
@@ -48,91 +58,113 @@ export async function POST(request: Request) {
       { horizonHours: body.horizonHours },
     )
 
-    let optimization: Awaited<ReturnType<typeof requestOrtoolsOptimization>> = {
-      jobId: 'local-heuristic',
-      status: 'completed',
-      message: 'No order ids to optimize',
+    if (orderIds.length === 0) {
+      return NextResponse.json({
+        cpsatConfigured: isOrtoolsBridgeConfigured(),
+        mode: body.mode,
+        snapshot,
+        optimization: {
+          jobId: 'local-heuristic',
+          status: 'completed',
+          message: 'No order ids to optimize',
+        },
+      })
     }
 
+    const runAsync = shouldRunCpsatAsync(orderIds.length, body.mode)
+
+    if (runAsync) {
+      const jobId = createCpsatJobId()
+      const chunks = partitionProductionOrderChunks(orderIds, body.chunkSize)
+      const payload: CpsatOptimizeJobPayload = {
+        jobId,
+        tenantId,
+        organizationId,
+        productionOrderIds: orderIds,
+        horizonHours: body.horizonHours,
+        objective: body.objective,
+        applySync: body.applySync,
+        dryRun: body.dryRun,
+        chunkSize: body.chunkSize,
+        requestedByUserId,
+      }
+
+      const queue = getProductionPlanningQueue<CpsatOptimizeJobPayload>(
+        PRODUCTION_PLANNING_CPSAT_OPTIMIZE_QUEUE,
+      )
+      const queueJobId = await queue.enqueue(payload)
+
+      await createCpsatOptimizeJob(
+        em,
+        { tenantId, organizationId },
+        {
+          id: jobId,
+          productionOrderIds: orderIds,
+          horizonHours: body.horizonHours,
+          objective: body.objective,
+          applySync: body.applySync,
+          dryRun: body.dryRun,
+          chunkCount: chunks.length,
+          queueJobId,
+          requestedByUserId,
+        },
+      )
+
+      return NextResponse.json(
+        {
+          cpsatConfigured: isOrtoolsBridgeConfigured(),
+          mode: 'async',
+          jobId,
+          queue: PRODUCTION_PLANNING_CPSAT_OPTIMIZE_QUEUE,
+          queueJobId,
+          status: 'queued',
+          chunkCount: chunks.length,
+          snapshot,
+          pollUrl: `/api/production_planning/optimize/jobs/${jobId}`,
+        },
+        { status: 202 },
+      )
+    }
+
+    const jobId = createCpsatJobId()
     let applyResult: Awaited<ReturnType<typeof applyCpsatSchedule>> | undefined
 
-    if (orderIds.length > 0) {
-      try {
-        const payload = await buildCpsatScheduleRequest(em, { tenantId, organizationId }, {
+    try {
+      const result = await runCpsatOptimizeJob(
+        em,
+        { tenantId, organizationId },
+        {
+          jobId,
           productionOrderIds: orderIds,
           horizonHours: body.horizonHours,
           objective: body.objective as CpsatObjective | undefined,
-        })
+          applySync: body.applySync,
+          dryRun: body.dryRun,
+          chunkSize: body.chunkSize,
+        },
+      )
+      applyResult = result.apply
 
-        await emitProductionPlanningEvent(
-          'production_planning.optimize.requested',
-          {
-            tenantId,
-            organizationId,
-            jobId: payload.planningStartAt,
-            productionOrderIds: orderIds,
-            objective: payload.objective,
-            horizonHours: payload.horizonHours,
-          },
-          { persistent: true },
-        )
-
-        optimization = await requestOrtoolsOptimization(payload)
-
-        if (optimization.status === 'completed' && optimization.schedule?.length) {
-          await emitProductionPlanningEvent(
-            'production_planning.optimize.completed',
-            {
-              tenantId,
-              organizationId,
-              jobId: optimization.jobId,
-              solverStatus: optimization.solverStatus,
-              objectiveValue: optimization.objectiveValue,
-              operationCount: optimization.schedule.length,
-            },
-            { persistent: true },
-          )
-
-          if (body.applySync !== false && !body.dryRun) {
-            applyResult = await applyCpsatSchedule(
-              em,
-              { tenantId, organizationId },
-              optimization.schedule,
-              { jobId: optimization.jobId, dryRun: body.dryRun },
-            )
-          }
-        } else if (optimization.status === 'failed') {
-          await emitProductionPlanningEvent(
-            'production_planning.optimize.failed',
-            {
-              tenantId,
-              organizationId,
-              jobId: optimization.jobId,
-              status: optimization.status,
-              message: optimization.message,
-            },
-            { persistent: true },
-          )
-        }
-      } catch (error) {
-        if (error instanceof Error && error.message === 'NO_SCHEDULABLE_ORDERS') {
-          throw new CrudHttpError(400, { error: 'No schedulable production orders' })
-        }
-        if (error instanceof Error && error.message === 'NO_SCHEDULABLE_OPERATIONS') {
-          throw new CrudHttpError(400, {
-            error: 'Production orders have no routing operations to schedule',
-          })
-        }
-        throw error
+      return NextResponse.json({
+        cpsatConfigured: isOrtoolsBridgeConfigured(),
+        mode: 'sync',
+        jobId,
+        snapshot,
+        optimization: result.optimization,
+        apply: applyResult,
+        chunkCount: result.chunkCount,
+      })
+    } catch (error) {
+      if (error instanceof Error && error.message === 'NO_SCHEDULABLE_ORDERS') {
+        throw new CrudHttpError(400, { error: 'No schedulable production orders' })
       }
+      if (error instanceof Error && error.message === 'NO_SCHEDULABLE_OPERATIONS') {
+        throw new CrudHttpError(400, {
+          error: 'Production orders have no routing operations to schedule',
+        })
+      }
+      throw error
     }
-
-    return NextResponse.json({
-      cpsatConfigured: isOrtoolsBridgeConfigured(),
-      snapshot,
-      optimization,
-      apply: applyResult,
-    })
   } catch (error) {
     if (isCrudHttpError(error)) {
       return NextResponse.json(error.body, { status: error.status })

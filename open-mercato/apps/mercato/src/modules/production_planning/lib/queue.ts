@@ -1,10 +1,26 @@
 import { createModuleQueue, type Queue } from '@open-mercato/queue'
 
 export const PRODUCTION_PLANNING_CAPACITY_QUEUE = 'production_planning:capacity-refresh'
+export const PRODUCTION_PLANNING_CPSAT_OPTIMIZE_QUEUE = 'production_planning:cpsat-optimize'
 
 export type ProductionPlanningCapacityJobPayload = {
   tenantId: string
   organizationId: string
+}
+
+/** Enqueued by POST /api/production_planning/optimize when mode is async or auto exceeds threshold. */
+export type CpsatOptimizeJobPayload = {
+  /** Stable optimize job id returned to the API client (also PK in optimize_jobs when persisted). */
+  jobId: string
+  tenantId: string
+  organizationId: string
+  productionOrderIds: string[]
+  horizonHours?: number
+  objective?: 'minimize_lateness' | 'minimize_changeover' | 'balance_load'
+  applySync?: boolean
+  dryRun?: boolean
+  chunkSize?: number
+  requestedByUserId?: string | null
 }
 
 const GLOBAL_KEY = '__production_planning_queues__' as const

@@ -9,6 +9,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 ProductionOrderStatus = Literal["draft", "planned", "in_progress", "completed", "cancelled"]
 ScheduleObjective = Literal["minimize_lateness", "minimize_changeover", "balance_load"]
 ScheduleJobStatus = Literal["queued", "completed", "failed"]
+ScheduleStrategy = Literal["monolithic", "rolling"]
+DEFAULT_MAX_OPERATIONS_PER_SOLVE = 500
 
 
 class ProductionOperation(BaseModel):
@@ -61,6 +63,47 @@ class ProductionOrder(BaseModel):
         return ops
 
 
+class RollingHorizonConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    enabled: bool = True
+    window_hours: int = Field(default=168, alias="windowHours", ge=8, le=24 * 14)
+    overlap_hours: int = Field(default=24, alias="overlapHours", ge=0, le=168)
+    freeze_before: datetime | None = Field(default=None, alias="freezeBefore")
+    max_operations_per_window: int = Field(
+        default=1500,
+        alias="maxOperationsPerWindow",
+        ge=50,
+        le=5000,
+    )
+
+
+class FixedOperation(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    operation_id: UUID = Field(alias="operationId")
+    work_center_code: str = Field(alias="workCenterCode", min_length=1, max_length=80)
+    planned_start_at: datetime = Field(alias="plannedStartAt")
+    planned_end_at: datetime = Field(alias="plannedEndAt")
+
+
+class WorkCenterFloor(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    work_center_code: str = Field(alias="workCenterCode", min_length=1, max_length=80)
+    earliest_start_at: datetime = Field(alias="earliestStartAt")
+
+
+class ChunkMeta(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    batch_id: str = Field(alias="batchId", min_length=1, max_length=64)
+    chunk_index: int = Field(alias="chunkIndex", ge=0)
+    chunk_count: int = Field(alias="chunkCount", ge=1)
+    total_operations: int = Field(alias="totalOperations", ge=1)
+    operation_ids: list[UUID] = Field(alias="operationIds", min_length=1, max_length=500)
+
+
 class ScheduleRequest(BaseModel):
     """Payload sent by Mercato after loading orders + operations from the database."""
 
@@ -78,6 +121,23 @@ class ScheduleRequest(BaseModel):
     horizon_hours: int = Field(default=168, alias="horizonHours", ge=24, le=24 * 30)
     objective: ScheduleObjective = "minimize_lateness"
     planning_start_at: datetime | None = Field(default=None, alias="planningStartAt")
+    max_operations_per_solve: int = Field(
+        default=DEFAULT_MAX_OPERATIONS_PER_SOLVE,
+        alias="maxOperationsPerSolve",
+        ge=1,
+        le=500,
+    )
+    slot_size_minutes: int = Field(default=5, alias="slotSizeMinutes", ge=1, le=60)
+    rolling: RollingHorizonConfig | None = None
+    fixed_operations: list[FixedOperation] = Field(
+        default_factory=list,
+        alias="fixedOperations",
+    )
+    work_center_floors: list[WorkCenterFloor] = Field(
+        default_factory=list,
+        alias="workCenterFloors",
+    )
+    chunk: ChunkMeta | None = None
 
     @field_validator("orders")
     @classmethod
@@ -101,8 +161,18 @@ class ScheduledOperation(BaseModel):
     planned_end_at: datetime = Field(alias="plannedEndAt", serialization_alias="plannedEndAt")
 
 
+class WindowSolveMeta(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    window_index: int = Field(alias="windowIndex", serialization_alias="windowIndex")
+    window_start_at: datetime = Field(alias="windowStartAt", serialization_alias="windowStartAt")
+    window_end_at: datetime = Field(alias="windowEndAt", serialization_alias="windowEndAt")
+    operation_count: int = Field(alias="operationCount", serialization_alias="operationCount")
+    solver_status: str = Field(alias="solverStatus", serialization_alias="solverStatus")
+
+
 class ScheduleResponse(BaseModel):
-    """Compatible with Mercato HexalyOptimizeResult."""
+    """CP-SAT schedule result for Mercato production_planning bridge."""
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -115,6 +185,23 @@ class ScheduleResponse(BaseModel):
         default=None,
         alias="objectiveValue",
         serialization_alias="objectiveValue",
+    )
+    strategy: ScheduleStrategy = "monolithic"
+    windows: list[WindowSolveMeta] | None = None
+    deferred_operation_ids: list[UUID] | None = Field(
+        default=None,
+        alias="deferredOperationIds",
+        serialization_alias="deferredOperationIds",
+    )
+    carry_forward_end_at: datetime | None = Field(
+        default=None,
+        alias="carryForwardEndAt",
+        serialization_alias="carryForwardEndAt",
+    )
+    work_center_floors: list[WorkCenterFloor] | None = Field(
+        default=None,
+        alias="workCenterFloors",
+        serialization_alias="workCenterFloors",
     )
 
 

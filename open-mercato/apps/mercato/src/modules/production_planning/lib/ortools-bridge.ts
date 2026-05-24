@@ -10,6 +10,34 @@
 
 export type CpsatObjective = 'minimize_lateness' | 'minimize_changeover' | 'balance_load'
 
+export type CpsatRollingConfig = {
+  enabled?: boolean
+  windowHours?: number
+  overlapHours?: number
+  freezeBefore?: string
+  maxOperationsPerWindow?: number
+}
+
+export type CpsatFixedOperation = {
+  operationId: string
+  workCenterCode: string
+  plannedStartAt: string
+  plannedEndAt: string
+}
+
+export type CpsatWorkCenterFloor = {
+  workCenterCode: string
+  earliestStartAt: string
+}
+
+export type CpsatChunkMeta = {
+  batchId: string
+  chunkIndex: number
+  chunkCount: number
+  totalOperations: number
+  operationIds: string[]
+}
+
 export type CpsatScheduleEntry = {
   operationId: string
   productionOrderId?: string
@@ -25,6 +53,17 @@ export type OrtoolsOptimizeResult = {
   message?: string | null
   solverStatus?: string | null
   objectiveValue?: number | null
+  strategy?: 'monolithic' | 'rolling'
+  deferredOperationIds?: string[] | null
+}
+
+export type OrtoolsBatchOptimizeResult = {
+  batchId: string
+  status: 'completed' | 'partial' | 'failed'
+  chunkResults: OrtoolsOptimizeResult[]
+  schedule: CpsatScheduleEntry[]
+  totalObjectiveValue?: number | null
+  message?: string | null
 }
 
 /** Payload for POST /schedule — mirrors ortools-scheduler ScheduleRequest */
@@ -60,6 +99,12 @@ export type CpsatScheduleRequest = {
   horizonHours: number
   objective: CpsatObjective
   planningStartAt: string
+  maxOperationsPerSolve?: number
+  slotSizeMinutes?: number
+  rolling?: CpsatRollingConfig | null
+  fixedOperations?: CpsatFixedOperation[]
+  workCenterFloors?: CpsatWorkCenterFloor[]
+  chunk?: CpsatChunkMeta
 }
 
 export function isOrtoolsBridgeConfigured(): boolean {
@@ -131,6 +176,8 @@ export async function requestOrtoolsOptimization(
       message: json.message ?? null,
       solverStatus: json.solverStatus ?? null,
       objectiveValue: json.objectiveValue ?? null,
+      strategy: json.strategy ?? undefined,
+      deferredOperationIds: json.deferredOperationIds ?? null,
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'CP-SAT bridge request failed'

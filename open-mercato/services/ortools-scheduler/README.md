@@ -25,6 +25,16 @@ ORTOOLS_BRIDGE_TIMEOUT_MS=120000
 
 Then call `POST /api/production_planning/optimize` with `{ "applySync": true }`.
 
+## Scaling thresholds
+
+| Mechanism | Threshold | Behavior |
+|-----------|-----------|----------|
+| Mercato operation batching | 500 ops / solve | Node splits orders into chunks; carry-forward via `fixedOperations` + `workCenterFloors` |
+| Auto rolling horizon | 600+ ops | Python solves 168h windows with 24h overlap |
+| Pairwise changeover | >200 ops or >50 ops/WC | Changeover objective uses makespan-only fallback |
+| CP-SAT size tiers | ≤100 / ≤1000 / 1001+ | Time limits 30s / 120s / 300s, LNS + gap limits at scale |
+| Async optimize (Mercato) | ≥20 production orders | `POST /optimize` returns 202 + job poll URL |
+
 ## License
 
 OR-Tools is Apache 2.0. This service is part of the dwthon-rag Open Mercato extension.

@@ -34,6 +34,11 @@ const events = [
     category: 'system',
   },
   {
+    id: 'production_planning.optimize.chunk.completed',
+    label: 'CP-SAT optimization chunk completed',
+    category: 'system',
+  },
+  {
     id: 'production_planning.schedule.applied',
     label: 'CP-SAT schedule applied to operations',
     entity: 'production_order',

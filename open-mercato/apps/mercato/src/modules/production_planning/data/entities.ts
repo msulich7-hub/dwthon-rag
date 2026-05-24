@@ -95,3 +95,85 @@ export class ProductionPlanningOperation {
   @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
   updatedAt: Date = new Date()
 }
+
+export type CpsatOptimizeJobStatus =
+  | 'queued'
+  | 'running'
+  | 'chunking'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+
+export type CpsatObjective = 'minimize_lateness' | 'minimize_changeover' | 'balance_load'
+
+@Entity({ tableName: 'production_planning_optimize_jobs' })
+export class ProductionPlanningOptimizeJob {
+  @PrimaryKey({ type: 'uuid' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ type: 'text', default: 'queued' })
+  status: CpsatOptimizeJobStatus = 'queued'
+
+  @Property({ name: 'production_order_ids_json', type: 'text' })
+  productionOrderIdsJson!: string
+
+  @Property({ name: 'horizon_hours', type: 'int', default: 168 })
+  horizonHours: number = 168
+
+  @Property({ type: 'text', default: 'minimize_lateness' })
+  objective: CpsatObjective = 'minimize_lateness'
+
+  @Property({ name: 'apply_sync', type: 'boolean', default: true })
+  applySync: boolean = true
+
+  @Property({ name: 'dry_run', type: 'boolean', default: false })
+  dryRun: boolean = false
+
+  @Property({ name: 'chunk_count', type: 'int', default: 1 })
+  chunkCount: number = 1
+
+  @Property({ name: 'chunks_completed', type: 'int', default: 0 })
+  chunksCompleted: number = 0
+
+  @Property({ name: 'queue_job_id', type: 'text', nullable: true })
+  queueJobId?: string | null
+
+  @Property({ name: 'requested_by_user_id', type: 'uuid', nullable: true })
+  requestedByUserId?: string | null
+
+  @Property({ name: 'solver_status', type: 'text', nullable: true })
+  solverStatus?: string | null
+
+  @Property({ name: 'objective_value', type: 'numeric', precision: 18, scale: 4, nullable: true })
+  objectiveValue?: number | null
+
+  @Property({ type: 'text', nullable: true })
+  message?: string | null
+
+  @Property({ name: 'operation_count', type: 'int', nullable: true })
+  operationCount?: number | null
+
+  @Property({ name: 'schedule_json', type: 'text', nullable: true })
+  scheduleJson?: string | null
+
+  @Property({ name: 'apply_result_json', type: 'text', nullable: true })
+  applyResultJson?: string | null
+
+  @Property({ name: 'started_at', type: Date, nullable: true })
+  startedAt?: Date | null
+
+  @Property({ name: 'completed_at', type: Date, nullable: true })
+  completedAt?: Date | null
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+
+  @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
+  updatedAt: Date = new Date()
+}

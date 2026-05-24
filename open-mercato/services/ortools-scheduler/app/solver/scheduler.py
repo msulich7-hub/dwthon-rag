@@ -2,196 +2,40 @@
 
 from __future__ import annotations
 
-import os
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from enum import Enum
 from uuid import UUID, uuid4
 
 from ortools.sat.python import cp_model
 
 from app.schemas import (
+    FixedOperation,
     ProductionOrder,
+    RollingHorizonConfig,
     ScheduleObjective,
     ScheduleRequest,
     ScheduledOperation,
     ScheduleResponse,
+    WorkCenterFloor,
 )
+from app.solver.ops import FlatOperation, SchedulerError
+from app.solver.preprocess import preprocess_schedule_request, should_use_pairwise_changeover
+from app.solver.profiles import CPSAT_PROFILES, apply_cpsat_profile, tier_for_operation_count
+from app.solver.rolling import solve_schedule_rolling
 
 
-class SchedulerError(Exception):
-    """Raised when input cannot be modeled or the solver fails unexpectedly."""
-
-
-class SolverSizeTier(str, Enum):
-    """Operation-count tier for CP-SAT parameter selection."""
-
-    SMALL = "small"  # <= 100 operations
-    MEDIUM = "medium"  # 101-1000 operations
-    LARGE = "large"  # 1001+ operations
-
-
-@dataclass(frozen=True)
-class CpSatParameterProfile:
-    """CP-SAT tuning for job-shop models with AddNoOverlap, precedence, and tardiness."""
-
-    max_time_in_seconds: float
-    worker_cap: int
-    search_branching: int
-    linearization_level: int
-    use_lns: bool
-    use_lb_relax_lns: bool
-    use_rins_lns: bool
-    interleave_search: bool
-    symmetry_level: int
-    relative_gap_limit: float
-    optimize_with_max_hs: bool
-    cp_model_presolve: bool
-    use_precedences_in_disjunctive_constraint: bool
-    probing_deterministic_time_limit: float | None = None
-
-
-def _cpu_count() -> int:
-    return os.cpu_count() or 4
-
-
-def _tier_for_operation_count(num_operations: int) -> SolverSizeTier:
-    if num_operations <= 100:
-        return SolverSizeTier.SMALL
-    if num_operations <= 1000:
-        return SolverSizeTier.MEDIUM
-    return SolverSizeTier.LARGE
-
-
-def _workers_for_tier(tier: SolverSizeTier) -> int:
-    return min(CPSAT_PROFILES[tier].worker_cap, _cpu_count())
-
-
-# Size-tier profiles for AddNoOverlap job-shop + precedence + sum-of-tardiness objective.
-# Defaults follow OR-Tools 9.x guidance: portfolio search, linearization_level=2 for
-# scheduling, LNS subsolvers at scale, and relative_gap_limit when proving optimality
-# is too expensive.
-CPSAT_PROFILES: dict[SolverSizeTier, CpSatParameterProfile] = {
-    SolverSizeTier.SMALL: CpSatParameterProfile(
-        max_time_in_seconds=30.0,
-        worker_cap=4,
-        search_branching=cp_model.PORTFOLIO_SEARCH,
-        linearization_level=2,
-        use_lns=False,
-        use_lb_relax_lns=False,
-        use_rins_lns=False,
-        interleave_search=False,
-        symmetry_level=2,
-        relative_gap_limit=0.0,
-        optimize_with_max_hs=False,
-        cp_model_presolve=True,
-        use_precedences_in_disjunctive_constraint=True,
-    ),
-    SolverSizeTier.MEDIUM: CpSatParameterProfile(
-        max_time_in_seconds=120.0,
-        worker_cap=8,
-        search_branching=cp_model.PORTFOLIO_SEARCH,
-        linearization_level=2,
-        use_lns=True,
-        use_lb_relax_lns=True,
-        use_rins_lns=True,
-        interleave_search=True,
-        symmetry_level=2,
-        relative_gap_limit=0.01,
-        optimize_with_max_hs=True,
-        cp_model_presolve=True,
-        use_precedences_in_disjunctive_constraint=True,
-    ),
-    SolverSizeTier.LARGE: CpSatParameterProfile(
-        max_time_in_seconds=300.0,
-        worker_cap=16,
-        search_branching=cp_model.PORTFOLIO_SEARCH,
-        linearization_level=2,
-        use_lns=True,
-        use_lb_relax_lns=True,
-        use_rins_lns=True,
-        interleave_search=True,
-        symmetry_level=1,
-        relative_gap_limit=0.02,
-        optimize_with_max_hs=True,
-        cp_model_presolve=True,
-        use_precedences_in_disjunctive_constraint=True,
-        probing_deterministic_time_limit=0.5,
-    ),
-}
-
-
-def _apply_cpsat_profile(
-    solver: cp_model.CpSolver,
-    profile: CpSatParameterProfile,
-    *,
-    timeout_seconds: int | None,
-    num_workers: int,
+def _apply_work_center_floors(
+    model: cp_model.CpModel,
+    starts: dict[UUID, cp_model.IntVar],
+    flat_ops: list[FlatOperation],
+    floors: list[WorkCenterFloor],
+    planning_start: datetime,
 ) -> None:
-    params = solver.parameters
-    params.max_time_in_seconds = float(timeout_seconds if timeout_seconds is not None else profile.max_time_in_seconds)
-    params.num_search_workers = num_workers if num_workers > 0 else min(profile.worker_cap, _cpu_count())
-    params.search_branching = profile.search_branching
-    params.linearization_level = profile.linearization_level
-    params.use_lns = profile.use_lns
-    params.use_lb_relax_lns = profile.use_lb_relax_lns
-    params.use_rins_lns = profile.use_rins_lns
-    params.interleave_search = profile.interleave_search
-    params.symmetry_level = profile.symmetry_level
-    params.relative_gap_limit = profile.relative_gap_limit
-    params.optimize_with_max_hs = profile.optimize_with_max_hs
-    params.cp_model_presolve = profile.cp_model_presolve
-    params.use_precedences_in_disjunctive_constraint = profile.use_precedences_in_disjunctive_constraint
-    if profile.probing_deterministic_time_limit is not None:
-        params.probing_deterministic_time_limit = profile.probing_deterministic_time_limit
-
-
-@dataclass(frozen=True)
-class FlatOperation:
-    op_id: UUID
-    order_id: UUID
-    sequence_no: int
-    work_center_code: str
-    duration_minutes: int
-    product_sku: str | None
-    order_code: str
-
-
-def _flatten_operations(orders: list[ProductionOrder]) -> list[FlatOperation]:
-    flat: list[FlatOperation] = []
-    for order in orders:
-        if order.status in ("completed", "cancelled"):
-            continue
-        for op in sorted(order.operations, key=lambda o: o.sequence_no):
-            if op.status in ("completed", "cancelled"):
-                continue
-            flat.append(
-                FlatOperation(
-                    op_id=op.id,
-                    order_id=order.id,
-                    sequence_no=op.sequence_no,
-                    work_center_code=op.work_center_code.strip() or "default",
-                    duration_minutes=op.duration_minutes,
-                    product_sku=order.product_sku,
-                    order_code=order.code,
-                )
-            )
-    if not flat:
-        raise SchedulerError("No schedulable operations found (all completed/cancelled or empty routing)")
-    return flat
-
-
-def _order_due_offsets_minutes(orders: list[ProductionOrder], planning_start: datetime) -> dict[UUID, int | None]:
-    offsets: dict[UUID, int | None] = {}
-    for order in orders:
-        if order.due_at is None:
-            offsets[order.id] = None
-            continue
-        due = order.due_at if order.due_at.tzinfo else order.due_at.replace(tzinfo=UTC)
-        start = planning_start if planning_start.tzinfo else planning_start.replace(tzinfo=UTC)
-        delta = int((due - start).total_seconds() // 60)
-        offsets[order.id] = max(0, delta)
-    return offsets
+    for fl in floors:
+        floor_off = int((fl.earliest_start_at - planning_start).total_seconds() // 60)
+        floor_off = max(0, floor_off)
+        for op in flat_ops:
+            if op.work_center_code == fl.work_center_code and op.op_id in starts:
+                model.add(starts[op.op_id] >= floor_off)
 
 
 def solve_schedule(
@@ -205,22 +49,64 @@ def solve_schedule(
     if planning_start.tzinfo is None:
         planning_start = planning_start.replace(tzinfo=UTC)
 
-    horizon_minutes = request.horizon_hours * 60
-    flat_ops = _flatten_operations(request.orders)
-    due_offsets = _order_due_offsets_minutes(request.orders, planning_start)
+    try:
+        pre = preprocess_schedule_request(request, planning_start)
+    except SchedulerError as exc:
+        return ScheduleResponse(
+            job_id=job_id,
+            status="failed",
+            message=str(exc),
+            solver_status="PREPROCESS_FAILED",
+        )
+
+    if pre.use_rolling:
+        rolling_cfg = request.rolling or RollingHorizonConfig(enabled=True)
+        return solve_schedule_rolling(
+            request,
+            rolling_cfg,
+            timeout_seconds=int(timeout_seconds) if timeout_seconds else None,
+        )
+
+    horizon_minutes = pre.horizon_minutes
+    flat_ops = pre.flat_ops
+    due_offsets = {k: max(0, v) if v is not None else None for k, v in pre.due_offsets.items()}
+    slot_minutes = max(1, request.slot_size_minutes)
+    horizon_slots = max(1, horizon_minutes // slot_minutes)
 
     model = cp_model.CpModel()
     starts: dict[UUID, cp_model.IntVar] = {}
     ends: dict[UUID, cp_model.IntVar] = {}
     intervals_by_wc: dict[str, list[cp_model.IntervalVar]] = {}
 
+    fixed_ops: list[FixedOperation] = list(request.fixed_operations)
+    fixed_ids = {f.operation_id for f in fixed_ops}
+
+    def dur_slots(minutes: int) -> int:
+        return max(1, (minutes + slot_minutes - 1) // slot_minutes)
+
+    for fix in fixed_ops:
+        s = int((fix.planned_start_at - planning_start).total_seconds() // 60)
+        e = int((fix.planned_end_at - planning_start).total_seconds() // 60)
+        s_slot = max(0, s // slot_minutes)
+        e_slot = max(s_slot + 1, e // slot_minutes)
+        start = model.new_int_var(s_slot, s_slot, f"fix_s_{fix.operation_id}")
+        end = model.new_int_var(e_slot, e_slot, f"fix_e_{fix.operation_id}")
+        iv = model.new_interval_var(start, max(1, e_slot - s_slot), end, f"fix_iv_{fix.operation_id}")
+        intervals_by_wc.setdefault(fix.work_center_code, []).append(iv)
+
     for op in flat_ops:
-        start = model.new_int_var(0, horizon_minutes, f"start_{op.op_id}")
-        end = model.new_int_var(0, horizon_minutes, f"end_{op.op_id}")
-        interval = model.new_interval_var(start, op.duration_minutes, end, f"interval_{op.op_id}")
+        if op.op_id in fixed_ids:
+            continue
+        d = dur_slots(op.duration_minutes)
+        start = model.new_int_var(0, horizon_slots, f"start_{op.op_id}")
+        end = model.new_int_var(0, horizon_slots, f"end_{op.op_id}")
+        model.add(end == start + d)
+        interval = model.new_interval_var(start, d, end, f"interval_{op.op_id}")
         starts[op.op_id] = start
         ends[op.op_id] = end
         intervals_by_wc.setdefault(op.work_center_code, []).append(interval)
+
+    _apply_work_center_floors(model, starts, flat_ops, list(request.work_center_floors), planning_start)
 
     for wc_intervals in intervals_by_wc.values():
         model.add_no_overlap(wc_intervals)
@@ -235,9 +121,10 @@ def solve_schedule(
 
     order_completion: dict[UUID, cp_model.IntVar] = {}
     for order_id, order_ops in ops_by_order.items():
-        completion = model.new_int_var(0, horizon_minutes, f"order_end_{order_id}")
-        for op in order_ops:
-            model.add(completion >= ends[op.op_id])
+        completion = model.new_int_var(0, horizon_slots, f"order_end_{order_id}")
+        end_vars = [ends[op.op_id] for op in order_ops if op.op_id in ends]
+        if end_vars:
+            model.add_max_equality(completion, end_vars)
         order_completion[order_id] = completion
 
     objective_terms: list[cp_model.LinearExpr] = []
@@ -247,7 +134,7 @@ def solve_schedule(
             due = due_offsets.get(order_id)
             if due is None:
                 continue
-            lateness = model.new_int_var(0, horizon_minutes, f"late_{order_id}")
+            lateness = model.new_int_var(0, horizon_slots, f"late_{order_id}")
             model.add(lateness >= completion - due)
             model.add(lateness >= 0)
             objective_terms.append(lateness)
@@ -258,38 +145,41 @@ def solve_schedule(
     elif request.objective == "balance_load":
         wc_end_times: list[cp_model.IntVar] = []
         for wc in intervals_by_wc:
-            wc_end = model.new_int_var(0, horizon_minutes, f"wc_end_{wc}")
+            wc_end = model.new_int_var(0, horizon_slots, f"wc_end_{wc}")
             for op in flat_ops:
                 if op.work_center_code == wc:
                     model.add(wc_end >= ends[op.op_id])
             wc_end_times.append(wc_end)
         if len(wc_end_times) >= 2:
-            max_wc_end = model.new_int_var(0, horizon_minutes, "max_wc_end")
-            min_wc_end = model.new_int_var(0, horizon_minutes, "min_wc_end")
+            max_wc_end = model.new_int_var(0, horizon_slots, "max_wc_end")
+            min_wc_end = model.new_int_var(0, horizon_slots, "min_wc_end")
             model.add_max_equality(max_wc_end, wc_end_times)
             model.add_min_equality(min_wc_end, wc_end_times)
-            spread = model.new_int_var(0, horizon_minutes, "wc_end_spread")
+            spread = model.new_int_var(0, horizon_slots, "wc_end_spread")
             model.add(spread == max_wc_end - min_wc_end)
             objective_terms.append(spread)
-        makespan = model.new_int_var(0, horizon_minutes, "makespan")
+        makespan = model.new_int_var(0, horizon_slots, "makespan")
         model.add_max_equality(makespan, list(order_completion.values()))
         objective_terms.append(makespan)
 
     elif request.objective == "minimize_changeover":
-        # Penalize consecutive operations on the same work center when SKU differs.
         changeover_penalty = 10_000
-        for wc, wc_intervals in intervals_by_wc.items():
-            wc_ops = [op for op in flat_ops if op.work_center_code == wc]
-            if len(wc_ops) < 2:
-                continue
-            for i, op_a in enumerate(wc_ops):
-                for op_b in wc_ops[i + 1 :]:
-                    if op_a.product_sku == op_b.product_sku:
-                        continue
-                    a_before_b = model.new_bool_var(f"before_{op_a.op_id}_{op_b.op_id}")
-                    model.add(ends[op_a.op_id] <= starts[op_b.op_id]).only_enforce_if(a_before_b)
-                    model.add(ends[op_b.op_id] <= starts[op_a.op_id]).only_enforce_if(a_before_b.Not())
-                    objective_terms.append(a_before_b * changeover_penalty)
+        use_pairwise = should_use_pairwise_changeover(len(flat_ops), max(len(v) for v in intervals_by_wc.values()) if intervals_by_wc else 0)
+        if use_pairwise:
+            for wc in intervals_by_wc:
+                wc_ops = [op for op in flat_ops if op.work_center_code == wc]
+                if len(wc_ops) < 2:
+                    continue
+                for i, op_a in enumerate(wc_ops):
+                    for op_b in wc_ops[i + 1 :]:
+                        if op_a.product_sku == op_b.product_sku:
+                            continue
+                        if op_a.op_id not in starts or op_b.op_id not in starts:
+                            continue
+                        a_before_b = model.new_bool_var(f"before_{op_a.op_id}_{op_b.op_id}")
+                        model.add(ends[op_a.op_id] <= starts[op_b.op_id]).only_enforce_if(a_before_b)
+                        model.add(ends[op_b.op_id] <= starts[op_a.op_id]).only_enforce_if(a_before_b.Not())
+                        objective_terms.append(a_before_b * changeover_penalty)
         for completion in order_completion.values():
             objective_terms.append(completion)
 
@@ -298,12 +188,12 @@ def solve_schedule(
     else:
         model.minimize(sum(order_completion.values()))
 
-    tier = _tier_for_operation_count(len(flat_ops))
+    tier = tier_for_operation_count(len(flat_ops))
     profile = CPSAT_PROFILES[tier]
     effective_timeout = float(timeout_seconds if timeout_seconds is not None else profile.max_time_in_seconds)
 
     solver = cp_model.CpSolver()
-    _apply_cpsat_profile(
+    apply_cpsat_profile(
         solver,
         profile,
         timeout_seconds=timeout_seconds,
@@ -323,8 +213,10 @@ def solve_schedule(
 
     schedule: list[ScheduledOperation] = []
     for op in flat_ops:
-        start_min = solver.value(starts[op.op_id])
-        end_min = solver.value(ends[op.op_id])
+        if op.op_id not in starts:
+            continue
+        start_min = solver.value(starts[op.op_id]) * slot_minutes
+        end_min = solver.value(ends[op.op_id]) * slot_minutes
         schedule.append(
             ScheduledOperation(
                 operation_id=op.op_id,

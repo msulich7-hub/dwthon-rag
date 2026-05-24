@@ -74,10 +74,14 @@ export function resolveTemplateOptimizeParamsFromTemplate(
   const dryRun = options?.dryRun ?? proposeOnly
   const applySync = options?.applySync ?? false
 
-  if (mergedOverrides.demand || mergedOverrides.supply || mergedOverrides.capacity) {
-    notes.push(
-      'Demand/supply/capacity overrides are catalog metadata until IFS/MRP bridge is wired; solve uses current DB orders.',
-    )
+  const cap = mergedOverrides.capacity as Record<string, unknown> | undefined
+  const demand = mergedOverrides.demand as Record<string, unknown> | undefined
+  if (cap?.oeeMultiplier != null || cap?.workCenterBlackoutHours != null) {
+    notes.push('Capacity overrides will adjust durations and/or work-center floors on solve.')
+  } else if (demand?.forecastDeltaPct != null) {
+    notes.push('Demand override will shift order due dates on solve.')
+  } else if (mergedOverrides.demand || mergedOverrides.supply || mergedOverrides.capacity) {
+    notes.push('Some demand/supply overrides await IFS/MRP bridge; partial apply on solve.')
   }
   if (mergedOverrides.changeoverGroups || mergedOverrides.routingAlternatives) {
     notes.push('Changeover/routing overrides from registry apply when those payload fields are enabled.')

@@ -263,3 +263,233 @@ export class ProductionPlanningPlanScenario {
   @Property({ name: 'completed_at', type: Date, nullable: true })
   completedAt?: Date | null
 }
+
+export type NettingRunStatus = 'queued' | 'running' | 'completed' | 'failed'
+export type GenesisRootStatus = 'pending' | 'exploded' | 'netted' | 'released' | 'error'
+
+@Entity({ tableName: 'production_planning_ifs_staging_batches' })
+export class ProductionPlanningIfsStagingBatch {
+  @PrimaryKey({ type: 'uuid' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ name: 'source_system', type: 'text', default: 'ifs9_pilot' })
+  sourceSystem: string = 'ifs9_pilot'
+
+  @Property({ name: 'batch_type', type: 'text' })
+  batchType!: string
+
+  @Property({ type: 'text', default: 'completed' })
+  status: string = 'completed'
+
+  @Property({ name: 'row_count', type: 'int', default: 0 })
+  rowCount: number = 0
+
+  @Property({ name: 'watermark_at', type: Date, nullable: true })
+  watermarkAt?: Date | null
+
+  @Property({ name: 'stats_json', type: 'text', nullable: true })
+  statsJson?: string | null
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+
+  @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
+  updatedAt: Date = new Date()
+}
+
+@Entity({ tableName: 'production_planning_netting_runs' })
+export class ProductionPlanningNettingRun {
+  @PrimaryKey({ type: 'uuid' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ type: 'text', default: 'full' })
+  mode: string = 'full'
+
+  @Property({ type: 'text', default: 'queued' })
+  status: NettingRunStatus = 'queued'
+
+  @Property({ name: 'roots_processed', type: 'int', default: 0 })
+  rootsProcessed: number = 0
+
+  @Property({ name: 'pool_mo_created', type: 'int', default: 0 })
+  poolMoCreated: number = 0
+
+  @Property({ name: 'pegging_links_created', type: 'int', default: 0 })
+  peggingLinksCreated: number = 0
+
+  @Property({ name: 'naive_mo_count', type: 'int', default: 0 })
+  naiveMoCount: number = 0
+
+  @Property({ name: 'consolidated_mo_count', type: 'int', default: 0 })
+  consolidatedMoCount: number = 0
+
+  @Property({ type: 'text', nullable: true })
+  message?: string | null
+
+  @Property({ name: 'stats_json', type: 'text', nullable: true })
+  statsJson?: string | null
+
+  @Property({ name: 'started_at', type: Date, nullable: true })
+  startedAt?: Date | null
+
+  @Property({ name: 'completed_at', type: Date, nullable: true })
+  completedAt?: Date | null
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+
+  @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
+  updatedAt: Date = new Date()
+}
+
+@Entity({ tableName: 'production_planning_genesis_roots' })
+@Unique({ properties: ['tenantId', 'organizationId', 'demandSourceType', 'demandSourceId'] })
+export class ProductionPlanningGenesisRoot {
+  @PrimaryKey({ type: 'uuid' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ name: 'demand_source_type', type: 'text' })
+  demandSourceType!: string
+
+  @Property({ name: 'demand_source_id', type: 'text' })
+  demandSourceId!: string
+
+  @Property({ name: 'sales_order_id', type: 'uuid', nullable: true })
+  salesOrderId?: string | null
+
+  @Property({ name: 'product_sku', type: 'text' })
+  productSku!: string
+
+  @Property({ type: 'numeric', precision: 14, scale: 4, default: 1 })
+  quantity: number = 1
+
+  @Property({ name: 'due_at', type: Date, nullable: true })
+  dueAt?: Date | null
+
+  @Property({ name: 'variant_code', type: 'text', nullable: true })
+  variantCode?: string | null
+
+  @Property({ type: 'text', default: 'pending' })
+  status: GenesisRootStatus = 'pending'
+
+  @Property({ name: 'netting_run_id', type: 'uuid', nullable: true })
+  nettingRunId?: string | null
+
+  @Property({ name: 'content_hash', type: 'text', nullable: true })
+  contentHash?: string | null
+
+  @Property({ name: 'resolution_json', type: 'text', nullable: true })
+  resolutionJson?: string | null
+
+  @Property({ name: 'error_code', type: 'text', nullable: true })
+  errorCode?: string | null
+
+  @Property({ name: 'error_message', type: 'text', nullable: true })
+  errorMessage?: string | null
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+
+  @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
+  updatedAt: Date = new Date()
+}
+
+@Entity({ tableName: 'production_planning_genesis_nodes' })
+@Unique({ properties: ['genesisRootId', 'nodeKey'] })
+export class ProductionPlanningGenesisNode {
+  @PrimaryKey({ type: 'uuid' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ name: 'genesis_root_id', type: 'uuid' })
+  genesisRootId!: string
+
+  @Property({ name: 'parent_node_id', type: 'uuid', nullable: true })
+  parentNodeId?: string | null
+
+  @Property({ name: 'node_key', type: 'text' })
+  nodeKey!: string
+
+  @Property({ type: 'int', default: 0 })
+  level: number = 0
+
+  @Property({ name: 'node_type', type: 'text' })
+  nodeType!: string
+
+  @Property({ name: 'product_sku', type: 'text' })
+  productSku!: string
+
+  @Property({ name: 'extended_qty', type: 'numeric', precision: 14, scale: 4, default: 1 })
+  extendedQty: number = 1
+
+  @Property({ name: 'time_bucket_key', type: 'text', nullable: true })
+  timeBucketKey?: string | null
+
+  @Property({ name: 'gross_req_qty', type: 'numeric', precision: 14, scale: 4, nullable: true })
+  grossReqQty?: number | null
+
+  @Property({ name: 'net_req_qty', type: 'numeric', precision: 14, scale: 4, nullable: true })
+  netReqQty?: number | null
+
+  @Property({ name: 'pool_order_id', type: 'uuid', nullable: true })
+  poolOrderId?: string | null
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+
+  @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
+  updatedAt: Date = new Date()
+}
+
+@Entity({ tableName: 'production_planning_pegging_links' })
+export class ProductionPlanningPeggingLink {
+  @PrimaryKey({ type: 'uuid' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ name: 'genesis_root_id', type: 'uuid' })
+  genesisRootId!: string
+
+  @Property({ name: 'production_order_id', type: 'uuid' })
+  productionOrderId!: string
+
+  @Property({ name: 'netting_run_id', type: 'uuid', nullable: true })
+  nettingRunId?: string | null
+
+  @Property({ type: 'numeric', precision: 14, scale: 4, default: 1 })
+  quantity: number = 1
+
+  @Property({ name: 'link_type', type: 'text', default: 'pool' })
+  linkType: string = 'pool'
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+}

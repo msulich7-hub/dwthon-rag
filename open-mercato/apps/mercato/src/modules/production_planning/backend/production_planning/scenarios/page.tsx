@@ -258,6 +258,30 @@ export default function ProductionScenariosPage() {
               ))}
             </ul>
           ) : null}
+          {baselineId && compareA ? (
+            <div className="flex flex-wrap gap-2 mt-2 text-xs">
+              <Link
+                href={`${PP_ROUTES.gantt}?scenarioId=${encodeURIComponent(baselineId)}`}
+                className="underline"
+              >
+                Gantt baseline
+              </Link>
+              <Link
+                href={`${PP_ROUTES.gantt}?scenarioId=${encodeURIComponent(compareA)}`}
+                className="underline"
+              >
+                Gantt scenariusz A
+              </Link>
+              {compareB ? (
+                <Link
+                  href={`${PP_ROUTES.gantt}?scenarioId=${encodeURIComponent(compareB)}`}
+                  className="underline"
+                >
+                  Gantt scenariusz B
+                </Link>
+              ) : null}
+            </div>
+          ) : null}
         </section>
 
         <section className="rounded-lg border p-4 space-y-2">

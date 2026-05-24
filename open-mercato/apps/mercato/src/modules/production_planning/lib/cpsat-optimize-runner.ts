@@ -30,6 +30,7 @@ export type RunCpsatOptimizeInput = {
   objective?: CpsatObjective
   objectiveWeights?: CpsatObjectiveWeights | Record<string, number> | null
   warmStartScenarioId?: string | null
+  scenarioOverrides?: Record<string, unknown> | null
   applySync?: boolean
   dryRun?: boolean
   chunkSize?: number
@@ -55,6 +56,7 @@ export async function runCpsatOptimizeJob(
     objective,
     objectiveWeights,
     warmStartScenarioId,
+    scenarioOverrides,
     applySync = true,
     dryRun = false,
     chunkSize = resolveCpsatChunkOrderLimit(),
@@ -93,6 +95,7 @@ export async function runCpsatOptimizeJob(
       objective,
       objectiveWeights,
       warmStartScenarioId,
+      scenarioOverrides,
       planningStartAt,
     })
 

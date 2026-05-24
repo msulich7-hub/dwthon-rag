@@ -43,6 +43,15 @@ const widget: InjectionMenuItemWidget = {
       placement: { position: InjectionPosition.After, relativeTo: 'pp-schedule' },
     },
     {
+      id: 'pp-gantt',
+      label: 'Gantt',
+      icon: 'GanttChart',
+      href: PP_ROUTES.gantt,
+      features: ['production_planning.view'],
+      groupId: 'production_planning.nav.group',
+      placement: { position: InjectionPosition.After, relativeTo: 'pp-scenarios' },
+    },
+    {
       id: 'pp-control-tower',
       label: 'Control tower',
       icon: 'Radar',

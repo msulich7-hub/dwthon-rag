@@ -6,6 +6,7 @@ import { Page, PageBody, PageHeader } from '@open-mercato/ui/backend/Page'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { PP_ROUTES } from '../../../lib/routes'
+import { downloadCsvInBrowser, ganttPayloadToCsv } from '../../../lib/gantt-export-csv'
 
 type GanttPayload = {
   planningStartAt: string
@@ -73,6 +74,21 @@ export default function ProductionGanttPage() {
             />
             <Button type="button" size="sm" onClick={() => load()}>
               Odśwież
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={!payload}
+              onClick={() => {
+                if (!payload) return
+                downloadCsvInBrowser(
+                  `gantt-${payload.scenarioId ?? 'live'}.csv`,
+                  ganttPayloadToCsv(payload),
+                )
+              }}
+            >
+              Eksport CSV
             </Button>
             <Link href={PP_ROUTES.schedule} className="text-sm underline text-muted-foreground">
               Pojemność

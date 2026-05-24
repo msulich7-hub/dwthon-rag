@@ -2,6 +2,8 @@
 
 import * as React from 'react'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
+import { Button } from '@open-mercato/ui/primitives/button'
+import { downloadCsvInBrowser, ganttCompareToCsv } from '../lib/gantt-export-csv'
 
 type GanttCompareBar = {
   operationId: string
@@ -145,6 +147,20 @@ export function ScenarioGanttCompare({
     <div className="rounded-lg border p-3 space-y-2 mt-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-medium text-sm">Dual Gantt — baseline vs scenariusz A</h3>
+        <div className="flex flex-wrap items-center gap-2">
+        {payload ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={() =>
+              downloadCsvInBrowser('gantt-compare.csv', ganttCompareToCsv(payload))
+            }
+          >
+            CSV
+          </Button>
+        ) : null}
         <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <span className="w-3 h-2 rounded bg-primary/70" /> bez zmian
@@ -158,6 +174,7 @@ export function ScenarioGanttCompare({
           <span className="inline-flex items-center gap-1">
             <span className="w-3 h-2 rounded bg-muted-foreground/50" /> usunięte w A
           </span>
+        </div>
         </div>
       </div>
       {loading ? (

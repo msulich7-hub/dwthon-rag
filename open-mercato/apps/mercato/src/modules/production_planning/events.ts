@@ -44,6 +44,11 @@ const events = [
     entity: 'production_order',
     category: 'crud',
   },
+  {
+    id: 'production_planning.netting.completed',
+    label: 'MRP netting run completed',
+    category: 'system',
+  },
 ] as const
 
 export const eventsConfig = createModuleEvents({ moduleId: 'production_planning', events })

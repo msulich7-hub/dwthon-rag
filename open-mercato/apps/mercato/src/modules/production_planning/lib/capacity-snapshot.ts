@@ -1,11 +1,18 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { ProductionPlanningOperation, ProductionPlanningOrder } from '../data/entities'
+import {
+  computeCalendarUtilizationPct,
+  effectiveCapacityMinutes,
+  resolveWorkCenterCalendar,
+} from './capacity/work-center-calendar'
 
 export type WorkCenterLoad = {
   workCenterCode: string
   scheduledMinutes: number
   operationCount: number
   utilizationPct: number
+  calendarCapacityMinutes: number
+  calendarId: string
 }
 
 export type CapacitySnapshot = {
@@ -64,13 +71,29 @@ export async function buildCapacitySnapshot(
     loads.set(key, entry)
   }
 
+  const planningStartAt = new Date()
   const workCenters: WorkCenterLoad[] = [...loads.entries()]
-    .map(([workCenterCode, { minutes, count }]) => ({
-      workCenterCode,
-      scheduledMinutes: minutes,
-      operationCount: count,
-      utilizationPct: computeUtilizationPct(minutes, horizonHours),
-    }))
+    .map(([workCenterCode, { minutes, count }]) => {
+      const cal = resolveWorkCenterCalendar(workCenterCode)
+      const calendarCapacityMinutes = effectiveCapacityMinutes(
+        workCenterCode,
+        horizonHours,
+        planningStartAt,
+      )
+      return {
+        workCenterCode,
+        scheduledMinutes: minutes,
+        operationCount: count,
+        utilizationPct: computeCalendarUtilizationPct(
+          minutes,
+          workCenterCode,
+          horizonHours,
+          planningStartAt,
+        ),
+        calendarCapacityMinutes,
+        calendarId: cal.id,
+      }
+    })
     .sort((a, b) => b.utilizationPct - a.utilizationPct)
 
   const lateOrders = orders.filter((o) => isOrderLate(o, now)).length

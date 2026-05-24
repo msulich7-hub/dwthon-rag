@@ -12,6 +12,8 @@ type WorkCenterLoad = {
   scheduledMinutes: number
   operationCount: number
   utilizationPct: number
+  calendarCapacityMinutes?: number
+  calendarId?: string
 }
 
 type Snapshot = {
@@ -97,7 +99,7 @@ export default function ProductionSchedulePage() {
     <Page>
       <PageHeader
         title="Harmonogram — pojemność"
-        description="Wykorzystanie gniazd roboczych + optymalizacja CP-SAT (Google OR-Tools)."
+        description="Wykorzystanie gniazd (kalendarze Mercato 1–3 zmiany) + CP-SAT + delta replan."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" size="sm" disabled={optimizing} onClick={() => void runCpsatOptimize()}>
@@ -153,7 +155,9 @@ export default function ProductionSchedulePage() {
                       <span>{wc.utilizationPct}% obciążenia</span>
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">
-                      {wc.operationCount} operacji · {wc.scheduledMinutes} min zaplanowanych
+                      {wc.operationCount} operacji · {wc.scheduledMinutes} min /{' '}
+                      {wc.calendarCapacityMinutes ?? '—'} min pojemności kalendarza
+                      {wc.calendarId ? ` · ${wc.calendarId}` : ''}
                     </div>
                   </li>
                 ))}

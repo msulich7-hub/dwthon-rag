@@ -41,6 +41,9 @@ export function resolveVariantTree(input: ResolveVariantInput): VariantTreeResol
     }
   }
 
+  const altSkus = components.filter((c) => c.componentSku.includes('ALT')).map((c) => c.componentSku)
+  const candidates = altSkus.length > 0 ? ['default', ...altSkus] : ['default']
+
   return {
     rootSku,
     variantCode: 'default',
@@ -49,6 +52,6 @@ export function resolveVariantTree(input: ResolveVariantInput): VariantTreeResol
     effectivityAt,
     routingSteps: components.map((c) => c.componentSku),
     status: 'resolved',
-    candidates: ['default'],
+    candidates,
   }
 }

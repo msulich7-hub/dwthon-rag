@@ -16,6 +16,7 @@ import { explodeBom, explodeContentHash, maxExplodedLevel } from './explode'
 import { bootstrapGenesisFromSilver } from './netting-from-silver'
 import { resolveVariantTree } from './resolve-variant-tree'
 import { poolGroupKey, weekBucketKey } from './time-buckets'
+import { emitProductionPlanningEvent } from '../events'
 import { stableUuidFromString } from '../stable-uuid'
 
 export type NettingRunResult = {
@@ -287,6 +288,20 @@ export async function executeNettingRun(
   run.statsJson = JSON.stringify({ consolidationPct, wallMs, poolGroupCount: poolGroups.size })
   run.message = `Netting completed: ${consolidationPct}% MO reduction vs naive`
   await em.flush()
+
+  await emitProductionPlanningEvent(
+    'production_planning.netting.completed',
+    {
+      tenantId: scope.tenantId,
+      organizationId: scope.organizationId,
+      runId,
+      rootsProcessed,
+      poolMoCreated,
+      consolidationPct,
+      wallMs,
+    },
+    { persistent: true },
+  )
 
   return {
     runId,

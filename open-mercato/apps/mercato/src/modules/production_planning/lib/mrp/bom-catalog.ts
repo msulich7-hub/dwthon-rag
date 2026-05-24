@@ -28,8 +28,12 @@ const CATALOG: Record<string, BomCatalogLine[]> = {
   ],
   'SF-L2-A': [
     { componentSku: 'SF-L3-A', qtyPer: 2, nodeType: 'make' },
+    { componentSku: 'SF-L3-ALT', qtyPer: 2, nodeType: 'make' },
     { componentSku: 'COMP-C', qtyPer: 1, nodeType: 'buy' },
   ],
+  'SF-L3-A': [{ componentSku: 'SF-L4-A', qtyPer: 1, nodeType: 'make' }],
+  'SF-L3-ALT': [{ componentSku: 'SF-L4-ALT', qtyPer: 1, nodeType: 'make' }],
+  'SF-L4-ALT': [{ componentSku: 'SF-L5-A', qtyPer: 1, nodeType: 'make' }],
   'SF-L3-A': [{ componentSku: 'SF-L4-A', qtyPer: 1, nodeType: 'make' }],
   'SF-L4-A': [{ componentSku: 'SF-L5-A', qtyPer: 1, nodeType: 'make' }],
   'SF-L5-A': [{ componentSku: 'RAW-STEEL', qtyPer: 2, nodeType: 'buy' }],

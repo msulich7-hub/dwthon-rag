@@ -52,6 +52,7 @@ export const setup: ModuleSetupConfig = {
     superadmin: ['production_planning.*', 'sales.*', 'ai_assistant.view'],
     admin: [
       'production_planning.*',
+      'production_planning.scenarios',
       'sales.orders.view',
       'sales.orders.manage',
       'ai_assistant.view',

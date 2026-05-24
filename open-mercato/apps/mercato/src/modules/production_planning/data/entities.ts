@@ -177,3 +177,89 @@ export class ProductionPlanningOptimizeJob {
   @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
   updatedAt: Date = new Date()
 }
+
+export type PlanScenarioStatus = 'draft' | 'simulating' | 'completed' | 'failed'
+
+@Entity({ tableName: 'production_planning_plan_scenarios' })
+export class ProductionPlanningPlanScenario {
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ name: 'template_id', type: 'text', nullable: true })
+  templateId?: string | null
+
+  @Property({ name: 'bundle_id', type: 'text', nullable: true })
+  bundleId?: string | null
+
+  @Property({ name: 'scenario_label', type: 'text' })
+  scenarioLabel!: string
+
+  @Property({ name: 'parent_scenario_id', type: 'uuid', nullable: true })
+  parentScenarioId?: string | null
+
+  @Property({ name: 'baseline_scenario_id', type: 'uuid', nullable: true })
+  baselineScenarioId?: string | null
+
+  @Property({ type: 'text', default: 'draft' })
+  status: PlanScenarioStatus = 'draft'
+
+  @Property({ name: 'propose_only', type: 'boolean', default: true })
+  proposeOnly: boolean = true
+
+  @Property({ name: 'horizon_hours', type: 'int', default: 168 })
+  horizonHours: number = 168
+
+  @Property({ type: 'text', default: 'minimize_lateness' })
+  objective: CpsatObjective = 'minimize_lateness'
+
+  @Property({ name: 'objective_weights_json', type: 'text', nullable: true })
+  objectiveWeightsJson?: string | null
+
+  @Property({ name: 'overrides_json', type: 'text', nullable: true })
+  overridesJson?: string | null
+
+  @Property({ name: 'optimize_job_id', type: 'uuid', nullable: true })
+  optimizeJobId?: string | null
+
+  @Property({ name: 'production_order_ids_json', type: 'text', nullable: true })
+  productionOrderIdsJson?: string | null
+
+  @Property({ name: 'kpi_snapshot_json', type: 'text', nullable: true })
+  kpiSnapshotJson?: string | null
+
+  @Property({ name: 'schedule_json', type: 'text', nullable: true })
+  scheduleJson?: string | null
+
+  @Property({ name: 'solver_status', type: 'text', nullable: true })
+  solverStatus?: string | null
+
+  @Property({ name: 'objective_value', type: 'numeric', precision: 18, scale: 4, nullable: true })
+  objectiveValue?: number | null
+
+  @Property({ name: 'wall_ms', type: 'int', nullable: true })
+  wallMs?: number | null
+
+  @Property({ name: 'rank_in_tournament', type: 'int', nullable: true })
+  rankInTournament?: number | null
+
+  @Property({ type: 'text', nullable: true })
+  message?: string | null
+
+  @Property({ name: 'requested_by_user_id', type: 'uuid', nullable: true })
+  requestedByUserId?: string | null
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+
+  @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
+  updatedAt: Date = new Date()
+
+  @Property({ name: 'completed_at', type: Date, nullable: true })
+  completedAt?: Date | null
+}

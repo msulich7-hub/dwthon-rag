@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { CrudHttpError, isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import { z } from 'zod'
 import { applyCpsatSchedule } from '../../lib/apply-cpsat-schedule'
-import { buildCpsatScheduleRequest, createCpsatJobId } from '../../lib/build-cpsat-payload'
+import { createCpsatJobId } from '../../lib/build-cpsat-payload'
 import { shouldRunCpsatAsync, partitionProductionOrderChunks } from '../../lib/cpsat-chunking'
 import { createCpsatOptimizeJob } from '../../lib/cpsat-optimize-job'
 import { runCpsatOptimizeJob } from '../../lib/cpsat-optimize-runner'
@@ -18,6 +18,7 @@ import {
   type CpsatOptimizeJobPayload,
 } from '../../lib/queue'
 import { resolveProductionPlanningRequestContext } from '../../lib/request-context'
+import { runTemplateScenario } from '../../lib/what-if-scenario-runner'
 
 const optimizeBodySchema = z.object({
   productionOrderIds: z.array(z.string().uuid()).min(1).max(500).optional(),
@@ -27,6 +28,10 @@ const optimizeBodySchema = z.object({
   dryRun: z.boolean().optional(),
   mode: z.enum(['sync', 'async', 'auto']).default('auto'),
   chunkSize: z.number().int().min(1).max(100).optional(),
+  scenarioLabel: z.string().min(1).max(200).optional(),
+  parentScenarioId: z.string().uuid().optional(),
+  baselineScenarioId: z.string().uuid().optional(),
+  templateId: z.string().regex(/^(T|WIF)-\d{2}$/).optional(),
 })
 
 export const metadata = {
@@ -68,6 +73,34 @@ export async function POST(request: Request) {
           status: 'completed',
           message: 'No order ids to optimize',
         },
+      })
+    }
+
+    if (body.templateId) {
+      const scenarioRun = await runTemplateScenario(
+        em,
+        { tenantId, organizationId },
+        {
+          templateId: body.templateId,
+          productionOrderIds: orderIds,
+          scenarioLabel: body.scenarioLabel ?? `Optimize ${body.templateId}`,
+          parentScenarioId: body.parentScenarioId,
+          baselineScenarioId: body.baselineScenarioId,
+          dryRun: body.dryRun ?? true,
+          applySync: body.applySync,
+          proposeOnly: !(body.applySync === true),
+          horizonHours: body.horizonHours,
+          requestedByUserId,
+        },
+      )
+      return NextResponse.json({
+        cpsatConfigured: isOrtoolsBridgeConfigured(),
+        mode: 'scenario',
+        snapshot,
+        scenario: scenarioRun.scenario,
+        optimization: scenarioRun.optimization,
+        chunkCount: scenarioRun.chunkCount,
+        wallMs: scenarioRun.wallMs,
       })
     }
 

@@ -10,6 +10,8 @@ export type ProviderWebhookPayload = {
   title?: string
   externalId?: string
   occurredAt?: string
+  tenantId?: string
+  organizationId?: string
 }
 
 export async function ingestProviderMeeting(

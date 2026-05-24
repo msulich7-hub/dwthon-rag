@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server'
-import { isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import { z } from 'zod'
+import { isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import { emailSyncBodySchema } from '../../../data/validators'
 import { syncEmailInteractions } from '../../../lib/email-sync'
 import { resolveCrm2027RequestContext } from '../../../lib/request-context'
 import { CRM_2027_EMAIL_SYNC_QUEUE, getCrm2027Queue } from '../../../lib/queue'
+import {
+  completeCrm2027MutationGuard,
+  runCrm2027MutationGuard,
+} from '../../../lib/crm-mutation-guard'
 
 export const metadata = {
   POST: { requireAuth: true, requireFeatures: ['crm_2027.manage'] },
@@ -20,6 +24,16 @@ export const openApi = {
 export async function POST(request: Request) {
   try {
     const ctx = await resolveCrm2027RequestContext(request)
+
+    const guard = await runCrm2027MutationGuard(request, {
+      tenantId: ctx.tenantId,
+      organizationId: ctx.organizationId,
+      auth: ctx.commandContext.auth,
+    })
+    if (!guard.ok) {
+      return NextResponse.json(guard.body, { status: guard.status })
+    }
+
     const json = await request.json().catch(() => ({}))
     const body = emailSyncBodySchema
       .extend({ mode: z.enum(['sync', 'async']).optional() })
@@ -33,6 +47,11 @@ export async function POST(request: Request) {
         days: body.days,
         limit: body.limit,
       })
+      await completeCrm2027MutationGuard(request, {
+        tenantId: ctx.tenantId,
+        organizationId: ctx.organizationId,
+        auth: ctx.commandContext.auth,
+      })
       return NextResponse.json({ ok: true, mode: 'async', queue: CRM_2027_EMAIL_SYNC_QUEUE })
     }
 
@@ -43,7 +62,13 @@ export async function POST(request: Request) {
       body,
     )
 
-    return NextResponse.json({ ok: true, ...result })
+    await completeCrm2027MutationGuard(request, {
+      tenantId: ctx.tenantId,
+      organizationId: ctx.organizationId,
+      auth: ctx.commandContext.auth,
+    })
+
+    return NextResponse.json({ ok: true, mode: 'sync', ...result })
   } catch (error) {
     if (isCrudHttpError(error)) {
       return NextResponse.json(error.body, { status: error.status })

@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { CrudHttpError, isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
-import { providerMeetingWebhookSchema } from '../../../data/validators'
 import { ingestProviderMeeting } from '../../../lib/webhook-meeting-ingest'
-import { resolveCrm2027RequestContext } from '../../../lib/request-context'
-import { verifyZoomSignature } from '../../../lib/webhook-verify'
+import { parseProviderWebhookPayload } from '../../../lib/webhook-payload'
 import { resolveWebhookCrmContext } from '../../../lib/webhook-context'
+import { verifyInboundWebhookAuth, verifyZoomSignature } from '../../../lib/webhook-verify'
 import { createHmac } from 'node:crypto'
 
 const zoomChallengeSchema = z.object({
@@ -32,11 +31,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ plainToken, encryptedToken })
     }
 
-    if (!verifyZoomSignature(request, rawBody)) {
-      throw new CrudHttpError(401, { error: 'Invalid webhook signature' })
+    if (!verifyInboundWebhookAuth(request)) {
+      throw new CrudHttpError(401, { error: 'Invalid webhook authentication' })
     }
 
-    const payload = providerMeetingWebhookSchema.parse(json)
+    if (!verifyZoomSignature(request, rawBody)) {
+      throw new CrudHttpError(401, { error: 'Invalid Zoom webhook signature' })
+    }
+
+    let payload
+    try {
+      payload = parseProviderWebhookPayload(json, 'zoom')
+    } catch {
+      throw new CrudHttpError(400, {
+        error: 'Unmapped Zoom payload — include dealId/transcript or custom_fields.dealId',
+      })
+    }
+
     const ctx = await resolveWebhookCrmContext(request, {
       tenantId: payload.tenantId,
       organizationId: payload.organizationId,

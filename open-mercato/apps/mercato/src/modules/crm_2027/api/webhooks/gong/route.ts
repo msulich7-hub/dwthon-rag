@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { CrudHttpError, isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
-import { providerMeetingWebhookSchema } from '../../../data/validators'
 import { ingestProviderMeeting } from '../../../lib/webhook-meeting-ingest'
+import { parseProviderWebhookPayload } from '../../../lib/webhook-payload'
 import { resolveWebhookCrmContext } from '../../../lib/webhook-context'
-import { verifyCrm2027WebhookSecret } from '../../../lib/webhook-verify'
+import { verifyInboundWebhookAuth } from '../../../lib/webhook-verify'
 
 export const metadata = {
   POST: { requireAuth: false },
@@ -11,12 +11,21 @@ export const metadata = {
 
 export async function POST(request: Request) {
   try {
-    if (!verifyCrm2027WebhookSecret(request)) {
-      throw new CrudHttpError(401, { error: 'Invalid webhook secret' })
+    if (!verifyInboundWebhookAuth(request)) {
+      throw new CrudHttpError(401, { error: 'Invalid webhook authentication' })
     }
 
     const json = await request.json().catch(() => null)
-    const payload = providerMeetingWebhookSchema.parse(json)
+
+    let payload
+    try {
+      payload = parseProviderWebhookPayload(json, 'gong')
+    } catch {
+      throw new CrudHttpError(400, {
+        error: 'Unmapped Gong payload — include dealId and transcript (or custom_fields)',
+      })
+    }
+
     const ctx = await resolveWebhookCrmContext(request, {
       tenantId: payload.tenantId,
       organizationId: payload.organizationId,

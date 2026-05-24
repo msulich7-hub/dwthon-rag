@@ -1,7 +1,9 @@
 "use client"
 
 import * as React from 'react'
+import Link from 'next/link'
 import type { InjectionWidgetComponentProps } from '@open-mercato/shared/modules/widgets/injection'
+import { dealActivitiesTabUrl } from '../../../lib/deal-timeline'
 import { apiCall, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { useGuardedMutation } from '@open-mercato/ui/backend/injection/useGuardedMutation'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
@@ -86,6 +88,8 @@ export default function DealMeetingsWidget({
   const [transcript, setTranscript] = React.useState('')
   const [title, setTitle] = React.useState('')
   const [source, setSource] = React.useState('manual')
+  const [entityId, setEntityId] = React.useState('')
+  const [preferLlm, setPreferLlm] = React.useState(true)
 
   const { runMutation } = useGuardedMutation<{ resourceType: string; resourceId: string | null }>({
     contextId: `crm_2027.deal-meetings.${dealId ?? 'unknown'}`,
@@ -134,6 +138,8 @@ export default function DealMeetingsWidget({
             transcript: transcript.trim(),
             title: title.trim() || undefined,
             source,
+            entityId: entityId.trim() || undefined,
+            preferLlmSentiment: preferLlm,
           }),
         })
 
@@ -147,7 +153,7 @@ export default function DealMeetingsWidget({
         setTitle('')
       })
     },
-    [dealId, runMutation, source, title, transcript],
+    [dealId, entityId, preferLlm, runMutation, source, title, transcript],
   )
 
   if (!dealId) {
@@ -209,6 +215,26 @@ export default function DealMeetingsWidget({
           </div>
         </div>
         <div className="space-y-1">
+          <Label htmlFor="crm-2027-meeting-entity">
+            {t('crm_2027.dealMeetings.entityLabel', 'Contact (person UUID, optional)')}
+          </Label>
+          <Input
+            id="crm-2027-meeting-entity"
+            value={entityId}
+            onChange={(e) => setEntityId(e.target.value)}
+            placeholder={t('crm_2027.dealMeetings.entityPlaceholder', 'Leave empty to use first linked person')}
+          />
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border"
+            checked={preferLlm}
+            onChange={(e) => setPreferLlm(e.target.checked)}
+          />
+          {t('crm_2027.dealMeetings.preferLlm', 'Use AI sentiment when configured')}
+        </label>
+        <div className="space-y-1">
           <Label htmlFor="crm-2027-meeting-transcript">{t('crm_2027.dealMeetings.transcriptLabel', 'Transcript')}</Label>
           <Textarea
             id="crm-2027-meeting-transcript"
@@ -243,13 +269,15 @@ export default function DealMeetingsWidget({
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {meeting.source ?? 'manual'} · {new Date(meeting.ingestedAt).toLocaleString()}
-                    {meeting.interactionId ? (
+                    {meeting.interactionId && dealId ? (
                       <>
-                        {' '}
-                        ·{' '}
-                        <span className="text-primary">
-                          {t('crm_2027.dealMeetings.onTimeline', 'On deal timeline')}
-                        </span>
+                        {' · '}
+                        <Link
+                          href={dealActivitiesTabUrl(dealId, meeting.interactionId)}
+                          className="underline text-primary"
+                        >
+                          {t('crm_2027.dealMeetings.viewOnTimeline', 'View on timeline')}
+                        </Link>
                       </>
                     ) : null}
                   </div>

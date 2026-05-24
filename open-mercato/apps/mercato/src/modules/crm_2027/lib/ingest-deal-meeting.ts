@@ -60,6 +60,7 @@ export type IngestDealMeetingOptions = {
   occurredAt?: Date
   preferLlmSentiment?: boolean
   skipInteraction?: boolean
+  entityId?: string
 }
 
 function excerpt(text: string): string {
@@ -226,7 +227,7 @@ export async function ingestDealMeeting(
   }
 
   const sentiment = await analyzeSentimentSmart(body.transcript, {
-    preferLlm: options?.preferLlmSentiment,
+    preferLlm: options?.preferLlmSentiment ?? body.preferLlmSentiment,
   })
   const progression = suggestDealProgression({
     dealId: context.deal.id,
@@ -279,7 +280,8 @@ export async function ingestDealMeeting(
 
   let interactionId: string | null = null
   if (!options?.skipInteraction) {
-    const entityId = await resolveEntityIdForDeal(em, dealId)
+    const entityId =
+      options?.entityId ?? body.entityId ?? (await resolveEntityIdForDeal(em, dealId))
     if (entityId) {
       interactionId =
         (await createMeetingInteraction(commandBus, commandContext, scope, entityId, {

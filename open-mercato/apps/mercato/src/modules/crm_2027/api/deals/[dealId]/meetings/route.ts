@@ -3,10 +3,18 @@ import { CrudHttpError, isCrudHttpError } from '@open-mercato/shared/lib/crud/er
 import { ingestDealMeetingBodySchema } from '../../../../data/validators'
 import { ingestDealMeeting, listDealMeetings } from '../../../../lib/ingest-deal-meeting'
 import { resolveCrm2027RequestContext } from '../../../../lib/request-context'
+import { assertDealInScope } from '../../../../lib/voice-execute'
+import {
+  completeCrm2027MutationGuard,
+  runCrm2027MutationGuard,
+} from '../../../../lib/crm-mutation-guard'
 
 export const metadata = {
   GET: { requireAuth: true, requireFeatures: ['crm_2027.view', 'customers.deals.view'] },
-  POST: { requireAuth: true, requireFeatures: ['crm_2027.view', 'customers.deals.view'] },
+  POST: {
+    requireAuth: true,
+    requireFeatures: ['crm_2027.view', 'customers.deals.view', 'customers.interactions.manage'],
+  },
 }
 
 export const openApi = {
@@ -51,26 +59,48 @@ export async function POST(
   ctx: { params: { dealId: string } },
 ) {
   try {
-    const { tenantId, organizationId, em, container, commandBus, commandContext } =
-      await resolveCrm2027RequestContext(request)
+    const crmCtx = await resolveCrm2027RequestContext(request)
     const dealId = ctx.params?.dealId?.trim()
     if (!dealId) {
       return NextResponse.json({ error: 'Missing deal id' }, { status: 400 })
+    }
+
+    const inScope = await assertDealInScope(crmCtx.em, crmCtx, dealId)
+    if (!inScope) {
+      throw new CrudHttpError(404, { error: 'Deal not found' })
+    }
+
+    const guard = await runCrm2027MutationGuard(request, {
+      tenantId: crmCtx.tenantId,
+      organizationId: crmCtx.organizationId,
+      auth: crmCtx.commandContext.auth,
+    })
+    if (!guard.ok) {
+      return NextResponse.json(guard.body, { status: guard.status })
     }
 
     const json = await request.json().catch(() => null)
     const body = ingestDealMeetingBodySchema.parse(json)
 
     const result = await ingestDealMeeting(
-      em,
-      container,
-      commandBus,
-      commandContext,
-      { tenantId, organizationId },
+      crmCtx.em,
+      crmCtx.container,
+      crmCtx.commandBus,
+      crmCtx.commandContext,
+      { tenantId: crmCtx.tenantId, organizationId: crmCtx.organizationId },
       dealId,
       body,
-      { preferLlmSentiment: true },
+      {
+        preferLlmSentiment: body.preferLlmSentiment ?? true,
+        entityId: body.entityId,
+      },
     )
+
+    await completeCrm2027MutationGuard(request, {
+      tenantId: crmCtx.tenantId,
+      organizationId: crmCtx.organizationId,
+      auth: crmCtx.commandContext.auth,
+    })
 
     return NextResponse.json({
       dealId,

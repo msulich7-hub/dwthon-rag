@@ -1,0 +1,30 @@
+{
+  "production_planning": {
+    "nav": {
+      "group": "Production planning"
+    },
+    "orderSchedule": {
+      "tabLabel": "Production",
+      "missingOrder": "Sales order id is missing.",
+      "newTitle": "New production order",
+      "titlePlaceholder": "e.g. Batch assembly A",
+      "create": "Create order",
+      "empty": "No linked production orders yet.",
+      "late": "Late vs due date"
+    },
+    "notifications": {
+      "orderLate": {
+        "title": "Production order is late",
+        "body": "Order {code} missed its due date."
+      },
+      "nettingCompleted": {
+        "title": "MRP netting completed",
+        "body": "{rootsProcessed} roots · {poolMoCreated} pool MO · {consolidationPct}% consolidation"
+      },
+      "optimizeCompleted": {
+        "title": "CP-SAT optimization completed",
+        "body": "{operationCount} operations scheduled · {applied} applied"
+      }
+    }
+  }
+}

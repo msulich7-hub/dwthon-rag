@@ -1,0 +1,442 @@
+{
+  "$schema": "./what-if-scenarios.registry.schema.json",
+  "version": "1.0.0",
+  "updated": "2026-05-24",
+  "defaults": {
+    "proposeOnly": true,
+    "parentScenarioId": "WIF-01",
+    "horizonHours": 168,
+    "tier": "M",
+    "dryRun": true
+  },
+  "objectiveProfiles": {
+    "otif_first": { "tardinessWeight": 1.0, "changeoverWeight": 0.2, "wipWeight": 0.1, "objective": "minimize_lateness" },
+    "balanced": { "tardinessWeight": 0.6, "changeoverWeight": 0.4, "wipWeight": 0.3, "objective": "minimize_lateness" },
+    "campaign": { "tardinessWeight": 0.3, "changeoverWeight": 1.0, "wipWeight": 0.2, "objective": "minimize_changeover" },
+    "flow_first": { "tardinessWeight": 0.4, "changeoverWeight": 0.3, "wipWeight": 1.0, "objective": "balance_load" },
+    "cost_min": { "tardinessWeight": 0.2, "changeoverWeight": 0.5, "wipWeight": 0.8, "objective": "balance_load" }
+  },
+  "templates": [
+    {
+      "id": "T-01",
+      "namePl": "Rush — VIP klient",
+      "nameEn": "Rush order VIP",
+      "dimensions": ["demand_shock", "priority"],
+      "tier": "S",
+      "audience": "planner",
+      "overrides": { "objectiveProfile": "otif_first", "demand": { "insertRushOrder": true, "priorityMultiplier": 3 } },
+      "expectedKpis": ["otif_target_up", "backlog_otif_down"]
+    },
+    {
+      "id": "T-02",
+      "namePl": "Szok popytu +20%",
+      "nameEn": "Demand spike 20%",
+      "dimensions": ["demand_shock", "horizon"],
+      "tier": "M",
+      "audience": "sop",
+      "overrides": { "demand": { "forecastUpliftPct": 20 } },
+      "expectedKpis": ["fill_rate_down", "tardy_orders_up"]
+    },
+    {
+      "id": "T-03",
+      "namePl": "Fala anulowań",
+      "nameEn": "Cancellation wave",
+      "dimensions": ["demand_shock"],
+      "tier": "S",
+      "audience": "planner",
+      "overrides": { "demand": { "cancelLinesInRange": true } },
+      "expectedKpis": ["utilization_down"]
+    },
+    {
+      "id": "T-04",
+      "namePl": "Opóźnienie dostawcy +7d",
+      "nameEn": "Supplier delay 7d",
+      "dimensions": ["supply_disruption"],
+      "tier": "M",
+      "audience": "planner",
+      "overrides": { "supply": { "poDelayDays": 7 } },
+      "expectedKpis": ["shortage_exceptions_up", "alt_routing_up"]
+    },
+    {
+      "id": "T-05",
+      "namePl": "Brak materiału (qty)",
+      "nameEn": "Material shortage qty",
+      "dimensions": ["supply_disruption"],
+      "tier": "M",
+      "audience": "planner",
+      "overrides": { "supply": { "materialQtyCapPct": 70 } },
+      "expectedKpis": ["unmet_pegged_demand"]
+    },
+    {
+      "id": "T-06",
+      "namePl": "Linia wyłączona 48h",
+      "nameEn": "Line down 48h",
+      "dimensions": ["capacity"],
+      "tier": "M",
+      "audience": "planner",
+      "overrides": { "capacity": { "workCenterBlackoutHours": 48, "workCenterPattern": "CNC-*" } },
+      "expectedKpis": ["tardiness_dependent_up"]
+    },
+    {
+      "id": "T-07",
+      "namePl": "Okno PM",
+      "nameEn": "Planned maintenance",
+      "dimensions": ["capacity", "horizon"],
+      "tier": "M",
+      "audience": "planner",
+      "overrides": { "capacity": { "maintenanceWindow": true } },
+      "expectedKpis": ["prebuild_or_overtime"]
+    },
+    {
+      "id": "T-08",
+      "namePl": "Dodatkowa zmiana OT",
+      "nameEn": "Overtime shift add",
+      "dimensions": ["capacity", "cost"],
+      "tier": "M",
+      "audience": "planner",
+      "overrides": { "capacity": { "extraShiftOnBottleneck": true }, "objectiveProfile": "otif_first" },
+      "expectedKpis": ["tardiness_down", "labor_cost_up"]
+    },
+    {
+      "id": "T-09",
+      "namePl": "Routing outsource",
+      "nameEn": "Alt routing outsource",
+      "dimensions": ["routing", "cost"],
+      "tier": "L",
+      "audience": "sop",
+      "overrides": { "routing": { "preferSubcontract": true } },
+      "expectedKpis": ["internal_load_down", "lead_time_up"]
+    },
+    {
+      "id": "T-10",
+      "namePl": "SMED -30% setup",
+      "nameEn": "Setup reduction SMED",
+      "dimensions": ["routing", "capacity"],
+      "tier": "S",
+      "audience": "planner",
+      "overrides": { "changeover": { "setupMinutesMultiplier": 0.7 } },
+      "expectedKpis": ["effective_capacity_up"]
+    },
+    {
+      "id": "T-11",
+      "namePl": "Freeze 4h → 24h",
+      "nameEn": "Freeze horizon extend",
+      "dimensions": ["priority", "capacity"],
+      "tier": "M",
+      "audience": "planner",
+      "overrides": { "fixedOperations": { "freezeHours": 24 } },
+      "expectedKpis": ["stability_up", "global_otif_down"]
+    },
+    {
+      "id": "T-12",
+      "namePl": "Re-tier priorytetów",
+      "nameEn": "Customer priority retier",
+      "dimensions": ["priority"],
+      "tier": "M",
+      "audience": "sop",
+      "overrides": { "priority": { "tierAWeight": 5, "tierCWeight": 0.5 } },
+      "expectedKpis": ["otif_tier_a_up"]
+    },
+    {
+      "id": "T-13",
+      "namePl": "Expedite fee OK",
+      "nameEn": "Expedite fee accepted",
+      "dimensions": ["cost", "priority"],
+      "tier": "M",
+      "audience": "exec",
+      "overrides": { "cost": { "allowOvertimeAndSubcontract": true }, "objectiveProfile": "otif_first" },
+      "expectedKpis": ["service_up", "margin_down", "chaos_premium_visible"]
+    },
+    {
+      "id": "T-14",
+      "namePl": "Horyzont 4→8 tyg.",
+      "nameEn": "Horizon roll 8 weeks",
+      "dimensions": ["horizon"],
+      "tier": "L",
+      "audience": "sop",
+      "overrides": { "horizonHours": 1344 },
+      "expectedKpis": ["late_orders_down", "plan_churn_up"]
+    },
+    {
+      "id": "T-15",
+      "namePl": "As-of wczoraj",
+      "nameEn": "As-of cut yesterday",
+      "dimensions": ["horizon"],
+      "tier": "M",
+      "audience": "analytics",
+      "overrides": { "asOf": { "offsetDays": -1 }, "antiFantasy": "strict" },
+      "expectedKpis": ["chaos_premium_up", "exceptions_up"]
+    },
+    {
+      "id": "T-16",
+      "namePl": "OEE -10% bottleneck",
+      "nameEn": "Bottleneck OEE minus 10",
+      "dimensions": ["capacity"],
+      "tier": "M",
+      "audience": "planner",
+      "overrides": { "capacity": { "oeeMultiplier": 0.9, "bottleneckOnly": true } },
+      "expectedKpis": ["throughput_down"]
+    },
+    {
+      "id": "T-17",
+      "namePl": "NPI nowy produkt",
+      "nameEn": "New product introduction",
+      "dimensions": ["demand_shock", "routing"],
+      "tier": "L",
+      "audience": "sop",
+      "overrides": { "demand": { "npiPilotQty": true } },
+      "expectedKpis": ["setup_burden_up", "collision_up"]
+    },
+    {
+      "id": "T-18",
+      "namePl": "Koszt min vs serwis max",
+      "nameEn": "Cost min vs service max",
+      "dimensions": ["cost", "priority"],
+      "tier": "M",
+      "audience": "exec",
+      "overrides": { "objectiveProfile": "cost_min", "compareVariant": "otif_first" },
+      "expectedKpis": ["pareto_curve"]
+    },
+    {
+      "id": "WIF-01",
+      "namePl": "Baseline finite",
+      "nameEn": "Baseline finite reload",
+      "dimensions": [],
+      "tier": "M",
+      "audience": "planner",
+      "overrides": { "objectiveProfile": "balanced", "parentScenarioId": null },
+      "expectedKpis": ["reference_incumbent"],
+      "isBaseline": true
+    },
+    {
+      "id": "WIF-02",
+      "namePl": "Lakiernia down 48h",
+      "nameEn": "Paint line down 48h",
+      "dimensions": ["capacity", "routing"],
+      "tier": "M",
+      "overrides": { "workCenterFloors": [{ "workCenterPattern": "WC-PAINT-*", "blackoutHours": 48 }], "routing": { "enableAlternatives": true } }
+    },
+    {
+      "id": "WIF-03",
+      "namePl": "CNC częściowy outage",
+      "nameEn": "CNC partial outage",
+      "dimensions": ["capacity"],
+      "tier": "M",
+      "overrides": { "workCenterFloors": [{ "workCenterCode": "WC-CNC-03", "blackoutHours": 24 }], "fixedOperations": { "freezeSiblingBay": true } }
+    },
+    {
+      "id": "WIF-04",
+      "namePl": "Rush AOG",
+      "nameEn": "Rush AOG insert",
+      "dimensions": ["demand_shock", "priority"],
+      "tier": "M",
+      "overrides": { "demand": { "insertRushOrder": true }, "objectiveProfile": "otif_first", "assemblyLinks": { "preservePeg": true } }
+    },
+    {
+      "id": "WIF-05",
+      "namePl": "OT weekend",
+      "nameEn": "Weekend overtime",
+      "dimensions": ["capacity", "horizon"],
+      "tier": "M",
+      "overrides": { "horizonHours": 216, "capacity": { "weekendShift": true } }
+    },
+    {
+      "id": "WIF-06",
+      "namePl": "Konflikt oprzyrządowania",
+      "nameEn": "Tooling conflict",
+      "dimensions": ["routing", "capacity"],
+      "tier": "S",
+      "overrides": { "changeoverGroups": { "toolingGroupConstraint": true }, "routing": { "disableAlternatives": true } }
+    },
+    {
+      "id": "WIF-07",
+      "namePl": "Kampania kolorów",
+      "nameEn": "Color campaign",
+      "dimensions": ["routing"],
+      "tier": "M",
+      "overrides": { "objectiveProfile": "campaign", "changeoverGroups": { "groupKeyField": "productSku", "campaignMode": true } }
+    },
+    {
+      "id": "WIF-08",
+      "namePl": "Kampania stopu",
+      "nameEn": "Alloy campaign matrix",
+      "dimensions": ["routing"],
+      "tier": "M",
+      "overrides": { "objectiveProfile": "campaign", "changeoverGroups": { "workCenterPattern": "WC-EXTRUDE-*", "fullMatrix": true } }
+    },
+    {
+      "id": "WIF-09",
+      "namePl": "Freeze sekwencji 4h",
+      "nameEn": "Sequence freeze 4h",
+      "dimensions": ["priority"],
+      "tier": "M",
+      "overrides": { "fixedOperations": { "freezeHours": 4, "shopFloorPins": true } }
+    },
+    {
+      "id": "WIF-10",
+      "namePl": "Split pool MO",
+      "nameEn": "Pool MO split",
+      "dimensions": ["supply_disruption"],
+      "tier": "L",
+      "overrides": { "supply": { "splitPoolMoSameSku": true }, "assemblyLinks": { "fanIn": true } }
+    },
+    {
+      "id": "WIF-11",
+      "namePl": "Alt routing balance",
+      "nameEn": "Alt routing load balance",
+      "dimensions": ["routing"],
+      "tier": "M",
+      "overrides": { "routingAlternatives": { "pctOperationsWithAlts": 0.2 } }
+    },
+    {
+      "id": "WIF-12",
+      "namePl": "Peg lag tight",
+      "nameEn": "Peg lag tighten",
+      "dimensions": ["routing"],
+      "tier": "M",
+      "overrides": { "assemblyLinks": { "lagMinutesMultiplier": 0.5 } }
+    },
+    {
+      "id": "WIF-13",
+      "namePl": "Peg infeasible probe",
+      "nameEn": "Infeasible peg probe",
+      "dimensions": ["routing"],
+      "tier": "S",
+      "overrides": { "assemblyLinks": { "forceInfeasibleDueDates": true } },
+      "expectedKpis": ["solver_infeasible", "constraint_class_peg"]
+    },
+    {
+      "id": "WIF-14",
+      "namePl": "Rolling 14d",
+      "nameEn": "Rolling horizon 14d",
+      "dimensions": ["horizon"],
+      "tier": "L",
+      "overrides": { "horizonHours": 336, "rolling": { "enabled": true, "windowHours": 168, "overlapHours": 24 } }
+    },
+    {
+      "id": "WIF-15",
+      "namePl": "Chunk 3x500",
+      "nameEn": "Chunk pipeline 3x500",
+      "dimensions": ["horizon"],
+      "tier": "L",
+      "overrides": { "chunking": { "forcePegAware": true, "targetOps": 1500 } }
+    },
+    {
+      "id": "WIF-16",
+      "namePl": "WIP-first",
+      "nameEn": "WIP minimization",
+      "dimensions": ["priority", "cost"],
+      "tier": "M",
+      "overrides": { "objectiveProfile": "flow_first" }
+    },
+    {
+      "id": "WIF-17",
+      "namePl": "Recovery z parent",
+      "nameEn": "Late order recovery warm-start",
+      "dimensions": ["priority"],
+      "tier": "M",
+      "overrides": { "parentScenarioId": "WIF-01", "objectiveProfile": "otif_first" }
+    },
+    {
+      "id": "WIF-18",
+      "namePl": "Full cocktail",
+      "nameEn": "Full constraint cocktail",
+      "dimensions": ["capacity", "routing", "priority", "supply_disruption"],
+      "tier": "M",
+      "overrides": {
+        "assemblyLinks": true,
+        "changeoverGroups": true,
+        "routingAlternatives": { "pctOperationsWithAlts": 0.15 },
+        "fixedOperations": { "freezeHours": 4 },
+        "workCenterFloors": true
+      }
+    }
+  ],
+  "bundles": [
+    {
+      "id": "BND-MONDAY",
+      "namePl": "Poniedziałek rano",
+      "mode": "cascade",
+      "maxDepth": 3,
+      "steps": ["T-15", "T-01", "T-08"]
+    },
+    {
+      "id": "BND-ESCALATION",
+      "namePl": "Eskalacja klienta",
+      "mode": "cascade",
+      "maxDepth": 3,
+      "steps": ["T-12", "T-01", "T-13"]
+    },
+    {
+      "id": "BND-SUPPLY",
+      "namePl": "Szok supply",
+      "mode": "cascade",
+      "maxDepth": 3,
+      "steps": ["T-04", "T-05", "T-09"],
+      "postSteps": ["T-18"],
+      "note": "T-18 parallel compare after cascade (cost vs service)"
+    },
+    {
+      "id": "BND-MAINT",
+      "namePl": "Tydzień PM",
+      "mode": "cascade",
+      "maxDepth": 3,
+      "steps": ["T-07", "T-02", "T-11"]
+    },
+    {
+      "id": "BND-SOP",
+      "namePl": "Pakiet S&OP",
+      "mode": "parallel",
+      "steps": ["T-02", "T-14", "T-17"],
+      "note": "Run T-02 twice with uplift +20 and -20 as variants"
+    },
+    {
+      "id": "BND-BOTTLENECK",
+      "namePl": "Wąskie gardło",
+      "mode": "parallel",
+      "steps": ["T-16", "T-08", "T-10"]
+    },
+    {
+      "id": "BND-TOURNAMENT-RUSH",
+      "namePl": "Turniej rush",
+      "mode": "tournament",
+      "baseTemplate": "WIF-04",
+      "variants": [
+        { "label": "A_otif", "objectiveProfile": "otif_first" },
+        { "label": "B_alt", "routingAlternatives": { "pctOperationsWithAlts": 0.25 } },
+        { "label": "C_ot", "horizonHours": 216 },
+        { "label": "D_campaign", "objectiveProfile": "campaign" },
+        { "label": "E_freeze", "fixedOperations": { "freezeHours": 4 } }
+      ]
+    },
+    {
+      "id": "BND-TOURNAMENT-OUTAGE",
+      "namePl": "Turniej awaria",
+      "mode": "tournament",
+      "baseTemplate": "WIF-02",
+      "variants": [
+        { "label": "A_ot", "horizonHours": 216 },
+        { "label": "B_alt", "routing": { "enableAlternatives": true } },
+        { "label": "C_freeze", "fixedOperations": { "freezeHours": 8 } },
+        { "label": "D_otif", "objectiveProfile": "otif_first" },
+        { "label": "E_balanced", "objectiveProfile": "balanced" }
+      ]
+    },
+    {
+      "id": "BND-CHAOS-ROI",
+      "namePl": "Chaos premium ROI",
+      "mode": "cascade",
+      "steps": ["T-15", "WIF-01"],
+      "requiresModule": "hindsight",
+      "expectedKpis": ["chaosPremiumPln", "chaosPremiumPct"]
+    },
+    {
+      "id": "BND-GENESIS-AUDIT",
+      "namePl": "Audyt drzewa genezy",
+      "mode": "single",
+      "steps": ["WIF-01"],
+      "requiresModule": "genesis",
+      "postActions": ["genesisDrillDownLateOrders"]
+    }
+  ]
+}

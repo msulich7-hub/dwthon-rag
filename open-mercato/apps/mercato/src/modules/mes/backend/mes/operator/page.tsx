@@ -45,7 +45,19 @@ export default function MesOperatorPage() {
   const [busyId, setBusyId] = React.useState<string | null>(null)
   const [workCenter, setWorkCenter] = React.useState('')
   const [highlightedId, setHighlightedId] = React.useState<string | null>(null)
+  const [workCenterOptions, setWorkCenterOptions] = React.useState<string[]>([])
   const rowRefs = React.useRef<Record<string, HTMLLIElement | null>>({})
+
+  React.useEffect(() => {
+    void (async () => {
+      try {
+        const payload = await readApiResultOrThrow<{ workCenters: string[] }>('/api/mes/work-centers')
+        setWorkCenterOptions(payload.workCenters ?? [])
+      } catch {
+        setWorkCenterOptions([])
+      }
+    })()
+  }, [])
 
   const loadQueue = React.useCallback(async () => {
     setLoading(true)
@@ -71,30 +83,65 @@ export default function MesOperatorPage() {
     return () => window.clearInterval(timer)
   }, [loadQueue])
 
-  const handleStart = async (item: DispatchQueueItem) => {
-    if (item.operation.status !== 'ready') return
-    setBusyId(item.operation.id)
-    try {
-      const call = await apiCall(
-        `/api/mes/work-orders/${encodeURIComponent(item.workOrderId)}/operations/${encodeURIComponent(item.operation.id)}/confirm`,
-        {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ confirmationType: 'start' }),
-        },
-      )
-      if (!call.ok) {
+  const handleStart = React.useCallback(
+    async (item: DispatchQueueItem) => {
+      if (item.operation.status !== 'ready') return
+      setBusyId(item.operation.id)
+      try {
+        const call = await apiCall(
+          `/api/mes/work-orders/${encodeURIComponent(item.workOrderId)}/operations/${encodeURIComponent(item.operation.id)}/confirm`,
+          {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ confirmationType: 'start' }),
+          },
+        )
+        if (!call.ok) {
+          flash(t('mes.operator.startError', 'Could not start operation'), 'error')
+          return
+        }
+        flash(t('mes.operator.startSuccess', 'Operation started'), 'success')
+        await loadQueue()
+      } catch {
         flash(t('mes.operator.startError', 'Could not start operation'), 'error')
-        return
+      } finally {
+        setBusyId(null)
       }
-      flash(t('mes.operator.startSuccess', 'Operation started'), 'success')
-      await loadQueue()
-    } catch {
-      flash(t('mes.operator.startError', 'Could not start operation'), 'error')
-    } finally {
-      setBusyId(null)
-    }
-  }
+    },
+    [loadQueue, t],
+  )
+
+  const handleComplete = React.useCallback(
+    async (item: DispatchQueueItem) => {
+      if (item.operation.status !== 'in_progress') return
+      setBusyId(item.operation.id)
+      try {
+        const remaining = item.operation.plannedQty - item.operation.completedQty
+        const call = await apiCall(
+          `/api/mes/work-orders/${encodeURIComponent(item.workOrderId)}/operations/${encodeURIComponent(item.operation.id)}/confirm`,
+          {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              confirmationType: 'complete',
+              goodQty: remaining > 0 ? remaining : item.operation.plannedQty,
+            }),
+          },
+        )
+        if (!call.ok) {
+          flash(t('mes.operator.completeError', 'Could not complete operation'), 'error')
+          return
+        }
+        flash(t('mes.operator.completeSuccess', 'Operation completed'), 'success')
+        await loadQueue()
+      } catch {
+        flash(t('mes.operator.completeError', 'Could not complete operation'), 'error')
+      } finally {
+        setBusyId(null)
+      }
+    },
+    [loadQueue, t],
+  )
 
   const handleScan = React.useCallback(
     (scan: string) => {
@@ -118,38 +165,13 @@ export default function MesOperatorPage() {
         }),
         'success',
       )
-    },
-    [queue, t],
-  )
-
-  const handleComplete = async (item: DispatchQueueItem) => {
-    if (item.operation.status !== 'in_progress') return
-    setBusyId(item.operation.id)
-    try {
-      const remaining = item.operation.plannedQty - item.operation.completedQty
-      const call = await apiCall(
-        `/api/mes/work-orders/${encodeURIComponent(item.workOrderId)}/operations/${encodeURIComponent(item.operation.id)}/confirm`,
-        {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            confirmationType: 'complete',
-            goodQty: remaining > 0 ? remaining : item.operation.plannedQty,
-          }),
-        },
-      )
-      if (!call.ok) {
-        flash(t('mes.operator.completeError', 'Could not complete operation'), 'error')
-        return
+      if (kiosk) {
+        if (match.operation.status === 'ready') void handleStart(match)
+        else if (match.operation.status === 'in_progress') void handleComplete(match)
       }
-      flash(t('mes.operator.completeSuccess', 'Operation completed'), 'success')
-      await loadQueue()
-    } catch {
-      flash(t('mes.operator.completeError', 'Could not complete operation'), 'error')
-    } finally {
-      setBusyId(null)
-    }
-  }
+    },
+    [handleComplete, handleStart, kiosk, queue, t],
+  )
 
   const body = (
     <PageBody className={`space-y-4 ${kiosk ? 'max-w-3xl mx-auto' : ''}`}>
@@ -170,6 +192,34 @@ export default function MesOperatorPage() {
           {t('mes.operator.refresh', 'Refresh')}
         </Button>
       </div>
+
+      {workCenterOptions.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={workCenter === '' ? 'secondary' : 'outline'}
+            onClick={() => setWorkCenter('')}
+          >
+            {t('mes.operator.allWorkCenters', 'All')}
+          </Button>
+          {workCenterOptions.map((code) => (
+            <Button
+              key={code}
+              type="button"
+              size="sm"
+              variant={workCenter === code ? 'secondary' : 'outline'}
+              onClick={() => setWorkCenter(code)}
+            >
+              {code}
+            </Button>
+          ))}
+        </div>
+      ) : null}
+
+      {kiosk ? (
+        <p className="text-xs text-muted-foreground">{t('mes.operator.kioskScanHint', 'Scan auto-starts or completes the matched operation.')}</p>
+      ) : null}
 
       {error ? <div className="text-sm text-destructive">{error}</div> : null}
 
@@ -193,7 +243,12 @@ export default function MesOperatorPage() {
               }`}
             >
               <div>
-                <div className={`font-medium ${kiosk ? 'text-xl' : ''}`}>{item.orderNumber}</div>
+                <Link
+                  href={MES_ROUTES.workOrder(item.workOrderId)}
+                  className={`font-medium text-primary hover:underline ${kiosk ? 'text-xl' : ''}`}
+                >
+                  {item.orderNumber}
+                </Link>
                 <div className={`text-muted-foreground ${kiosk ? 'text-base' : 'text-xs'}`}>
                   {item.productCode} · {item.operation.operationName}
                   {item.operation.workCenterCode ? ` · ${item.operation.workCenterCode}` : ''}

@@ -112,7 +112,14 @@ export default function MesWorkOrdersPage() {
       {
         accessorKey: 'orderNumber',
         header: t('mes.workOrders.columns.orderNumber', 'Order #'),
-        cell: ({ row }) => <span className="font-medium">{row.original.orderNumber}</span>,
+        cell: ({ row }) => (
+          <Link
+            href={MES_ROUTES.workOrder(row.original.id)}
+            className="font-medium text-primary hover:underline"
+          >
+            {row.original.orderNumber}
+          </Link>
+        ),
       },
       {
         accessorKey: 'productCode',

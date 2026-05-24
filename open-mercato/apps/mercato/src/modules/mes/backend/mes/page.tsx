@@ -7,6 +7,7 @@ import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { MesShell } from '../../components/MesShell'
 import { MesKpiSkeleton } from '../../components/MesKpiSkeleton'
+import { MesHubAndonStrip } from '../../components/MesHubAndonStrip'
 import { MES_ROUTES } from '../../lib/mes-routes'
 
 type DashboardResponse = {
@@ -50,6 +51,7 @@ export default function MesHubPage() {
           )}
         />
         <PageBody className="space-y-6">
+          <MesHubAndonStrip />
           {error ? <div className="text-sm text-destructive">{error}</div> : null}
           {loading ? (
             <MesKpiSkeleton />

@@ -58,6 +58,19 @@ async function assertDealExists(
   }
 }
 
+export async function getWorkOrder(
+  em: EntityManager,
+  scope: MesScope,
+  workOrderId: string,
+): Promise<WorkOrderDto | null> {
+  const order = await em.findOne(MesWorkOrder, {
+    id: workOrderId,
+    tenantId: scope.tenantId,
+    organizationId: scope.organizationId,
+  })
+  return order ? toDto(order) : null
+}
+
 export async function listWorkOrders(
   em: EntityManager,
   scope: MesScope,

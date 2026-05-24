@@ -28,17 +28,27 @@ export function WorkOrderCard({ workOrder, showRouting = true, onRoutingReleased
   return (
     <li className="rounded-lg border bg-card overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-2 p-3">
-        <button
-          type="button"
-          className="text-left flex-1 min-w-0"
-          onClick={() => setExpanded((v) => !v)}
-          aria-expanded={expanded}
-        >
-          <div className="text-sm font-medium">{workOrder.orderNumber}</div>
+        <div className="text-left flex-1 min-w-0">
+          <Link
+            href={MES_ROUTES.workOrder(workOrder.id)}
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            {workOrder.orderNumber}
+          </Link>
+          <button
+            type="button"
+            className="block text-xs text-muted-foreground hover:underline mt-0.5"
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
+          >
+            {expanded
+              ? t('mes.workOrderCard.hideRouting', 'Hide routing')
+              : t('mes.workOrderCard.showRouting', 'Routing & operations')}
+          </button>
           <div className="text-xs text-muted-foreground">
             {workOrder.productCode} × {workOrder.quantity}
           </div>
-        </button>
+        </div>
         <div className="flex items-center gap-2">
           <MesStatusBadge
             status={workOrder.status}

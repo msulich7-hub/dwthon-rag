@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { CrudHttpError, isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
+import { getProductionOutputForWorkOrder } from '../../../lib/production-output'
 import { getWorkOrder } from '../../../lib/work-orders'
 import { listWorkOrderOperations } from '../../../lib/work-order-operations'
 import { resolveMesRequestContext } from '../../../lib/request-context'
@@ -29,8 +30,13 @@ export async function GET(
     }
 
     const operations = await listWorkOrderOperations(em, { tenantId, organizationId }, workOrderId)
+    const productionOutput = await getProductionOutputForWorkOrder(
+      em,
+      { tenantId, organizationId },
+      workOrderId,
+    )
 
-    return NextResponse.json({ workOrder, operations })
+    return NextResponse.json({ workOrder, operations, productionOutput })
   } catch (error) {
     if (isCrudHttpError(error)) {
       return NextResponse.json(error.body, { status: error.status })

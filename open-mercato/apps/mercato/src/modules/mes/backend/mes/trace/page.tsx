@@ -14,6 +14,7 @@ import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { MesShell } from '../../../components/MesShell'
 import { MesCameraScanner } from '../../../components/MesCameraScanner'
 import { MesScanField } from '../../../components/MesScanField'
+import { MesGenealogyTree, type GenealogyTracePayload } from '../../../components/MesGenealogyTree'
 import { MES_ROUTES } from '../../../lib/mes-routes'
 
 type LotRow = {
@@ -35,6 +36,12 @@ type RecallResult = {
     consumedAt: string
     workOrderId: string
   }>
+  genealogy: {
+    upstreamCount: number
+    downstreamCount: number
+    upstream: Array<{ relation: string; parentLabel: string; childLabel: string; quantity: number | null }>
+    downstream: Array<{ relation: string; parentLabel: string; childLabel: string; quantity: number | null }>
+  } | null
 }
 
 export default function MesTracePage() {
@@ -43,6 +50,8 @@ export default function MesTracePage() {
   const [loading, setLoading] = React.useState(true)
   const [recallLot, setRecallLot] = React.useState('')
   const [recall, setRecall] = React.useState<RecallResult | null>(null)
+  const [genealogyQuery, setGenealogyQuery] = React.useState('')
+  const [genealogy, setGenealogy] = React.useState<GenealogyTracePayload | null>(null)
   const [newLot, setNewLot] = React.useState({ lotNumber: '', productCode: '', quantity: '1' })
 
   const loadLots = React.useCallback(async () => {
@@ -61,10 +70,26 @@ export default function MesTracePage() {
     void loadLots()
   }, [loadLots])
 
+  const handleGenealogy = async (value: string) => {
+    const normalized = value.trim()
+    if (!normalized) return
+    setGenealogyQuery(normalized)
+    try {
+      const payload = await readApiResultOrThrow<{ genealogy: GenealogyTracePayload }>(
+        `/api/mes/trace/genealogy?lotNumber=${encodeURIComponent(normalized)}&direction=both&depth=5`,
+      )
+      setGenealogy(payload.genealogy)
+    } catch {
+      setGenealogy(null)
+      flash(t('mes.genealogy.notFound', 'No genealogy root found'), 'error')
+    }
+  }
+
   const handleRecall = async (lotNumber: string) => {
     const normalized = lotNumber.trim()
     if (!normalized) return
     setRecallLot(normalized)
+    void handleGenealogy(normalized)
     try {
       const payload = await readApiResultOrThrow<{ recall: RecallResult }>(
         `/api/mes/trace/recall?lotNumber=${encodeURIComponent(normalized)}`,
@@ -124,7 +149,7 @@ export default function MesTracePage() {
       <MesShell>
         <PageHeader
           title={t('mes.trace.title', 'Traceability')}
-          description={t('mes.trace.description', 'Lots, material consumption, and recall search (Phase C foundation).')}
+          description={t('mes.trace.description', 'Lots, genealogy, recall search, and production output tracking.')}
         />
         <PageBody className="space-y-8">
           <section className="space-y-4 rounded-lg border p-4">
@@ -152,9 +177,27 @@ export default function MesTracePage() {
                     ))}
                   </ul>
                 )}
+                {recall.genealogy ? (
+                  <p className="text-xs text-muted-foreground">
+                    {t('mes.trace.genealogySummary', 'Genealogy: {up} upstream, {down} downstream links', {
+                      up: recall.genealogy.upstreamCount,
+                      down: recall.genealogy.downstreamCount,
+                    })}
+                  </p>
+                ) : null}
               </div>
             ) : recallLot ? (
               <p className="text-xs text-muted-foreground">{t('mes.trace.recallPending', 'Search for {lot}', { lot: recallLot })}</p>
+            ) : null}
+          </section>
+
+          <section className="space-y-4 rounded-lg border p-4">
+            <h2 className="text-sm font-medium">{t('mes.genealogy.title', 'Genealogy trace')}</h2>
+            <MesScanField onScan={handleGenealogy} />
+            {genealogy ? <MesGenealogyTree trace={genealogy} /> : genealogyQuery ? (
+              <p className="text-xs text-muted-foreground">
+                {t('mes.genealogy.pending', 'Trace for {value}', { value: genealogyQuery })}
+              </p>
             ) : null}
           </section>
 

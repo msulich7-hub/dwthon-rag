@@ -272,6 +272,111 @@ export class MesMaterialConsumption {
   consumedAt: Date = new Date()
 }
 
+export type MesGenealogyNodeType = 'lot' | 'serial' | 'work_order'
+export type MesGenealogyRelation = 'consume' | 'produce'
+
+@Entity({ tableName: 'mes_serials' })
+export class MesSerial {
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ name: 'serial_number', type: 'text' })
+  serialNumber!: string
+
+  @Property({ name: 'product_code', type: 'text' })
+  productCode!: string
+
+  @Property({ name: 'work_order_id', type: 'uuid', nullable: true })
+  workOrderId?: string | null
+
+  @Property({ name: 'output_lot_id', type: 'uuid', nullable: true })
+  outputLotId?: string | null
+
+  @Property({ type: 'text' })
+  status!: 'active' | 'shipped' | 'scrapped'
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+
+  @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
+  updatedAt: Date = new Date()
+}
+
+@Entity({ tableName: 'mes_production_outputs' })
+export class MesProductionOutput {
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ name: 'work_order_id', type: 'uuid' })
+  workOrderId!: string
+
+  @Property({ name: 'work_order_operation_id', type: 'uuid', nullable: true })
+  workOrderOperationId?: string | null
+
+  @Property({ name: 'output_lot_id', type: 'uuid' })
+  outputLotId!: string
+
+  @Property({ name: 'serial_id', type: 'uuid', nullable: true })
+  serialId?: string | null
+
+  @Property({ name: 'product_code', type: 'text' })
+  productCode!: string
+
+  @Property({ type: 'int' })
+  quantity!: number
+
+  @Property({ name: 'produced_at', type: Date, onCreate: () => new Date() })
+  producedAt: Date = new Date()
+}
+
+@Entity({ tableName: 'mes_genealogy_edges' })
+export class MesGenealogyEdge {
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ type: 'text' })
+  relation!: MesGenealogyRelation
+
+  @Property({ name: 'parent_type', type: 'text' })
+  parentType!: MesGenealogyNodeType
+
+  @Property({ name: 'parent_id', type: 'uuid' })
+  parentId!: string
+
+  @Property({ name: 'child_type', type: 'text' })
+  childType!: MesGenealogyNodeType
+
+  @Property({ name: 'child_id', type: 'uuid' })
+  childId!: string
+
+  @Property({ name: 'work_order_id', type: 'uuid', nullable: true })
+  workOrderId?: string | null
+
+  @Property({ type: 'int', nullable: true })
+  quantity?: number | null
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+}
+
 @Entity({ tableName: 'mes_andon_state' })
 export class MesAndonState {
   @PrimaryKey({ name: 'tenant_id', type: 'uuid' })

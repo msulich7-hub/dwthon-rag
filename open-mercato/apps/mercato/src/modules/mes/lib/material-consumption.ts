@@ -1,6 +1,7 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { MesMaterialConsumption, MesWorkOrder, MesWorkOrderOperation } from '../data/entities'
 import { emitMesEvent } from '../events'
+import { createGenealogyEdge } from './genealogy-edges'
 import { getLotByNumber } from './lots'
 
 export type MesScope = { tenantId: string; organizationId: string }
@@ -40,12 +41,23 @@ export async function recordMaterialConsumption(
     lotId: lot.id,
     quantity,
   })
+  await em.persist(consumption)
 
   lot.quantity -= quantity
   if (lot.quantity <= 0) {
     lot.quantity = 0
     lot.status = 'consumed'
   }
+
+  await createGenealogyEdge(em, scope, {
+    relation: 'consume',
+    parentType: 'lot',
+    parentId: lot.id,
+    childType: 'work_order',
+    childId: operation.workOrderId,
+    workOrderId: operation.workOrderId,
+    quantity,
+  })
 
   await emitMesEvent('mes.material.consumed', {
     tenantId: scope.tenantId,

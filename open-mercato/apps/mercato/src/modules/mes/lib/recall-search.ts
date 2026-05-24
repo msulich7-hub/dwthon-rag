@@ -1,5 +1,6 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { MesLot, MesMaterialConsumption, MesWorkOrder, MesWorkOrderOperation } from '../data/entities'
+import { resolveGenealogyRoot, traceGenealogy } from './genealogy-trace'
 import { getLotByNumber } from './lots'
 
 export type MesScope = { tenantId: string; organizationId: string }
@@ -23,6 +24,12 @@ export type RecallHit = {
     workOrderId: string
     orderNumber: string
   }>
+  genealogy: {
+    upstreamCount: number
+    downstreamCount: number
+    upstream: Array<{ relation: string; parentLabel: string; childLabel: string; quantity: number | null }>
+    downstream: Array<{ relation: string; parentLabel: string; childLabel: string; quantity: number | null }>
+  } | null
 }
 
 export async function searchRecallByLotNumber(
@@ -61,6 +68,28 @@ export async function searchRecallByLotNumber(
     })
   }
 
+  let genealogy: RecallHit['genealogy'] = null
+  const root = await resolveGenealogyRoot(em, scope, { lotNumber: lot.lotNumber })
+  if (root) {
+    const trace = await traceGenealogy(em, scope, root, { direction: 'both', depth: 3 })
+    genealogy = {
+      upstreamCount: trace.upstream.length,
+      downstreamCount: trace.downstream.length,
+      upstream: trace.upstream.slice(0, 8).map((edge) => ({
+        relation: edge.relation,
+        parentLabel: edge.parent.label,
+        childLabel: edge.child.label,
+        quantity: edge.quantity,
+      })),
+      downstream: trace.downstream.slice(0, 8).map((edge) => ({
+        relation: edge.relation,
+        parentLabel: edge.parent.label,
+        childLabel: edge.child.label,
+        quantity: edge.quantity,
+      })),
+    }
+  }
+
   return {
     lot: {
       id: lot.id,
@@ -71,5 +100,6 @@ export async function searchRecallByLotNumber(
       workOrderId: lot.workOrderId ?? null,
     },
     consumptions: hits,
+    genealogy,
   }
 }

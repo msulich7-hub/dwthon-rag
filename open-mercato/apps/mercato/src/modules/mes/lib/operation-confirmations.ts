@@ -16,6 +16,7 @@ import {
 } from './work-order-operations'
 import { canTransitionWorkOrderStatus } from './work-order-status'
 import { recordMaterialConsumption } from './material-consumption'
+import { recordProductionOutput } from './production-output'
 import { updateWorkOrderStatus } from './work-orders'
 
 export type MesScope = { tenantId: string; organizationId: string }
@@ -174,10 +175,18 @@ export async function confirmWorkOrderOperation(
   })
 
   let workOrderCompleted = false
+  let productionOutput: Awaited<ReturnType<typeof recordProductionOutput>> | null = null
   if (await allOperationsCompleted(em, scope, workOrderId)) {
     if (workOrder.status === 'in_progress') {
       await updateWorkOrderStatus(em, scope, workOrderId, 'completed')
       workOrderCompleted = true
+      try {
+        productionOutput = await recordProductionOutput(em, scope, { workOrderId })
+      } catch (error) {
+        if (!(error instanceof Error && error.message === 'OUTPUT_ALREADY_RECORDED')) {
+          throw error
+        }
+      }
     }
   }
 
@@ -192,6 +201,7 @@ export async function confirmWorkOrderOperation(
       confirmedAt: confirmation.confirmedAt.toISOString(),
     },
     workOrderCompleted,
+    productionOutput,
   }
 }
 

@@ -85,6 +85,31 @@ export const recallSearchQuerySchema = z.object({
   lotNumber: z.string().trim().min(1).max(120),
 })
 
+export const genealogyQuerySchema = z
+  .object({
+    lotNumber: z.string().trim().min(1).max(120).optional(),
+    serialNumber: z.string().trim().min(1).max(120).optional(),
+    direction: z.enum(['upstream', 'downstream', 'both']).optional(),
+    depth: z.coerce.number().int().min(1).max(10).optional(),
+  })
+  .refine((value) => Boolean(value.lotNumber?.trim() || value.serialNumber?.trim()), {
+    message: 'lotNumber or serialNumber required',
+  })
+
+export const recordProductionOutputBodySchema = z.object({
+  workOrderId: z.string().uuid(),
+  quantity: z.number().int().positive().optional(),
+  outputLotNumber: z.string().trim().min(1).max(120).optional(),
+  serialNumber: z.string().trim().min(1).max(120).optional(),
+})
+
+export const createSerialBodySchema = z.object({
+  serialNumber: z.string().trim().min(1).max(120),
+  productCode: z.string().trim().min(1).max(120),
+  workOrderId: z.string().uuid().optional(),
+  outputLotId: z.string().uuid().optional(),
+})
+
 export const listDispatchQueueQuerySchema = z.object({
   workCenterCode: z.string().trim().max(64).optional(),
   status: z.enum(['ready', 'in_progress']).optional(),

@@ -9,6 +9,8 @@ import { Page, PageBody, PageHeader } from '@open-mercato/ui/backend/Page'
 import { apiCall, readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { Button } from '@open-mercato/ui/primitives/button'
+import { Input } from '@open-mercato/ui/primitives/input'
+import { Label } from '@open-mercato/ui/primitives/label'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { canTransitionWorkOrderStatus } from '../../../../lib/work-order-status'
 import type { MesWorkOrderStatus } from '../../../../data/entities'
@@ -32,9 +34,22 @@ type WorkOrderDetail = {
   updatedAt: string
 }
 
+type ProductionOutput = {
+  id: string
+  workOrderId: string
+  outputLotId: string
+  outputLotNumber: string
+  serialId: string | null
+  serialNumber: string | null
+  productCode: string
+  quantity: number
+  producedAt: string
+}
+
 type DetailResponse = {
   workOrder: WorkOrderDetail
   operations: MesOperationStep[]
+  productionOutput: ProductionOutput | null
 }
 
 const NEXT_STATUS: Partial<Record<MesWorkOrderStatus, MesWorkOrderStatus>> = {
@@ -52,6 +67,8 @@ export default function MesWorkOrderDetailPage() {
   const [loading, setLoading] = React.useState(true)
   const [transitioning, setTransitioning] = React.useState(false)
   const [lots, setLots] = React.useState<Array<{ id: string; lotNumber: string; productCode: string; quantity: number; status: string }>>([])
+  const [outputSerial, setOutputSerial] = React.useState('')
+  const [recordingOutput, setRecordingOutput] = React.useState(false)
 
   const load = React.useCallback(async () => {
     if (!workOrderId) return
@@ -113,6 +130,30 @@ export default function MesWorkOrderDetailPage() {
   const progressPercent = totalOps > 0 ? Math.round((completedOps / totalOps) * 100) : 0
 
   const nextStatus = detail ? NEXT_STATUS[detail.workOrder.status] : undefined
+
+  const handleRecordOutput = async () => {
+    if (!detail || detail.workOrder.status !== 'completed') return
+    setRecordingOutput(true)
+    try {
+      const call = await apiCall('/api/mes/production-outputs', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          workOrderId: detail.workOrder.id,
+          serialNumber: outputSerial.trim() || undefined,
+        }),
+      })
+      if (!call.ok) {
+        flash(t('mes.workOrderDetail.outputError', 'Could not record output'), 'error')
+        return
+      }
+      flash(t('mes.workOrderDetail.outputSuccess', 'Production output recorded'), 'success')
+      setOutputSerial('')
+      await load()
+    } finally {
+      setRecordingOutput(false)
+    }
+  }
 
   const lotColumns = React.useMemo<ColumnDef<(typeof lots)[number]>[]>(
     () => [
@@ -189,6 +230,51 @@ export default function MesWorkOrderDetailPage() {
                   <MesOperationStepper operations={detail.operations} />
                 </section>
               ) : null}
+
+              <section className="space-y-2 rounded-lg border p-3">
+                <h2 className="text-sm font-medium">{t('mes.workOrderDetail.outputTitle', 'Production output')}</h2>
+                {detail.productionOutput ? (
+                  <div className="text-sm space-y-1">
+                    <div>
+                      <span className="text-muted-foreground">{t('mes.workOrderDetail.outputLot', 'Output lot')}: </span>
+                      <span className="font-medium">{detail.productionOutput.outputLotNumber}</span>
+                    </div>
+                    {detail.productionOutput.serialNumber ? (
+                      <div>
+                        <span className="text-muted-foreground">{t('mes.workOrderDetail.outputSerial', 'Serial')}: </span>
+                        <span className="font-medium">{detail.productionOutput.serialNumber}</span>
+                      </div>
+                    ) : null}
+                    <div className="text-xs text-muted-foreground">
+                      {t('mes.workOrderDetail.outputRecorded', 'Recorded {time}', {
+                        time: new Date(detail.productionOutput.producedAt).toLocaleString(),
+                      })}
+                    </div>
+                  </div>
+                ) : detail.workOrder.status === 'completed' ? (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      {t('mes.workOrderDetail.outputPending', 'No output lot recorded yet.')}
+                    </p>
+                    <div className="space-y-1 max-w-xs">
+                      <Label htmlFor="output-serial">{t('mes.workOrderDetail.outputSerialOptional', 'Serial (optional)')}</Label>
+                      <Input
+                        id="output-serial"
+                        value={outputSerial}
+                        onChange={(e) => setOutputSerial(e.target.value)}
+                        placeholder="SN-…"
+                      />
+                    </div>
+                    <Button type="button" size="sm" disabled={recordingOutput} onClick={() => void handleRecordOutput()}>
+                      {t('mes.workOrderDetail.recordOutput', 'Record output')}
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    {t('mes.workOrderDetail.outputWhenComplete', 'Output is recorded when the work order is completed.')}
+                  </p>
+                )}
+              </section>
 
               <section className="space-y-2">
                 <div className="flex items-center justify-between gap-2">

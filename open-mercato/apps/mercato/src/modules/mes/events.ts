@@ -61,6 +61,18 @@ const events = [
     entity: 'lot',
     category: 'crud',
   },
+  {
+    id: 'mes.serial.created',
+    label: 'Serial number created',
+    entity: 'serial',
+    category: 'crud',
+  },
+  {
+    id: 'mes.production.output_recorded',
+    label: 'Production output recorded',
+    entity: 'work_order',
+    category: 'crud',
+  },
 ] as const
 
 export const eventsConfig = createModuleEvents({ moduleId: 'mes', events })

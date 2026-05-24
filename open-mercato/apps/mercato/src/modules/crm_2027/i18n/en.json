@@ -21,12 +21,8 @@
   "crm_2027.dealMeetings.missingDeal": "Open a deal to ingest meeting notes.",
   "crm_2027.dealMeetings.dealRisk": "Deal at risk",
   "crm_2027.dealMeetings.untitled": "Untitled meeting",
-<<<<<<< HEAD
-  "crm_2027.dealMeetings.onTimeline": "On deal timeline"
-=======
   "crm_2027.dealMeetings.viewOnTimeline": "View on timeline",
   "crm_2027.dealMeetings.entityLabel": "Contact (person UUID, optional)",
   "crm_2027.dealMeetings.entityPlaceholder": "Leave empty to use first linked person",
   "crm_2027.dealMeetings.preferLlm": "Use AI sentiment when configured"
->>>>>>> 0766aa7c (fix(crm_2027): P0/P1 hardening — webhooks, guards, meeting timeline)
 }

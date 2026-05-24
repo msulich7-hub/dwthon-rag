@@ -28,7 +28,8 @@
 | Sentiment | `lib/sentiment.ts`, `lib/sentiment-analyze.ts` |
 | At-risk | `lib/at-risk-scan.ts`, `workers/risk-scan.ts` |
 | Email sync | `lib/email-sync.ts`, `workers/email-sync.ts`, `POST /api/crm_2027/sync/email` |
-| Webhooks | `api/webhooks/zoom`, `api/webhooks/gong`, `lib/webhook-verify.ts` |
+| Transcript ingest | `call_transcripts` module → `call_transcripts.ingest`; subscriber `subscribers/call-transcript-deal-bridge.ts` |
+| Webhooks (deprecated) | `api/webhooks/zoom`, `api/webhooks/gong` delegate to `call_transcripts` |
 | Forecast | `lib/pipeline-forecast.ts`, `GET /api/crm_2027/forecast` |
 | Calendar | `lib/calendar-upcoming.ts`, `/backend/crm_2027/calendar` |
 | Workflows | `workflows.ts`, `events.ts` |

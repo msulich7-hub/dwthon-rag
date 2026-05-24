@@ -20,7 +20,6 @@ export const openApi = {
  */
 export async function POST(request: Request) {
   try {
-    await resolveCrm2027RequestContext(request)
     const json = await request.json().catch(() => null)
     const body = sttTranscribeSchema.parse(json)
 
@@ -41,10 +40,27 @@ export async function POST(request: Request) {
       throw new CrudHttpError(400, { error: 'transcript or audioUrl required' })
     }
 
+    const ctx = await resolveCrm2027RequestContext(request)
+    const externalRecordingId = `stt-${body.dealId ?? 'manual'}-${Date.now()}`
+    const { result } = await ctx.commandBus.execute('call_transcripts.ingest', {
+      tenantId: ctx.tenantId,
+      organizationId: ctx.organizationId,
+      providerKey: 'stt',
+      transcript: {
+        externalRecordingId,
+        occurredAt: new Date(),
+        title: body.dealId ? 'STT transcript' : 'STT transcript',
+        text: body.transcript,
+        participants: [{ email: 'stt-bridge@local.invalid', displayName: 'STT bridge' }],
+        dealId: body.dealId,
+      },
+    })
+
     return NextResponse.json({
       ok: true,
       transcript: body.transcript,
       dealId: body.dealId ?? null,
+      ingest: result,
     })
   } catch (error) {
     if (isCrudHttpError(error)) {

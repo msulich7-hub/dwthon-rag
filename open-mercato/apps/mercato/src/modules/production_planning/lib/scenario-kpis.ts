@@ -12,6 +12,9 @@ export type ScenarioKpiSnapshot = {
   objectiveValue: number | null
   solverStatus: string | null
   computedAt: string
+  wallMs?: number | null
+  interactiveSlaWithin?: boolean | null
+  interactiveSlaMessage?: string | null
 }
 
 export async function computeScenarioKpis(

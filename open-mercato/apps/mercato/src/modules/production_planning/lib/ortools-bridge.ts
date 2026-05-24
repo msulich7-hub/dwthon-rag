@@ -10,6 +10,12 @@
 
 export type CpsatObjective = 'minimize_lateness' | 'minimize_changeover' | 'balance_load'
 
+export type CpsatObjectiveWeights = {
+  tardinessWeight: number
+  changeoverWeight: number
+  wipWeight: number
+}
+
 export type CpsatRollingConfig = {
   enabled?: boolean
   windowHours?: number
@@ -104,6 +110,7 @@ export type CpsatScheduleRequest = {
   }>
   horizonHours: number
   objective: CpsatObjective
+  objectiveWeights?: CpsatObjectiveWeights
   planningStartAt: string
   maxOperationsPerSolve?: number
   slotSizeMinutes?: number

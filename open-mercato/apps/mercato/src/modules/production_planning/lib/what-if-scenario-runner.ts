@@ -12,6 +12,7 @@ import {
 import { ProductionPlanningPlanScenario } from '../data/entities'
 import { computeScenarioKpis } from './scenario-kpis'
 import type { OrgScope } from './production-order'
+import { evaluateInteractiveSla } from './cpsat-sla'
 import {
   defaultScenarioLabel,
   resolveTemplateOptimizeParams,
@@ -80,21 +81,32 @@ export async function runTemplateScenario(
 
   const started = Date.now()
   try {
+    const warmStartScenarioId =
+      input.parentScenarioId ?? input.baselineScenarioId ?? null
+
     const result = await runCpsatOptimizeJob(em, scope, {
       jobId,
       productionOrderIds: input.productionOrderIds,
       horizonHours: resolved.horizonHours,
       objective: resolved.objective,
+      objectiveWeights: resolved.objectiveWeights,
+      warmStartScenarioId,
       applySync: resolved.applySync,
       dryRun: resolved.dryRun || resolved.proposeOnly,
     })
 
     const wallMs = Date.now() - started
     const schedule = result.schedule ?? []
-    const kpiSnapshot = await computeScenarioKpis(em, scope, schedule, {
-      objectiveValue: result.optimization.objectiveValue ?? null,
-      solverStatus: result.optimization.solverStatus ?? null,
-    })
+    const sla = evaluateInteractiveSla(wallMs, schedule.length)
+    const kpiSnapshot = {
+      ...(await computeScenarioKpis(em, scope, schedule, {
+        objectiveValue: result.optimization.objectiveValue ?? null,
+        solverStatus: result.optimization.solverStatus ?? null,
+      })),
+      wallMs,
+      interactiveSlaWithin: sla.withinSla,
+      interactiveSlaMessage: sla.message,
+    }
 
     if (result.optimization.status !== 'completed' || schedule.length === 0) {
       await failPlanScenario(

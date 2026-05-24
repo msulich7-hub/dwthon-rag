@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.schemas import AssemblyLink, ProductionOperation, ProductionOrder, ScheduleRequest
+from app.schemas import AssemblyLink, ObjectiveWeights, ProductionOperation, ProductionOrder, ScheduleRequest
 from app.solver.profiles import (
     CPSAT_PROFILES,
     SolverSizeTier,
@@ -79,6 +79,27 @@ def test_health_endpoint() -> None:
     payload = response.json()
     assert payload["status"] == "ok"
     assert payload["service"] == "ortools-scheduler"
+
+
+def test_schedule_with_objective_weights() -> None:
+    order = _sample_order()
+    request = ScheduleRequest(
+        tenantId=uuid4(),
+        organizationId=uuid4(),
+        orders=[order],
+        horizonHours=168,
+        objective="minimize_lateness",
+        objectiveWeights=ObjectiveWeights(
+            tardinessWeight=0.6,
+            changeoverWeight=0.3,
+            wipWeight=0.1,
+        ),
+        planningStartAt=datetime(2026, 5, 23, 8, 0, tzinfo=UTC),
+    )
+    result = solve_schedule(request, timeout_seconds=30)
+    assert result.status == "completed"
+    assert result.schedule is not None
+    assert len(result.schedule) == 2
 
 
 def test_schedule_two_operation_routing() -> None:

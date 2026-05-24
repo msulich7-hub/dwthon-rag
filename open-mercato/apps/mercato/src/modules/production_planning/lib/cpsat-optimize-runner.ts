@@ -16,6 +16,7 @@ import {
 import {
   requestOrtoolsOptimization,
   type CpsatObjective,
+  type CpsatObjectiveWeights,
   type CpsatScheduleEntry,
   type OrtoolsOptimizeResult,
 } from './ortools-bridge'
@@ -27,6 +28,8 @@ export type RunCpsatOptimizeInput = {
   productionOrderIds: string[]
   horizonHours?: number
   objective?: CpsatObjective
+  objectiveWeights?: CpsatObjectiveWeights | Record<string, number> | null
+  warmStartScenarioId?: string | null
   applySync?: boolean
   dryRun?: boolean
   chunkSize?: number
@@ -50,6 +53,8 @@ export async function runCpsatOptimizeJob(
     productionOrderIds,
     horizonHours,
     objective,
+    objectiveWeights,
+    warmStartScenarioId,
     applySync = true,
     dryRun = false,
     chunkSize = resolveCpsatChunkOrderLimit(),
@@ -86,6 +91,8 @@ export async function runCpsatOptimizeJob(
       productionOrderIds: chunk.productionOrderIds,
       horizonHours,
       objective,
+      objectiveWeights,
+      warmStartScenarioId,
       planningStartAt,
     })
 

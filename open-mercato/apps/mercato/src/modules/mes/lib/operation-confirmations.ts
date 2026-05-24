@@ -17,6 +17,7 @@ import {
 import { canTransitionWorkOrderStatus } from './work-order-status'
 import { recordMaterialConsumption } from './material-consumption'
 import { recordProductionOutput } from './production-output'
+import { assertWorkOrderNotOnHold } from './quality-holds'
 import { updateWorkOrderStatus } from './work-orders'
 
 export type MesScope = { tenantId: string; organizationId: string }
@@ -56,6 +57,8 @@ export async function confirmWorkOrderOperation(
     organizationId: scope.organizationId,
   })
   if (!workOrder) throw new Error('WORK_ORDER_NOT_FOUND')
+
+  await assertWorkOrderNotOnHold(em, scope, workOrderId)
 
   const fromStatus = operation.status
 

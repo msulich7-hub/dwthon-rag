@@ -1,6 +1,8 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { listDispatchQueue } from './dispatch-queue'
+import { computeOeeLite, type OeeLiteSnapshot } from './oee-lite'
 import { buildPulseEscalation, type AndonAlert } from './pulse-escalation'
+import { buildPulseQualityStats } from './pulse-quality-stats'
 import { buildWorkOrderActivityTrend, type PulseTrendPoint } from './pulse-trend'
 import { aggregateWorkOrderDashboard } from './work-order-status'
 import { listWorkOrderStatusesForDashboard } from './work-orders'
@@ -30,6 +32,13 @@ export type PulseSnapshot = {
   escalationLevel: 0 | 1 | 2 | 3
   alerts: AndonAlert[]
   trend: PulseTrendPoint[]
+  quality: {
+    activeHolds: number
+    activeDowntime: number
+    checklistFailedToday: number
+    checklistTotalToday: number
+  }
+  oee: OeeLiteSnapshot
   generatedAt: string
 }
 
@@ -58,10 +67,31 @@ export async function buildPulseSnapshot(
   )
 
   const queue = { ready, inProgress, total: queueItems.length }
+  const qualityStats = await buildPulseQualityStats(em, scope)
+  const oee = computeOeeLite({
+    queueReady: ready,
+    queueInProgress: inProgress,
+    activeDowntimeCount: qualityStats.activeDowntime,
+    workCenterCount: workCenters.filter((wc) => wc.workCenterCode !== '__unassigned__').length || 1,
+    checklistFailed: qualityStats.checklistFailedToday,
+    checklistTotal: qualityStats.checklistTotalToday,
+    scrapQtyToday: qualityStats.scrapQtyToday,
+    goodQtyToday: qualityStats.goodQtyToday,
+  })
+
+  const quality = {
+    activeHolds: qualityStats.activeHolds,
+    activeDowntime: qualityStats.activeDowntime,
+    checklistFailedToday: qualityStats.checklistFailedToday,
+    checklistTotalToday: qualityStats.checklistTotalToday,
+  }
+
   const base = {
     dashboard,
     queue,
     workCenters,
+    quality,
+    oee,
     generatedAt: new Date().toISOString(),
   }
 

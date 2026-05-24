@@ -115,3 +115,59 @@ export const listDispatchQueueQuerySchema = z.object({
   status: z.enum(['ready', 'in_progress']).optional(),
   limit: z.coerce.number().int().min(1).max(200).optional(),
 })
+
+export const createQualityHoldBodySchema = z.object({
+  targetType: z.enum(['work_order', 'lot', 'work_order_operation']),
+  targetId: z.string().uuid(),
+  reasonCode: z.string().trim().min(1).max(64),
+  reasonText: z.string().trim().max(2000).optional(),
+})
+
+export const listQualityHoldsQuerySchema = z.object({
+  targetType: z.enum(['work_order', 'lot', 'work_order_operation']).optional(),
+  targetId: z.string().uuid().optional(),
+  status: z.enum(['active', 'released']).optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+})
+
+export const checklistTemplateItemSchema = z.object({
+  sequence: z.number().int().positive(),
+  label: z.string().trim().min(1).max(300),
+  requiresValue: z.boolean().optional(),
+})
+
+export const createChecklistTemplateBodySchema = z.object({
+  code: z.string().trim().min(1).max(64),
+  name: z.string().trim().min(1).max(200),
+  productCode: z.string().trim().max(120).optional(),
+  items: z.array(checklistTemplateItemSchema).min(1),
+})
+
+export const startChecklistRunBodySchema = z.object({
+  templateId: z.string().uuid(),
+  workOrderId: z.string().uuid(),
+  workOrderOperationId: z.string().uuid().optional(),
+})
+
+export const completeChecklistRunBodySchema = z.object({
+  answers: z.array(
+    z.object({
+      templateItemId: z.string().uuid(),
+      value: z.string().trim().max(500).optional(),
+      passed: z.boolean().optional(),
+    }),
+  ),
+})
+
+export const startDowntimeBodySchema = z.object({
+  workCenterCode: z.string().trim().min(1).max(64),
+  reasonCode: z.string().trim().min(1).max(64),
+  reasonLabel: z.string().trim().min(1).max(200),
+  notes: z.string().trim().max(2000).optional(),
+})
+
+export const listDowntimeQuerySchema = z.object({
+  workCenterCode: z.string().trim().max(64).optional(),
+  activeOnly: z.coerce.boolean().optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+})

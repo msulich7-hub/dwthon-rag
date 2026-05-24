@@ -105,6 +105,45 @@ export function buildPulseEscalation(snapshot: PulseSnapshot): PulseEscalation {
     escalationLevel = Math.max(escalationLevel, 1) as PulseEscalation['escalationLevel']
   }
 
+  if (snapshot.quality.activeHolds > 0) {
+    alerts.push({
+      code: 'QUALITY_HOLDS',
+      level: snapshot.quality.activeHolds >= 3 ? 'critical' : 'warning',
+      messageKey: 'mes.pulse.alert.qualityHolds',
+      messageFallback: '{count} active quality hold(s).',
+      params: { count: snapshot.quality.activeHolds },
+    })
+    escalationLevel = Math.max(
+      escalationLevel,
+      snapshot.quality.activeHolds >= 3 ? 3 : 2,
+    ) as PulseEscalation['escalationLevel']
+  }
+
+  if (snapshot.quality.activeDowntime > 0) {
+    alerts.push({
+      code: 'DOWNTIME_ACTIVE',
+      level: snapshot.quality.activeDowntime >= 2 ? 'critical' : 'warning',
+      messageKey: 'mes.pulse.alert.downtimeActive',
+      messageFallback: '{count} work center(s) in downtime.',
+      params: { count: snapshot.quality.activeDowntime },
+    })
+    escalationLevel = Math.max(
+      escalationLevel,
+      snapshot.quality.activeDowntime >= 2 ? 3 : 2,
+    ) as PulseEscalation['escalationLevel']
+  }
+
+  if (snapshot.oee.oeePct < 60) {
+    alerts.push({
+      code: 'OEE_LOW',
+      level: 'warning',
+      messageKey: 'mes.pulse.alert.oeeLow',
+      messageFallback: 'Plant OEE-lite is {pct}%.',
+      params: { pct: snapshot.oee.oeePct },
+    })
+    escalationLevel = Math.max(escalationLevel, 2) as PulseEscalation['escalationLevel']
+  }
+
   const andon =
     escalationLevel >= 3 ? 'red' : escalationLevel >= 2 ? 'amber' : escalationLevel >= 1 ? 'amber' : 'green'
 

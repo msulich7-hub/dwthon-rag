@@ -4,6 +4,7 @@ import { CustomerDeal } from '@open-mercato/core/modules/customers/data/entities
 import { assertSalesOrderExists } from './sales-order-context'
 import { MesWorkOrder, type MesWorkOrderStatus } from '../data/entities'
 import type { CreateWorkOrderBody } from '../data/validators'
+import { assertWorkOrderNotOnHold } from './quality-holds'
 import { canTransitionWorkOrderStatus } from './work-order-status'
 import { emitMesEvent } from '../events'
 
@@ -154,6 +155,10 @@ export async function updateWorkOrderStatus(
 
   if (!canTransitionWorkOrderStatus(order.status, nextStatus)) {
     throw new Error('INVALID_STATUS_TRANSITION')
+  }
+
+  if (nextStatus === 'in_progress' || nextStatus === 'completed') {
+    await assertWorkOrderNotOnHold(em, scope, workOrderId)
   }
 
   const previousStatus = order.status

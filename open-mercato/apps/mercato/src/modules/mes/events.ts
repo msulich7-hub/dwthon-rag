@@ -73,6 +73,48 @@ const events = [
     entity: 'work_order',
     category: 'crud',
   },
+  {
+    id: 'mes.quality.hold_created',
+    label: 'Quality hold created',
+    entity: 'quality_hold',
+    category: 'alert',
+  },
+  {
+    id: 'mes.quality.hold_released',
+    label: 'Quality hold released',
+    entity: 'quality_hold',
+    category: 'crud',
+  },
+  {
+    id: 'mes.checklist.template_created',
+    label: 'Checklist template created',
+    entity: 'checklist_template',
+    category: 'crud',
+  },
+  {
+    id: 'mes.checklist.run_started',
+    label: 'Checklist run started',
+    entity: 'checklist_run',
+    category: 'crud',
+  },
+  {
+    id: 'mes.checklist.run_completed',
+    label: 'Checklist run completed',
+    entity: 'checklist_run',
+    category: 'crud',
+  },
+  {
+    id: 'mes.downtime.started',
+    label: 'Downtime started',
+    entity: 'downtime',
+    category: 'alert',
+  },
+  {
+    id: 'mes.downtime.ended',
+    label: 'Downtime ended',
+    entity: 'downtime',
+    category: 'crud',
+  },
 ] as const
 
 export const eventsConfig = createModuleEvents({ moduleId: 'mes', events })

@@ -10,6 +10,18 @@ function baseSnapshot(overrides: Partial<PulseSnapshot> = {}): PulseSnapshot {
     escalationLevel: 0,
     alerts: [],
     trend: [],
+    quality: {
+      activeHolds: 0,
+      activeDowntime: 0,
+      checklistFailedToday: 0,
+      checklistTotalToday: 0,
+    },
+    oee: {
+      availabilityPct: 100,
+      performancePct: 100,
+      qualityPct: 100,
+      oeePct: 100,
+    },
     generatedAt: new Date().toISOString(),
     ...overrides,
   }

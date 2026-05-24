@@ -60,6 +60,15 @@ const widget: InjectionMenuItemWidget = {
       groupId: 'mes.nav.group',
       placement: { position: InjectionPosition.After, relativeTo: 'mes-routing' },
     },
+    {
+      id: 'mes-quality',
+      label: 'Quality',
+      icon: 'ShieldCheck',
+      href: MES_ROUTES.quality,
+      features: ['mes.quality.view'],
+      groupId: 'mes.nav.group',
+      placement: { position: InjectionPosition.After, relativeTo: 'mes-trace' },
+    },
   ],
 }
 

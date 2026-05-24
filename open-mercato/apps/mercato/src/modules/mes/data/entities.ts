@@ -377,6 +377,182 @@ export class MesGenealogyEdge {
   createdAt: Date = new Date()
 }
 
+export type MesQualityHoldTargetType = 'work_order' | 'lot' | 'work_order_operation'
+export type MesQualityHoldStatus = 'active' | 'released'
+
+@Entity({ tableName: 'mes_quality_holds' })
+export class MesQualityHold {
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ name: 'target_type', type: 'text' })
+  targetType!: MesQualityHoldTargetType
+
+  @Property({ name: 'target_id', type: 'uuid' })
+  targetId!: string
+
+  @Property({ name: 'reason_code', type: 'text' })
+  reasonCode!: string
+
+  @Property({ name: 'reason_text', type: 'text', nullable: true })
+  reasonText?: string | null
+
+  @Property({ type: 'text' })
+  status!: MesQualityHoldStatus
+
+  @Property({ name: 'created_by', type: 'uuid', nullable: true })
+  createdBy?: string | null
+
+  @Property({ name: 'released_at', type: Date, nullable: true })
+  releasedAt?: Date | null
+
+  @Property({ name: 'released_by', type: 'uuid', nullable: true })
+  releasedBy?: string | null
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+
+  @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
+  updatedAt: Date = new Date()
+}
+
+@Entity({ tableName: 'mes_checklist_templates' })
+export class MesChecklistTemplate {
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ type: 'text' })
+  code!: string
+
+  @Property({ type: 'text' })
+  name!: string
+
+  @Property({ name: 'product_code', type: 'text', nullable: true })
+  productCode?: string | null
+
+  @Property({ name: 'is_active', type: 'boolean', default: true })
+  isActive: boolean = true
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+
+  @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
+  updatedAt: Date = new Date()
+}
+
+@Entity({ tableName: 'mes_checklist_template_items' })
+export class MesChecklistTemplateItem {
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'template_id', type: 'uuid' })
+  templateId!: string
+
+  @Property({ type: 'int' })
+  sequence!: number
+
+  @Property({ type: 'text' })
+  label!: string
+
+  @Property({ name: 'requires_value', type: 'boolean', default: false })
+  requiresValue: boolean = false
+}
+
+export type MesChecklistRunStatus = 'in_progress' | 'passed' | 'failed'
+
+@Entity({ tableName: 'mes_checklist_runs' })
+export class MesChecklistRun {
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ name: 'template_id', type: 'uuid' })
+  templateId!: string
+
+  @Property({ name: 'work_order_id', type: 'uuid' })
+  workOrderId!: string
+
+  @Property({ name: 'work_order_operation_id', type: 'uuid', nullable: true })
+  workOrderOperationId?: string | null
+
+  @Property({ type: 'text' })
+  status!: MesChecklistRunStatus
+
+  @Property({ name: 'completed_at', type: Date, nullable: true })
+  completedAt?: Date | null
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+
+  @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
+  updatedAt: Date = new Date()
+}
+
+@Entity({ tableName: 'mes_checklist_run_answers' })
+export class MesChecklistRunAnswer {
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'run_id', type: 'uuid' })
+  runId!: string
+
+  @Property({ name: 'template_item_id', type: 'uuid' })
+  templateItemId!: string
+
+  @Property({ type: 'text', nullable: true })
+  value?: string | null
+
+  @Property({ type: 'boolean', default: true })
+  passed: boolean = true
+}
+
+@Entity({ tableName: 'mes_downtime_segments' })
+export class MesDowntimeSegment {
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ name: 'work_center_code', type: 'text' })
+  workCenterCode!: string
+
+  @Property({ name: 'reason_code', type: 'text' })
+  reasonCode!: string
+
+  @Property({ name: 'reason_label', type: 'text' })
+  reasonLabel!: string
+
+  @Property({ name: 'started_at', type: Date, onCreate: () => new Date() })
+  startedAt: Date = new Date()
+
+  @Property({ name: 'ended_at', type: Date, nullable: true })
+  endedAt?: Date | null
+
+  @Property({ type: 'text', nullable: true })
+  notes?: string | null
+}
+
 @Entity({ tableName: 'mes_andon_state' })
 export class MesAndonState {
   @PrimaryKey({ name: 'tenant_id', type: 'uuid' })

@@ -23,6 +23,18 @@ type PulseSnapshot = {
   escalationLevel: 0 | 1 | 2 | 3
   alerts: AndonAlert[]
   trend: PulseTrendPoint[]
+  quality: {
+    activeHolds: number
+    activeDowntime: number
+    checklistFailedToday: number
+    checklistTotalToday: number
+  }
+  oee: {
+    availabilityPct: number
+    performancePct: number
+    qualityPct: number
+    oeePct: number
+  }
   generatedAt: string
 }
 
@@ -133,9 +145,19 @@ export default function MesPulsePage() {
 
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-lg border p-4">
-                  <div className="text-2xl font-semibold">{pulse.dashboard.active}</div>
+                  <div className="text-2xl font-semibold">{pulse.oee.oeePct}%</div>
+                  <div className="text-xs text-muted-foreground">{t('mes.pulse.kpi.oee', 'OEE-lite')}</div>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="text-2xl font-semibold">{pulse.quality.activeHolds}</div>
                   <div className="text-xs text-muted-foreground">
-                    {t('mes.pulse.kpi.activeWo', 'Active work orders')}
+                    {t('mes.pulse.kpi.holds', 'Active holds')}
+                  </div>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="text-2xl font-semibold">{pulse.quality.activeDowntime}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {t('mes.pulse.kpi.downtime', 'Downtime segments')}
                   </div>
                 </div>
                 <div className="rounded-lg border p-4">
@@ -144,19 +166,30 @@ export default function MesPulsePage() {
                     {t('mes.pulse.kpi.inProgress', 'Operations in progress')}
                   </div>
                 </div>
-                <div className="rounded-lg border p-4">
-                  <div className="text-2xl font-semibold">{pulse.queue.ready}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {t('mes.pulse.kpi.ready', 'Ready in queue')}
-                  </div>
-                </div>
-                <div className="rounded-lg border p-4">
-                  <div className="text-2xl font-semibold">{pulse.dashboard.completed}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {t('mes.pulse.kpi.completed', 'Completed work orders')}
-                  </div>
-                </div>
               </div>
+
+              <section className="rounded-lg border p-4">
+                <h2 className="text-sm font-medium mb-2">{t('mes.pulse.oeeBreakdown', 'OEE breakdown')}</h2>
+                <div className="grid gap-2 sm:grid-cols-3 text-sm">
+                  <div>
+                    {t('mes.pulse.oee.availability', 'Availability')}:{' '}
+                    <span className="font-medium">{pulse.oee.availabilityPct}%</span>
+                  </div>
+                  <div>
+                    {t('mes.pulse.oee.performance', 'Performance')}:{' '}
+                    <span className="font-medium">{pulse.oee.performancePct}%</span>
+                  </div>
+                  <div>
+                    {t('mes.pulse.oee.quality', 'Quality')}:{' '}
+                    <span className="font-medium">{pulse.oee.qualityPct}%</span>
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <Button variant="link" size="sm" className="h-auto p-0" asChild>
+                    <Link href={MES_ROUTES.quality}>{t('mes.pulse.manageQuality', 'Manage quality')}</Link>
+                  </Button>
+                </div>
+              </section>
 
               <section className="grid gap-6 lg:grid-cols-2">
                 <LineChart

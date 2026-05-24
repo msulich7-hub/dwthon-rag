@@ -7,5 +7,6 @@ export const MES_ROUTES = {
   routing: '/backend/mes/routing',
   pulse: '/backend/mes/pulse',
   trace: '/backend/mes/trace',
+  quality: '/backend/mes/quality',
   salesOrders: '/backend/sales/orders',
 } as const

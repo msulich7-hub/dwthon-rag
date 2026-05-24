@@ -220,7 +220,7 @@
 
 | | |
 |---|---|
-| **Deliverable** | `lib/hindsight/chaos-premium.ts`: quantify cost of variability — `chaosPremium = actualCost − perfectHindsightCost` where cost = tardiness penalty + changeover + overtime proxy + expedite flags; normalized `chaosPremiumPct` vs revenue-at-risk; stored per tick and run summary. |
+| **Deliverable** | `lib/hindsight/chaos-premium.ts`: quantify cost of variability — `chaosPremium = actualCost − perfectHindsightCost` where cost = tardiness penalty + changeover + overtime proxy + expedite flags; **`chaosPremiumPln` / `chaosPremiumEur`** using standard cost rates from IFS; normalized `chaosPremiumPct` vs revenue-at-risk; stored per tick and run summary (executive slide-ready). |
 | **Owner** | Mercato Backend + Product / Planning SME |
 | **Acceptance criteria** | Chaos premium ≥ 0 for all golden fixtures; decomposition JSON lists top-5 contributing orders; as-of replay premium ≥ 0 vs perfect hindsight on same tick; formula documented with weight constants in module spec; zero-demand tick returns null premium not divide-by-zero. |
 | **Market parity** | **North star:** **Chaos premium = value of concurrency** — cost of as-of / actual vs perfect hindsight (information + replan agility). **Kinaxis:** Concurrent planning ROI metric — scenario premium vs oracle baseline. **o9:** Digital Brain EKG variability cost decomposition. **Oracle ASCP:** Compare-plans cost delta between plan versions. **SAP IBP:** HPA plan gap / premium vs optimal finite schedule. |

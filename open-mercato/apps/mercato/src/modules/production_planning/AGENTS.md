@@ -25,6 +25,20 @@ Heavy scheduling runs in **`open-mercato/services/ortools-scheduler`** (Python, 
 
 Env: `ORTOOLS_BRIDGE_URL`, `ORTOOLS_BRIDGE_API_KEY`, `ORTOOLS_BRIDGE_TIMEOUT_MS`.
 
+## Test data (factory fixture)
+
+| Preset | MO | Ops (approx) | Work centers |
+|--------|-----|--------------|--------------|
+| `small` | 20 | 60–100 | 12 |
+| `medium` | 100 | 300–500 | 40 |
+| `benchmark` | 100 | ~2200–2800 | 150 |
+
+```bash
+mercato production_planning seed-factory --org=<uuid> --tenant=<uuid> --preset=benchmark [--force]
+```
+
+Codes use prefix `FACTORY-` (~10% `FACTORY-POOL-*`). ~30% MO share `salesOrderId` for pegging tests. Auto-seed on org setup: `PRODUCTION_PLANNING_AUTO_SEED=small|medium|benchmark`.
+
 Spec: `.ai/specs/2026-05-23-production-planning-cpsat-ortools.md`
 
 ## Dependencies

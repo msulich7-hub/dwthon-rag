@@ -1,14 +1,8 @@
 import type { ModuleSetupConfig } from '@open-mercato/shared/modules/setup'
+import type { EntityManager } from '@mikro-orm/postgresql'
 import { PRODUCTION_PLANNING_CAPACITY_QUEUE } from './lib/queue'
-import crypto from 'node:crypto'
-
-function stableUuidFromString(input: string): string {
-  const bytes = crypto.createHash('sha256').update(input).digest().subarray(0, 16)
-  bytes[6] = (bytes[6] & 0x0f) | 0x50
-  bytes[8] = (bytes[8] & 0x3f) | 0x80
-  const hex = Buffer.from(bytes).toString('hex')
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`
-}
+import { seedFactoryFixture, type FactorySeedPreset } from './lib/seed-factory-fixture'
+import { stableUuidFromString } from './lib/stable-uuid'
 
 type SchedulerServiceLike = {
   register: (registration: Record<string, unknown>) => Promise<void>
@@ -65,6 +59,30 @@ export const setup: ModuleSetupConfig = {
 
   async seedDefaults({ container, tenantId, organizationId }) {
     await registerCapacityRefreshSchedule(container, tenantId, organizationId)
+
+    const autoSeed = process.env.PRODUCTION_PLANNING_AUTO_SEED?.trim()
+    if (!autoSeed || autoSeed === '0' || autoSeed === 'false') {
+      return
+    }
+
+    const preset: FactorySeedPreset =
+      autoSeed === 'small' || autoSeed === 'medium' || autoSeed === 'benchmark'
+        ? autoSeed
+        : 'small'
+
+    if (!container.hasRegistration?.('em')) {
+      return
+    }
+
+    const em = container.resolve('em') as EntityManager
+    await seedFactoryFixture(
+      em,
+      { tenantId, organizationId },
+      {
+        preset,
+        logger: (message) => console.log(`[production_planning] ${message}`),
+      },
+    )
   },
 }
 

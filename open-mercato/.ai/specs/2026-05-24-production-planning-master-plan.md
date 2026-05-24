@@ -3,6 +3,7 @@
 **Wersja:** 2.0 · **Market parity:** Maj 2026 (Class A APS)  
 **Kontekst:** Oracle **IFS9** = logika i prawda operacyjna · **Open Mercato** = concurrent planning, geneza, CP-SAT, hindsight, control tower  
 **Blueprint rynku:** [market-parity-may-2026.md](./2026-05-24-production-planning-market-parity-may-2026.md)  
+**Katalog what-if:** [what-if-scenario-catalog.md](./2026-05-24-production-planning-what-if-scenario-catalog.md) · rejestr [what-if-scenarios.registry.json](../catalogs/what-if-scenarios.registry.json) (**36 szablonów + 10 bundle’ów**)  
 **Stan kodu:** moduł `production_planning` + `ortools-scheduler` (CP-SAT, chunking 500, rolling 600+) — PR #10
 
 ---

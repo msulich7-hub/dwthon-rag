@@ -112,10 +112,12 @@ Legenda: ✅ P0 (must) · ◐ P1 (parity release) · ★ P2 (differentiator) · 
 
 ## Implementacja priorytetowa (90 dni do „parity feel”)
 
-1. **Tydzień 1–4:** M1 staging + M3 k48 peg-aware + **M3-57 scenarios** (schema)  
-2. **Tydzień 5–8:** M2 pool MO + M3 **&lt;60s what-if** tune + M5-82 exceptions  
-3. **Tydzień 9–12:** M4 pilot 13 tygodni (nie cały rok) + M5 compare UI  
-4. **Tydzień 13+:** pełny rok hindsight + copilot P1  
+1. **Tydzień 1–4:** M1 staging + M3 k48 peg-aware + **M3-57 scenarios** (schema) + [what-if registry](../catalogs/what-if-scenarios.registry.json)  
+2. **Tydzień 5–8:** M2 pool MO + M3 **&lt;60s what-if** tune + **bundle API** (BND-*) + M5-82 exceptions  
+3. **Tydzień 9–12:** M4 pilot 13 tygodni + M5 compare UI + turnieje BND-TOURNAMENT-*  
+4. **Tydzień 13+:** pełny rok hindsight + copilot P1 („uruchom BND-ESCALATION”)  
+
+**Katalog scenariuszy:** [what-if-scenario-catalog.md](./2026-05-24-production-planning-what-if-scenario-catalog.md) — 18 taktycznych (T-*) + 18 shop-floor (WIF-*) + 10 bundle’ów badań.
 
 ---
 

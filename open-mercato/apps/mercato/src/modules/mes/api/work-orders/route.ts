@@ -26,6 +26,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url)
     const query = listWorkOrdersQuerySchema.parse({
       dealId: url.searchParams.get('dealId') ?? undefined,
+      salesOrderId: url.searchParams.get('salesOrderId') ?? undefined,
       status: url.searchParams.get('status') ?? undefined,
       limit: url.searchParams.get('limit') ?? undefined,
     })
@@ -57,6 +58,9 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof Error && error.message === 'DEAL_NOT_FOUND') {
       throw new CrudHttpError(404, { error: 'Deal not found' })
+    }
+    if (error instanceof Error && error.message === 'SALES_ORDER_NOT_FOUND') {
+      throw new CrudHttpError(404, { error: 'Sales order not found' })
     }
     if (isCrudHttpError(error)) {
       return NextResponse.json(error.body, { status: error.status })

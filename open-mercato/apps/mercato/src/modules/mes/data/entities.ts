@@ -33,6 +33,9 @@ export class MesWorkOrder {
   @Property({ name: 'deal_id', type: 'uuid', nullable: true })
   dealId?: string | null
 
+  @Property({ name: 'sales_order_id', type: 'uuid', nullable: true })
+  salesOrderId?: string | null
+
   @Property({ type: 'text', nullable: true })
   notes?: string | null
 

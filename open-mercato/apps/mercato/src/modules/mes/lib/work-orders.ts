@@ -1,6 +1,7 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { CustomerDeal } from '@open-mercato/core/modules/customers/data/entities'
+import { assertSalesOrderExists } from './sales-order-context'
 import { MesWorkOrder, type MesWorkOrderStatus } from '../data/entities'
 import type { CreateWorkOrderBody } from '../data/validators'
 import { canTransitionWorkOrderStatus } from './work-order-status'
@@ -15,6 +16,7 @@ export type WorkOrderDto = {
   quantity: number
   status: MesWorkOrderStatus
   dealId: string | null
+  salesOrderId: string | null
   notes: string | null
   createdAt: string
   updatedAt: string
@@ -28,6 +30,7 @@ function toDto(order: MesWorkOrder): WorkOrderDto {
     quantity: order.quantity,
     status: order.status,
     dealId: order.dealId ?? null,
+    salesOrderId: order.salesOrderId ?? null,
     notes: order.notes ?? null,
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
@@ -58,13 +61,19 @@ async function assertDealExists(
 export async function listWorkOrders(
   em: EntityManager,
   scope: MesScope,
-  filters: { dealId?: string; status?: MesWorkOrderStatus; limit?: number },
+  filters: {
+    dealId?: string
+    salesOrderId?: string
+    status?: MesWorkOrderStatus
+    limit?: number
+  },
 ): Promise<WorkOrderDto[]> {
   const where: Record<string, unknown> = {
     tenantId: scope.tenantId,
     organizationId: scope.organizationId,
   }
   if (filters.dealId) where.dealId = filters.dealId
+  if (filters.salesOrderId) where.salesOrderId = filters.salesOrderId
   if (filters.status) where.status = filters.status
 
   const orders = await em.find(MesWorkOrder, where, {
@@ -83,6 +92,9 @@ export async function createWorkOrder(
   if (body.dealId) {
     await assertDealExists(em, scope, body.dealId)
   }
+  if (body.salesOrderId) {
+    await assertSalesOrderExists(em, scope, body.salesOrderId)
+  }
 
   const order = em.create(MesWorkOrder, {
     tenantId: scope.tenantId,
@@ -92,6 +104,7 @@ export async function createWorkOrder(
     quantity: body.quantity,
     status: body.status ?? 'draft',
     dealId: body.dealId ?? null,
+    salesOrderId: body.salesOrderId ?? null,
     notes: body.notes?.trim() ?? null,
   })
 
@@ -103,6 +116,7 @@ export async function createWorkOrder(
     workOrderId: order.id,
     orderNumber: order.orderNumber,
     dealId: order.dealId,
+    salesOrderId: order.salesOrderId,
     status: order.status,
   })
 
@@ -141,6 +155,7 @@ export async function updateWorkOrderStatus(
     fromStatus: previousStatus,
     toStatus: nextStatus,
     dealId: order.dealId,
+    salesOrderId: order.salesOrderId,
   })
 
   return toDto(order)

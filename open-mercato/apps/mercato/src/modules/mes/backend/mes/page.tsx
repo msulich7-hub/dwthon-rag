@@ -4,6 +4,7 @@ import * as React from 'react'
 import Link from 'next/link'
 import { Page, PageBody, PageHeader } from '@open-mercato/ui/backend/Page'
 import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
+import { MES_ROUTES } from '../../lib/mes-routes'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 
 type DashboardResponse = {
@@ -77,6 +78,13 @@ export default function MesHubPage() {
               </Link>
               {' — '}
               {t('mes.hub.linkDealsHint', 'work orders tab and production chip on deal detail')}
+            </li>
+            <li>
+              <Link href={MES_ROUTES.salesOrders} className="underline">
+                {t('mes.hub.linkSalesOrders', 'Sales orders')}
+              </Link>
+              {' — '}
+              {t('mes.hub.linkSalesOrdersHint', 'Production tab and summary on order detail')}
             </li>
           </ul>
         </section>

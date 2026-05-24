@@ -16,6 +16,7 @@
 ## Dependencies
 
 - `customers` — deal-linked work orders (`CustomerDeal` read for validation)
+- `sales` — sales orders (`SalesOrder`, `SalesOrderLine`); tab on `/backend/sales/orders/[id]`
 - `workflows` / `notifications` / `scheduler` — optional in later phases via `events.ts`
 
 ## Phases

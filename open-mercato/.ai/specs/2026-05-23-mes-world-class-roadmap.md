@@ -19,7 +19,13 @@ Build the best **CRM-native MES** for mid-market SaaS in 2026: manufacturing exe
 | ERP-native closed loop | Same tenant: CRM + MES + workflows + AI |
 | Monolithic upgrades | `@app` module, `yarn generate`, no core patches |
 
-**Success litmus (Phase D):** Planner creates WO from a deal, operator completes on floor, deal chip/tab updates without opening MES — under 30 seconds perceived latency.
+**Success litmus (Phase D):** Planner creates WO from a deal or sales order, operator completes on floor, deal/order surfaces update without opening MES — under 30 seconds perceived latency.
+
+## Sales integration (implemented)
+
+- `MesWorkOrder.salesOrderId` → `sales_orders`
+- API: `GET/POST /api/mes/sales-orders/:salesOrderId/work-orders` (bulk create from line items)
+- UMES: `sales.document.detail.order:tabs` (Production), `sales.document.detail.order:details` (summary)
 
 ## Phase map
 

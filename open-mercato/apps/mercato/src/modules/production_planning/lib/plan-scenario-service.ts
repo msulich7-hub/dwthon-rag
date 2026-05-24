@@ -133,6 +133,7 @@ export async function createPlanScenarioDraft(
   await em.persist(row)
   await em.flush()
   return row
+}
 
 export async function getPlanScenario(
   em: EntityManager,

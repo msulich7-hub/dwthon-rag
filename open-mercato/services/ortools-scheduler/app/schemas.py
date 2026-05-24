@@ -110,6 +110,16 @@ class AssemblyLink(BaseModel):
         return succ
 
 
+class ObjectiveWeights(BaseModel):
+    """Kinaxis/o9-style trade-off sliders (normalized 0–1)."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    tardiness_weight: float = Field(default=1.0, alias="tardinessWeight", ge=0, le=1)
+    changeover_weight: float = Field(default=0.0, alias="changeoverWeight", ge=0, le=1)
+    wip_weight: float = Field(default=0.0, alias="wipWeight", ge=0, le=1)
+
+
 class ChunkMeta(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
@@ -136,6 +146,7 @@ class ScheduleRequest(BaseModel):
     orders: list[ProductionOrder] = Field(min_length=1, max_length=500)
     horizon_hours: int = Field(default=168, alias="horizonHours", ge=24, le=24 * 30)
     objective: ScheduleObjective = "minimize_lateness"
+    objective_weights: ObjectiveWeights | None = Field(default=None, alias="objectiveWeights")
     planning_start_at: datetime | None = Field(default=None, alias="planningStartAt")
     max_operations_per_solve: int = Field(
         default=DEFAULT_MAX_OPERATIONS_PER_SOLVE,

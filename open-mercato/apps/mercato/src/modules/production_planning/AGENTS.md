@@ -18,6 +18,10 @@ Heavy scheduling runs in **`open-mercato/services/ortools-scheduler`** (Python, 
 | HTTP bridge | `lib/ortools-bridge.ts` → `ORTOOLS_BRIDGE_URL` (default `…/schedule`) |
 | Solve | Python `app/solver/scheduler.py` (CP-SAT) |
 | Apply result | `lib/apply-cpsat-schedule.ts` via `POST /api/production_planning/optimize` |
+| Multi-objective | `objectiveWeights` on CP-SAT payload → Python `objective.py` |
+| Warm-start | `warmStartScenarioId` → `fixedOperations` from parent scenario schedule |
+| Interactive SLA | `lib/cpsat-sla.ts` — p95 target **&lt;60 s** for ≤500 ops (scenario KPI) |
+| Control tower | `GET /api/production_planning/control-tower/overview` · `.../exceptions` · UI `/backend/production_planning/control-tower` |
 | What-if scenarios | `data/what-if-scenarios.registry.json` · `lib/what-if-scenario-runner.ts` · `POST /api/production_planning/scenarios/runs` |
 | Scenario Lab UI | `/backend/production_planning/scenarios` |
 | Cross-order pegging | `lib/pegging-to-assembly-links.ts` → `assemblyLinks` on CP-SAT payload |

@@ -19,7 +19,8 @@ from app.schemas import (
 )
 from app.solver.assembly import apply_assembly_links
 from app.solver.ops import FlatOperation, SchedulerError
-from app.solver.preprocess import preprocess_schedule_request, should_use_pairwise_changeover
+from app.solver.objective import apply_schedule_objective
+from app.solver.preprocess import preprocess_schedule_request
 from app.solver.profiles import CPSAT_PROFILES, apply_cpsat_profile, tier_for_operation_count
 from app.solver.rolling import solve_schedule_rolling
 
@@ -145,66 +146,17 @@ def solve_schedule(
             model.add_max_equality(completion, end_vars)
         order_completion[order_id] = completion
 
-    objective_terms: list[cp_model.LinearExpr] = []
-
-    if request.objective == "minimize_lateness":
-        for order_id, completion in order_completion.items():
-            due = due_offsets.get(order_id)
-            if due is None:
-                continue
-            lateness = model.new_int_var(0, horizon_slots, f"late_{order_id}")
-            model.add(lateness >= completion - due)
-            model.add(lateness >= 0)
-            objective_terms.append(lateness)
-        if not objective_terms:
-            for completion in order_completion.values():
-                objective_terms.append(completion)
-
-    elif request.objective == "balance_load":
-        wc_end_times: list[cp_model.IntVar] = []
-        for wc in intervals_by_wc:
-            wc_end = model.new_int_var(0, horizon_slots, f"wc_end_{wc}")
-            for op in flat_ops:
-                if op.work_center_code == wc:
-                    model.add(wc_end >= ends[op.op_id])
-            wc_end_times.append(wc_end)
-        if len(wc_end_times) >= 2:
-            max_wc_end = model.new_int_var(0, horizon_slots, "max_wc_end")
-            min_wc_end = model.new_int_var(0, horizon_slots, "min_wc_end")
-            model.add_max_equality(max_wc_end, wc_end_times)
-            model.add_min_equality(min_wc_end, wc_end_times)
-            spread = model.new_int_var(0, horizon_slots, "wc_end_spread")
-            model.add(spread == max_wc_end - min_wc_end)
-            objective_terms.append(spread)
-        makespan = model.new_int_var(0, horizon_slots, "makespan")
-        model.add_max_equality(makespan, list(order_completion.values()))
-        objective_terms.append(makespan)
-
-    elif request.objective == "minimize_changeover":
-        changeover_penalty = 10_000
-        use_pairwise = should_use_pairwise_changeover(len(flat_ops), max(len(v) for v in intervals_by_wc.values()) if intervals_by_wc else 0)
-        if use_pairwise:
-            for wc in intervals_by_wc:
-                wc_ops = [op for op in flat_ops if op.work_center_code == wc]
-                if len(wc_ops) < 2:
-                    continue
-                for i, op_a in enumerate(wc_ops):
-                    for op_b in wc_ops[i + 1 :]:
-                        if op_a.product_sku == op_b.product_sku:
-                            continue
-                        if op_a.op_id not in starts or op_b.op_id not in starts:
-                            continue
-                        a_before_b = model.new_bool_var(f"before_{op_a.op_id}_{op_b.op_id}")
-                        model.add(ends[op_a.op_id] <= starts[op_b.op_id]).only_enforce_if(a_before_b)
-                        model.add(ends[op_b.op_id] <= starts[op_a.op_id]).only_enforce_if(a_before_b.Not())
-                        objective_terms.append(a_before_b * changeover_penalty)
-        for completion in order_completion.values():
-            objective_terms.append(completion)
-
-    if objective_terms:
-        model.minimize(sum(objective_terms))
-    else:
-        model.minimize(sum(order_completion.values()))
+    apply_schedule_objective(
+        request,
+        model,
+        starts=starts,
+        ends=ends,
+        flat_ops=flat_ops,
+        intervals_by_wc=intervals_by_wc,
+        order_completion=order_completion,
+        due_offsets=due_offsets,
+        horizon_slots=horizon_slots,
+    )
 
     tier = tier_for_operation_count(len(flat_ops))
     profile = CPSAT_PROFILES[tier]

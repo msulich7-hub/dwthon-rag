@@ -12,7 +12,15 @@ import {
   DEFAULT_MAX_OPERATIONS_PER_SOLVE,
   type PayloadOrder,
 } from './cpsat-chunking'
-import type { CpsatAssemblyLink, CpsatObjective, CpsatScheduleRequest } from './ortools-bridge'
+import { objectiveWeightsForSolve, normalizeObjectiveWeights } from './objective-weights'
+import type { CpsatObjectiveWeights } from './ortools-bridge'
+import type {
+  CpsatAssemblyLink,
+  CpsatFixedOperation,
+  CpsatObjective,
+  CpsatScheduleRequest,
+} from './ortools-bridge'
+import { loadWarmStartFixedOperations } from './warm-start-from-scenario'
 import {
   buildCrossOrderAssemblyLinks,
   filterAssemblyLinksForOperationIds,
@@ -32,6 +40,43 @@ export type BuildCpsatPayloadOptions = {
   enableRolling?: boolean
   assemblyLinks?: PegLink[]
   includeCrossOrderPegging?: boolean
+  objectiveWeights?: CpsatObjectiveWeights | Record<string, number> | null
+  fixedOperations?: CpsatFixedOperation[]
+  warmStartScenarioId?: string | null
+}
+
+function mergeFixedOperations(
+  ...groups: CpsatFixedOperation[][]
+): CpsatFixedOperation[] {
+  const byId = new Map<string, CpsatFixedOperation>()
+  for (const group of groups) {
+    for (const row of group) {
+      byId.set(row.operationId, row)
+    }
+  }
+  return [...byId.values()]
+}
+
+function filterFixedForOperationIds(
+  fixed: CpsatFixedOperation[],
+  operationIds: Set<string>,
+): CpsatFixedOperation[] {
+  return fixed.filter((f) => operationIds.has(f.operationId))
+}
+
+function attachChunkPayload(
+  base: PayloadBase,
+  orders: PayloadOrder[],
+  assemblyLinks: CpsatAssemblyLink[],
+  allFixed: CpsatFixedOperation[],
+): CpsatScheduleRequest {
+  const operationIds = new Set(orders.flatMap((o) => o.operations.map((op) => op.id)))
+  return {
+    ...base,
+    orders,
+    assemblyLinks,
+    fixedOperations: filterFixedForOperationIds(allFixed, operationIds),
+  }
 }
 
 type PayloadBase = Omit<CpsatScheduleRequest, 'orders' | 'chunk' | 'fixedOperations' | 'workCenterFloors'>
@@ -110,6 +155,10 @@ function buildPayloadBase(
 ): PayloadBase {
   const horizonHours = options.horizonHours ?? 168
   const objective = options.objective ?? 'minimize_lateness'
+  const objectiveWeights = objectiveWeightsForSolve(
+    objective,
+    normalizeObjectiveWeights(options.objectiveWeights ?? undefined),
+  )
 
   return {
     tenantId: scope.tenantId,
@@ -117,6 +166,7 @@ function buildPayloadBase(
     productionOrderIds: options.productionOrderIds,
     horizonHours,
     objective,
+    objectiveWeights,
     planningStartAt: planningStartAt.toISOString(),
     slotSizeMinutes: 5,
     maxOperationsPerSolve: options.maxOperationsPerSolve ?? DEFAULT_MAX_OPERATIONS_PER_SOLVE,
@@ -152,12 +202,19 @@ export async function buildCpsatScheduleRequest(
   const payloadOrders = await loadPayloadOrders(em, scope, options.productionOrderIds)
   const base = buildPayloadBase(scope, options, planningStartAt)
   const assemblyLinks = resolveAssemblyLinks(payloadOrders, options)
-
-  return {
-    ...base,
-    orders: payloadOrders,
-    assemblyLinks,
+  const opIds = new Set(payloadOrders.flatMap((o) => o.operations.map((op) => op.id)))
+  let fixed = options.fixedOperations ?? []
+  if (options.warmStartScenarioId) {
+    const warm = await loadWarmStartFixedOperations(
+      em,
+      scope,
+      options.warmStartScenarioId,
+      opIds,
+    )
+    fixed = mergeFixedOperations(fixed, warm)
   }
+
+  return attachChunkPayload(base, payloadOrders, assemblyLinks, fixed)
 }
 
 export async function buildCpsatScheduleBatchFromDb(
@@ -172,6 +229,17 @@ export async function buildCpsatScheduleBatchFromDb(
   const totalOps = payloadOrders.reduce((s, o) => s + o.operations.length, 0)
 
   const assemblyLinks = resolveAssemblyLinks(payloadOrders, options)
+  const opIds = new Set(payloadOrders.flatMap((o) => o.operations.map((op) => op.id)))
+  let fixed = options.fixedOperations ?? []
+  if (options.warmStartScenarioId) {
+    const warm = await loadWarmStartFixedOperations(
+      em,
+      scope,
+      options.warmStartScenarioId,
+      opIds,
+    )
+    fixed = mergeFixedOperations(fixed, warm)
+  }
 
   if (totalOps <= maxOps) {
     return {
@@ -179,15 +247,26 @@ export async function buildCpsatScheduleBatchFromDb(
       totalOperations: totalOps,
       chunkCount: 1,
       maxOperationsPerSolve: maxOps,
-      chunks: [{ ...base, orders: payloadOrders, assemblyLinks }],
+      chunks: [attachChunkPayload(base, payloadOrders, assemblyLinks, fixed)],
     }
   }
 
-  return buildScheduleBatch(base, payloadOrders, {
+  const batch = buildScheduleBatch(base, payloadOrders, {
     maxOperationsPerSolve: maxOps,
     batchId: createCpsatJobId(),
     assemblyLinks,
   })
+
+  return {
+    ...batch,
+    chunks: batch.chunks.map((chunk) => {
+      const chunkOpIds = new Set(chunk.orders.flatMap((o) => o.operations.map((op) => op.id)))
+      return {
+        ...chunk,
+        fixedOperations: filterFixedForOperationIds(fixed, chunkOpIds),
+      }
+    }),
+  }
 }
 
 export function createCpsatJobId(): string {

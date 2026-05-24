@@ -70,13 +70,27 @@ function barsFromSchedule(
   })
 }
 
+function parsePlanningStartAt(value?: string | Date | null): Date {
+  if (value instanceof Date && Number.isFinite(value.getTime())) return value
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Date.parse(value)
+    if (Number.isFinite(parsed)) return new Date(parsed)
+  }
+  return new Date()
+}
+
 export async function buildGanttPayload(
   em: EntityManager,
   scope: OrgScope,
-  options?: { horizonHours?: number; scenarioId?: string; maxWorkCenters?: number },
+  options?: {
+    horizonHours?: number
+    scenarioId?: string
+    maxWorkCenters?: number
+    planningStartAt?: string | Date
+  },
 ): Promise<GanttPayload> {
   const horizonHours = options?.horizonHours ?? 168
-  const planningStartAt = new Date()
+  const planningStartAt = parsePlanningStartAt(options?.planningStartAt)
   const planningEndAt = new Date(planningStartAt.getTime() + horizonHours * 60 * 60 * 1000)
   const maxWc = options?.maxWorkCenters ?? 150
 

@@ -21,6 +21,7 @@ export async function GET(request: Request) {
     const horizonHours = Number.parseInt(url.searchParams.get('horizonHours') ?? '168', 10)
     const scenarioId = url.searchParams.get('scenarioId') ?? undefined
     const maxWorkCenters = Number.parseInt(url.searchParams.get('maxWorkCenters') ?? '150', 10)
+    const planningStartAt = url.searchParams.get('planningStartAt') ?? undefined
 
     const payload = await buildGanttPayload(
       em,
@@ -29,6 +30,7 @@ export async function GET(request: Request) {
         horizonHours: Number.isFinite(horizonHours) ? horizonHours : 168,
         scenarioId,
         maxWorkCenters: Number.isFinite(maxWorkCenters) ? Math.min(maxWorkCenters, 150) : 150,
+        planningStartAt,
       },
     )
 

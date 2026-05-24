@@ -493,3 +493,307 @@ export class ProductionPlanningPeggingLink {
   @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
   createdAt: Date = new Date()
 }
+
+@Entity({ tableName: 'production_planning_ifs_silver_customer_order_lines' })
+@Unique({ properties: ['tenantId', 'organizationId', 'contract', 'orderNo', 'lineNo'] })
+export class ProductionPlanningIfsSilverCustomerOrderLine {
+  @PrimaryKey({ type: 'uuid' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ type: 'text', default: 'MAIN' })
+  contract: string = 'MAIN'
+
+  @Property({ name: 'order_no', type: 'text' })
+  orderNo!: string
+
+  @Property({ name: 'line_no', type: 'int' })
+  lineNo!: number
+
+  @Property({ name: 'part_no', type: 'text' })
+  partNo!: string
+
+  @Property({ name: 'buy_qty_due', type: 'numeric', precision: 14, scale: 4, default: 1 })
+  buyQtyDue: number = 1
+
+  @Property({ name: 'wanted_delivery_date', type: Date, nullable: true })
+  wantedDeliveryDate?: Date | null
+
+  @Property({ type: 'text', default: 'Released' })
+  objstate: string = 'Released'
+
+  @Property({ name: 'sales_order_id', type: 'uuid', nullable: true })
+  salesOrderId?: string | null
+
+  @Property({ name: 'source_system', type: 'text', default: 'mercato_pilot' })
+  sourceSystem: string = 'mercato_pilot'
+
+  @Property({ name: 'extract_batch_id', type: 'uuid' })
+  extractBatchId!: string
+
+  @Property({ name: 'extracted_at', type: Date })
+  extractedAt!: Date
+
+  @Property({ name: 'is_deleted', type: 'boolean', default: false })
+  isDeleted: boolean = false
+
+  @Property({ name: 'last_seen_at', type: Date })
+  lastSeenAt!: Date
+}
+
+@Entity({ tableName: 'production_planning_ifs_silver_shop_orders' })
+@Unique({ properties: ['tenantId', 'organizationId', 'contract', 'orderNo'] })
+export class ProductionPlanningIfsSilverShopOrder {
+  @PrimaryKey({ type: 'uuid' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ type: 'text', default: 'MAIN' })
+  contract: string = 'MAIN'
+
+  @Property({ name: 'order_no', type: 'text' })
+  orderNo!: string
+
+  @Property({ name: 'part_no', type: 'text' })
+  partNo!: string
+
+  @Property({ name: 'revised_qty_due', type: 'numeric', precision: 14, scale: 4, default: 1 })
+  revisedQtyDue: number = 1
+
+  @Property({ name: 'revised_due_date', type: Date, nullable: true })
+  revisedDueDate?: Date | null
+
+  @Property({ type: 'text', default: 'Released' })
+  objstate: string = 'Released'
+
+  @Property({ name: 'order_code', type: 'text', nullable: true })
+  orderCode?: string | null
+
+  @Property({ name: 'schedule_no', type: 'text', nullable: true })
+  scheduleNo?: string | null
+
+  @Property({ name: 'production_order_id', type: 'uuid', nullable: true })
+  productionOrderId?: string | null
+
+  @Property({ name: 'source_system', type: 'text', default: 'mercato_pilot' })
+  sourceSystem: string = 'mercato_pilot'
+
+  @Property({ name: 'extract_batch_id', type: 'uuid' })
+  extractBatchId!: string
+
+  @Property({ name: 'extracted_at', type: Date })
+  extractedAt!: Date
+
+  @Property({ name: 'is_deleted', type: 'boolean', default: false })
+  isDeleted: boolean = false
+
+  @Property({ name: 'last_seen_at', type: Date })
+  lastSeenAt!: Date
+}
+
+@Entity({ tableName: 'production_planning_ifs_silver_shop_order_operations' })
+@Unique({
+  properties: ['tenantId', 'organizationId', 'contract', 'orderNo', 'releaseNo', 'sequenceNo', 'operationNo'],
+})
+export class ProductionPlanningIfsSilverShopOrderOperation {
+  @PrimaryKey({ type: 'uuid' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ type: 'text', default: 'MAIN' })
+  contract: string = 'MAIN'
+
+  @Property({ name: 'order_no', type: 'text' })
+  orderNo!: string
+
+  @Property({ name: 'release_no', type: 'int', default: 1 })
+  releaseNo: number = 1
+
+  @Property({ name: 'sequence_no', type: 'int' })
+  sequenceNo!: number
+
+  @Property({ name: 'operation_no', type: 'int' })
+  operationNo!: number
+
+  @Property({ name: 'work_center_no', type: 'text' })
+  workCenterNo!: string
+
+  @Property({ name: 'run_time_minutes', type: 'int' })
+  runTimeMinutes!: number
+
+  @Property({ name: 'operation_id', type: 'uuid', nullable: true })
+  operationId?: string | null
+
+  @Property({ name: 'source_system', type: 'text', default: 'mercato_pilot' })
+  sourceSystem: string = 'mercato_pilot'
+
+  @Property({ name: 'extract_batch_id', type: 'uuid' })
+  extractBatchId!: string
+
+  @Property({ name: 'extracted_at', type: Date })
+  extractedAt!: Date
+
+  @Property({ name: 'is_deleted', type: 'boolean', default: false })
+  isDeleted: boolean = false
+
+  @Property({ name: 'last_seen_at', type: Date })
+  lastSeenAt!: Date
+}
+
+@Entity({ tableName: 'production_planning_ifs_silver_supply_demand_pegs' })
+export class ProductionPlanningIfsSilverSupplyDemandPeg {
+  @PrimaryKey({ type: 'uuid' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ type: 'text', default: 'MAIN' })
+  contract: string = 'MAIN'
+
+  @Property({ name: 'demand_code', type: 'text' })
+  demandCode!: string
+
+  @Property({ name: 'supply_code', type: 'text' })
+  supplyCode!: string
+
+  @Property({ name: 'demand_order_no', type: 'text' })
+  demandOrderNo!: string
+
+  @Property({ name: 'supply_order_no', type: 'text' })
+  supplyOrderNo!: string
+
+  @Property({ name: 'demand_sequence', type: 'int', default: 1 })
+  demandSequence: number = 1
+
+  @Property({ name: 'supply_sequence', type: 'int', default: 1 })
+  supplySequence: number = 1
+
+  @Property({ name: 'qty_pegged', type: 'numeric', precision: 14, scale: 4, default: 1 })
+  qtyPegged: number = 1
+
+  @Property({ name: 'demand_silver_id', type: 'uuid', nullable: true })
+  demandSilverId?: string | null
+
+  @Property({ name: 'supply_silver_id', type: 'uuid', nullable: true })
+  supplySilverId?: string | null
+
+  @Property({ name: 'unresolved_ref_json', type: 'text', nullable: true })
+  unresolvedRefJson?: string | null
+
+  @Property({ name: 'source_system', type: 'text', default: 'mercato_pilot' })
+  sourceSystem: string = 'mercato_pilot'
+
+  @Property({ name: 'extract_batch_id', type: 'uuid' })
+  extractBatchId!: string
+
+  @Property({ name: 'extracted_at', type: Date })
+  extractedAt!: Date
+
+  @Property({ name: 'is_deleted', type: 'boolean', default: false })
+  isDeleted: boolean = false
+
+  @Property({ name: 'last_seen_at', type: Date })
+  lastSeenAt!: Date
+}
+
+@Entity({ tableName: 'production_planning_ifs_silver_work_centers' })
+@Unique({ properties: ['tenantId', 'organizationId', 'contract', 'workCenterNo'] })
+export class ProductionPlanningIfsSilverWorkCenter {
+  @PrimaryKey({ type: 'uuid' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ type: 'text', default: 'MAIN' })
+  contract: string = 'MAIN'
+
+  @Property({ name: 'work_center_no', type: 'text' })
+  workCenterNo!: string
+
+  @Property({ type: 'text', nullable: true })
+  description?: string | null
+
+  @Property({ type: 'text', nullable: true })
+  department?: string | null
+
+  @Property({ name: 'source_system', type: 'text', default: 'mercato_pilot' })
+  sourceSystem: string = 'mercato_pilot'
+
+  @Property({ name: 'extract_batch_id', type: 'uuid' })
+  extractBatchId!: string
+
+  @Property({ name: 'extracted_at', type: Date })
+  extractedAt!: Date
+
+  @Property({ name: 'is_deleted', type: 'boolean', default: false })
+  isDeleted: boolean = false
+
+  @Property({ name: 'last_seen_at', type: Date })
+  lastSeenAt!: Date
+}
+
+@Entity({ tableName: 'production_planning_ifs_silver_extract_watermarks' })
+@Unique({ properties: ['tenantId', 'organizationId', 'entityName'] })
+export class ProductionPlanningIfsSilverExtractWatermark {
+  @PrimaryKey({ type: 'uuid' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ name: 'entity_name', type: 'text' })
+  entityName!: string
+
+  @Property({ name: 'watermark_column', type: 'text', default: 'last_seen_at' })
+  watermarkColumn: string = 'last_seen_at'
+
+  @Property({ name: 'watermark_value', type: 'text', nullable: true })
+  watermarkValue?: string | null
+
+  @Property({ name: 'last_extract_batch_id', type: 'uuid', nullable: true })
+  lastExtractBatchId?: string | null
+
+  @Property({ name: 'last_success_at', type: Date, nullable: true })
+  lastSuccessAt?: Date | null
+
+  @Property({ name: 'row_count', type: 'int', default: 0 })
+  rowCount: number = 0
+
+  @Property({ name: 'lag_seconds', type: 'int', default: 0 })
+  lagSeconds: number = 0
+
+  @Property({ name: 'source_system', type: 'text', default: 'mercato_pilot' })
+  sourceSystem: string = 'mercato_pilot'
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+
+  @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
+  updatedAt: Date = new Date()
+}

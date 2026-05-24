@@ -6,6 +6,7 @@ import { Page, PageBody, PageHeader } from '@open-mercato/ui/backend/Page'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { PP_ROUTES } from '../../../lib/routes'
+import { ScenarioGanttCompare } from '../../../components/ScenarioGanttCompare'
 
 type WhatIfTemplate = {
   id: string
@@ -259,28 +260,28 @@ export default function ProductionScenariosPage() {
             </ul>
           ) : null}
           {baselineId && compareA ? (
-            <div className="flex flex-wrap gap-2 mt-2 text-xs">
-              <Link
-                href={`${PP_ROUTES.gantt}?scenarioId=${encodeURIComponent(baselineId)}`}
-                className="underline"
-              >
-                Gantt baseline
-              </Link>
-              <Link
-                href={`${PP_ROUTES.gantt}?scenarioId=${encodeURIComponent(compareA)}`}
-                className="underline"
-              >
-                Gantt scenariusz A
-              </Link>
-              {compareB ? (
+            <>
+              <div className="flex flex-wrap gap-2 mt-2 text-xs">
                 <Link
-                  href={`${PP_ROUTES.gantt}?scenarioId=${encodeURIComponent(compareB)}`}
+                  href={`${PP_ROUTES.gantt}?scenarioId=${encodeURIComponent(baselineId)}`}
                   className="underline"
                 >
-                  Gantt scenariusz B
+                  Gantt baseline (pełny)
                 </Link>
-              ) : null}
-            </div>
+                <Link
+                  href={`${PP_ROUTES.gantt}?scenarioId=${encodeURIComponent(compareA)}`}
+                  className="underline"
+                >
+                  Gantt scenariusz A (pełny)
+                </Link>
+              </div>
+              <ScenarioGanttCompare
+                baselineScenarioId={baselineId}
+                scenarioId={compareA}
+                horizonHours={72}
+                maxWorkCenters={50}
+              />
+            </>
           ) : null}
         </section>
 

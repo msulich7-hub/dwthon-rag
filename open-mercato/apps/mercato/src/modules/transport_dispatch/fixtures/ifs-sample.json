@@ -1,0 +1,38 @@
+[
+  {
+    "ifsRef": "IFS-2027-0001",
+    "recipientName": "ACME Sp. z o.o.",
+    "addressLine": "ul. Logistyczna 12, 00-001 Warszawa",
+    "complement": null,
+    "packagesText": null,
+    "palletsText": null,
+    "defaultExpeditor": "DEFAULT"
+  },
+  {
+    "ifsRef": "IFS-2027-0002",
+    "recipientName": "Beta Trade",
+    "addressLine": "Park przemysłowy 3, Kraków",
+    "complement": "tak",
+    "packagesText": "2x PKG_NONSTD",
+    "palletsText": "3x PLT_A, 1x PLT_B",
+    "defaultExpeditor": "DEFAULT"
+  },
+  {
+    "ifsRef": "IFS-2027-0003",
+    "recipientName": "Gamma Logistics",
+    "addressLine": "Portowa 8, Gdańsk",
+    "complement": "nie",
+    "packagesText": null,
+    "palletsText": null,
+    "defaultExpeditor": "DEFAULT"
+  },
+  {
+    "ifsRef": "IFS-2027-0004",
+    "recipientName": "Delta Retail",
+    "addressLine": "Magazynowa 1, Poznań",
+    "complement": "tak",
+    "packagesText": "1x PKG_M",
+    "palletsText": null,
+    "defaultExpeditor": "DEFAULT"
+  }
+]

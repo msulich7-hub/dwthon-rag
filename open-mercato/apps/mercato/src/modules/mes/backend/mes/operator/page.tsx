@@ -17,6 +17,7 @@ import { MesStatusBadge } from '../../../components/MesStatusBadge'
 import { MesScanField } from '../../../components/MesScanField'
 import { MesCameraScanner } from '../../../components/MesCameraScanner'
 import { MesOperatorLotField } from '../../../components/MesOperatorLotField'
+import { MesKioskRawMaterialsHero } from '../../../components/MesKioskRawMaterialsHero'
 import { MES_ROUTES } from '../../../lib/mes-routes'
 
 type DispatchQueueItem = {
@@ -188,6 +189,7 @@ export default function MesOperatorPage() {
 
   const body = (
     <PageBody className={`space-y-4 ${kiosk ? 'max-w-3xl mx-auto' : ''}`}>
+      {kiosk ? <MesKioskRawMaterialsHero workOrderId={highlightedId ? queue.find((q) => q.operation.id === highlightedId)?.workOrderId : null} /> : null}
       <MesScanField kiosk={kiosk} autoFocus={kiosk} onScan={handleScan} />
       {cameraOn || kiosk ? <MesCameraScanner onScan={handleScan} active /> : null}
       {!kiosk ? (
@@ -339,9 +341,14 @@ export default function MesOperatorPage() {
           title={t('mes.operator.title', 'Operator queue')}
           description={t('mes.operator.description', 'Shop-floor dispatch — start and complete operations.')}
           actions={
-            <Button variant="outline" size="sm" asChild>
-              <Link href={MES_ROUTES.operatorKiosk}>{t('mes.operator.kiosk', 'Kiosk')}</Link>
-            </Button>
+            <>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={MES_ROUTES.operatorRawMaterials}>{t('mes.operator.rawMaterials', 'Raw materials')}</Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={MES_ROUTES.operatorKiosk}>{t('mes.operator.kiosk', 'Kiosk')}</Link>
+              </Button>
+            </>
           }
         />
         {body}

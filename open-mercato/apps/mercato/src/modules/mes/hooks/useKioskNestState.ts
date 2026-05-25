@@ -5,6 +5,8 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import type { AndonReason } from '../components/kiosk/MesKioskAndonDialog'
+import type { KioskAcceptProductPayload } from '../components/kiosk/MesKioskAcceptProductDialog'
+import type { KioskOperationReportPayload } from '../components/kiosk/MesKioskReportOperationDialog'
 import {
   applyMockConfirmationWithGates,
   buildKioskNestViewModel,
@@ -46,6 +48,8 @@ export function useKioskNestState() {
   const [planHorizon, setPlanHorizon] = React.useState<8 | 72>(8)
   const [planOpen, setPlanOpen] = React.useState(false)
   const [andonOpen, setAndonOpen] = React.useState(false)
+  const [reportOpen, setReportOpen] = React.useState(false)
+  const [acceptOpen, setAcceptOpen] = React.useState(false)
   const [completeConfirmOpId, setCompleteConfirmOpId] = React.useState<string | null>(null)
   const nowCardRef = React.useRef<HTMLDivElement | null>(null)
 
@@ -147,6 +151,48 @@ export function useKioskNestState() {
     [t],
   )
 
+  const submitOperationReport = React.useCallback(
+    (payload: KioskOperationReportPayload) => {
+      setReportOpen(false)
+      const typeLabel =
+        payload.confirmationType === 'complete'
+          ? t('mes.kiosk.reportOpCompleteStep', 'Close step')
+          : t('mes.kiosk.reportOpPartial', 'Partial output')
+      flash(
+        t('mes.kiosk.reportOpFlash', 'Operation report (demo): {type} — good {good}, scrap {scrap}', {
+          type: typeLabel,
+          good: String(payload.goodQty),
+          scrap: String(payload.scrapQty),
+        }),
+        'success',
+      )
+      if (payload.confirmationType === 'complete' && vm.now?.canComplete) {
+        setCompleteConfirmOpId(vm.now.id)
+      }
+    },
+    [t, vm.now],
+  )
+
+  const submitAcceptProduct = React.useCallback(
+    (payload: KioskAcceptProductPayload) => {
+      setAcceptOpen(false)
+      const sourceLabels: Record<KioskAcceptProductPayload['source'], string> = {
+        previous_nest: t('mes.kiosk.acceptSourcePrev', 'From previous nest'),
+        warehouse: t('mes.kiosk.acceptSourceWh', 'Warehouse / WIP store'),
+        supplier: t('mes.kiosk.acceptSourceSup', 'Supplier delivery'),
+      }
+      flash(
+        t('mes.kiosk.acceptFlash', 'Product accepted (demo): {qty}× {lot} from {source}', {
+          qty: String(payload.qty),
+          lot: payload.lotNumber,
+          source: sourceLabels[payload.source],
+        }),
+        'success',
+      )
+    },
+    [t],
+  )
+
   const showServiceLinks = searchParams.get('debug') === '1'
   const completeOp = completeConfirmOpId ? vm.operations.find((o) => o.id === completeConfirmOpId) : null
 
@@ -165,6 +211,10 @@ export function useKioskNestState() {
     setPlanOpen,
     andonOpen,
     setAndonOpen,
+    reportOpen,
+    setReportOpen,
+    acceptOpen,
+    setAcceptOpen,
     completeConfirmOpId,
     setCompleteConfirmOpId,
     completeOp,
@@ -173,6 +223,8 @@ export function useKioskNestState() {
     handleConfirm,
     handleScan,
     submitAndon,
+    submitOperationReport,
+    submitAcceptProduct,
     showServiceLinks,
   }
 }

@@ -8,7 +8,7 @@ import { isKioskOnboardingDone, markKioskOnboardingDone } from '../../lib/kiosk-
 const STEPS = [
   { titleKey: 'mes.kiosk.onboard1Title', titleFb: 'This is your nest terminal', bodyKey: 'mes.kiosk.onboard1Body', bodyFb: 'You see one work center. Operations come from the production plan only.' },
   { titleKey: 'mes.kiosk.onboard2Title', titleFb: 'Do this now', bodyKey: 'mes.kiosk.onboard2Body', bodyFb: 'Start and complete the highlighted step. Buttons are demo — nothing is sent to MES.' },
-  { titleKey: 'mes.kiosk.onboard3Title', titleFb: 'Materials & scan', bodyKey: 'mes.kiosk.onboard3Body', bodyFb: 'Order raw materials from the card. Scan barcodes at the bottom of the screen.' },
+  { titleKey: 'mes.kiosk.onboard3Title', titleFb: 'Materials & scan', bodyKey: 'mes.kiosk.onboard3Body', bodyFb: 'Accept product, report operation, order materials. Scan barcodes at the bottom.' },
 ] as const
 
 export function MesKioskOnboarding() {

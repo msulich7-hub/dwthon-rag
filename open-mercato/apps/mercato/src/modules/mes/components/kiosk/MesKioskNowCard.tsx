@@ -1,7 +1,7 @@
 "use client"
 
 import Link from 'next/link'
-import { CalendarClock, ArrowRight, Package } from 'lucide-react'
+import { CalendarClock, ArrowRight, Package, ClipboardCheck, PackagePlus } from 'lucide-react'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { MesStatusBadge } from '../MesStatusBadge'
@@ -18,6 +18,8 @@ type MesKioskNowCardProps = {
   rawMaterialsHref: string
   onStart: () => void
   onRequestComplete: () => void
+  onReportOperation: () => void
+  onAcceptProduct: () => void
   onAndon: () => void
 }
 
@@ -33,6 +35,8 @@ export function MesKioskNowCard({
   rawMaterialsHref,
   onStart,
   onRequestComplete,
+  onReportOperation,
+  onAcceptProduct,
   onAndon,
 }: MesKioskNowCardProps) {
   const t = useT()
@@ -101,6 +105,30 @@ export function MesKioskNowCard({
             data-testid="mes-kiosk-complete-demo"
           >
             {t('mes.kiosk.completeDemo', 'Complete (demo)')}
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-12 w-full text-base font-semibold"
+          disabled={busyId === op.id}
+          onClick={onAcceptProduct}
+          data-testid="mes-kiosk-accept-product"
+        >
+          <PackagePlus className="h-5 w-5 mr-2 inline shrink-0" aria-hidden />
+          {t('mes.kiosk.acceptProduct', 'Accept product')}
+        </Button>
+        {(op.status === 'in_progress' || op.canComplete) ? (
+          <Button
+            type="button"
+            variant="secondary"
+            className="min-h-12 w-full text-base font-semibold"
+            disabled={busyId === op.id}
+            onClick={onReportOperation}
+            data-testid="mes-kiosk-report-operation"
+          >
+            <ClipboardCheck className="h-5 w-5 mr-2 inline shrink-0" aria-hidden />
+            {t('mes.kiosk.reportOperation', 'Report operation')}
           </Button>
         ) : null}
         <Button type="button" variant="secondary" className="min-h-12 w-full text-base" asChild>

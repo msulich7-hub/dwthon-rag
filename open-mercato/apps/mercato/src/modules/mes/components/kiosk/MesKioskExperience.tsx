@@ -14,7 +14,9 @@ import { MesKioskScanBar } from './MesKioskScanBar'
 import { MesKioskShell } from './MesKioskShell'
 import { MesKioskOnboarding } from './MesKioskOnboarding'
 import { MesKioskAndonDialog } from './MesKioskAndonDialog'
+import { MesKioskAcceptProductDialog } from './MesKioskAcceptProductDialog'
 import { MesKioskCompleteDialog } from './MesKioskCompleteDialog'
+import { MesKioskReportOperationDialog } from './MesKioskReportOperationDialog'
 
 export function MesKioskExperience() {
   const {
@@ -32,6 +34,10 @@ export function MesKioskExperience() {
     setPlanOpen,
     andonOpen,
     setAndonOpen,
+    reportOpen,
+    setReportOpen,
+    acceptOpen,
+    setAcceptOpen,
     completeConfirmOpId,
     setCompleteConfirmOpId,
     completeOp,
@@ -40,6 +46,8 @@ export function MesKioskExperience() {
     handleConfirm,
     handleScan,
     submitAndon,
+    submitOperationReport,
+    submitAcceptProduct,
     showServiceLinks,
   } = useKioskNestState()
 
@@ -82,6 +90,8 @@ export function MesKioskExperience() {
               rawMaterialsHref={rawMaterialsHref}
               onStart={() => handleConfirm(vm.now!.id, 'start')}
               onRequestComplete={() => setCompleteConfirmOpId(vm.now!.id)}
+              onReportOperation={() => setReportOpen(true)}
+              onAcceptProduct={() => setAcceptOpen(true)}
               onAndon={() => setAndonOpen(true)}
             />
           ) : (
@@ -147,6 +157,24 @@ export function MesKioskExperience() {
       </div>
 
       <MesKioskAndonDialog open={andonOpen} onClose={() => setAndonOpen(false)} onSubmit={submitAndon} />
+      {vm.now ? (
+        <>
+          <MesKioskReportOperationDialog
+            open={reportOpen}
+            operationName={vm.now.operationName}
+            orderNumber={vm.now.orderNumber}
+            onClose={() => setReportOpen(false)}
+            onSubmit={submitOperationReport}
+          />
+          <MesKioskAcceptProductDialog
+            open={acceptOpen}
+            productCode={vm.now.productCode}
+            orderNumber={vm.now.orderNumber}
+            onClose={() => setAcceptOpen(false)}
+            onSubmit={submitAcceptProduct}
+          />
+        </>
+      ) : null}
       <MesKioskCompleteDialog
         open={completeConfirmOpId != null}
         operationName={completeOp?.operationName ?? ''}

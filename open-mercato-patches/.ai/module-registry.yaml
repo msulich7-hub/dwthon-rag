@@ -1,0 +1,19 @@
+# Open Mercato — rejestr modułów dla workflow głosowego / agenta
+# Utrzymuj przy każdym nowym module. Aliasy służą dopasowaniu wypowiedzi (PL/EN).
+
+modules:
+  - id: sales_forecasting
+    package: "@open-mercato/sales-forecasting"
+    path: packages/sales-forecasting
+    spec: .ai/specs/2026-05-24-sales-forecasting-module-starter-prompt.md
+    agents: packages/sales-forecasting/AGENTS.md
+    status: implemented
+    aliases_pl:
+      - prognozy sprzedaży
+      - prognoza przychodów
+      - prognoza sprzedaży
+      - moduł prognoz
+    aliases_en:
+      - sales forecasting
+      - revenue forecast
+      - forecasting module

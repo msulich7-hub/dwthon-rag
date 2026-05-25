@@ -57,6 +57,18 @@ Production planning (separate module) will eventually be the source of truth for
 - Raw materials: `/backend/mes/operator/raw-materials?kiosk=1&nest=…&workOrderId=…`
 - Live API fallback: add `&live=1` on operator kiosk only
 
+## Expert review fixes (2026-05-25)
+
+- Single-nest terminal header; nest change behind **Zmiana gniazda** (service)
+- Full-width **TRYB POKAZOWY** banner; Start/Zakończ **(pokaz)**
+- Fixed bottom **scan bar** (always visible)
+- `kiosk-planning-view-model.ts`: sequence gates, `getNowOperationView`, unified BOM for raw materials
+- Plan/queue **collapsed by default**; timeline with **now** marker
+- Live API only with `?debug=1`
+- `localStorage` nest persistence (`mes_kiosk_nest_v1`)
+- Mock Andon + next routing hint
+
 ## Changelog
 
 - **2026-05-25** — Spec + mock dataset + `MesKioskExperience` UI.
+- **2026-05-25** — P0/P1 expert panel implementation (view model, terminal UX).

@@ -84,7 +84,7 @@ const ALL_OPERATIONS: KioskPlannedOperation[] = [
     productCode: 'SKU-HOUSING-A',
     operationCode: 'ASSY-20',
     operationName: 'Fit control module',
-    status: 'ready',
+    status: 'upcoming',
     scheduledStart: hoursFromNow(2),
     scheduledEnd: hoursFromNow(5),
     materials: [
@@ -206,8 +206,12 @@ export function getPlannedOperationsForNest(nestCode: string): KioskPlannedOpera
   return ALL_OPERATIONS.filter((op) => NEST_FOR_OP[op.id] === nestCode).sort((a, b) => a.sequence - b.sequence)
 }
 
+/** @deprecated Use getNowOperationView from kiosk-planning-view-model */
 export function getNowOperation(ops: KioskPlannedOperation[]): KioskPlannedOperation | null {
-  return ops.find((o) => o.status === 'in_progress') ?? ops.find((o) => o.status === 'ready') ?? null
+  const sorted = [...ops].sort((a, b) => a.sequence - b.sequence)
+  const inProgress = sorted.find((o) => o.status === 'in_progress')
+  if (inProgress) return inProgress
+  return sorted.find((o) => o.status === 'ready') ?? null
 }
 
 export type KioskTimelineSlot = {

@@ -12,12 +12,8 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { MesShell } from '../../../../components/MesShell'
 import { MesListSkeleton } from '../../../../components/MesListSkeleton'
-import {
-  cloneOperationsForNest,
-  resolveNestCode,
-  uniqueMockWorkOrders,
-} from '../../../../lib/kiosk-planning-mock'
-import { placeholderBomForProduct } from '../../../../lib/raw-materials-placeholders'
+import { resolveNestCode, uniqueMockWorkOrders } from '../../../../lib/kiosk-planning-mock'
+import { initialMockOperationsForNest, materialsForWorkOrder } from '../../../../lib/kiosk-planning-view-model'
 import { MES_ROUTES } from '../../../../lib/mes-routes'
 
 type DispatchQueueItem = {
@@ -56,10 +52,8 @@ export default function MesOperatorRawMaterialsPage() {
   const [orderCount, setOrderCount] = React.useState<number>(1)
   const [submitting, setSubmitting] = React.useState(false)
 
-  const mockWorkOrders = React.useMemo(
-    () => uniqueMockWorkOrders(cloneOperationsForNest(nestCode)),
-    [nestCode],
-  )
+  const mockOps = React.useMemo(() => initialMockOperationsForNest(nestCode), [nestCode])
+  const mockWorkOrders = React.useMemo(() => uniqueMockWorkOrders(mockOps), [mockOps])
 
   React.useEffect(() => {
     if (useMock) {
@@ -88,7 +82,7 @@ export default function MesOperatorRawMaterialsPage() {
 
   const workOrders = React.useMemo(() => uniqueWorkOrders(queue), [queue])
   const selected = workOrders.find((wo) => wo.workOrderId === workOrderId) ?? workOrders[0]
-  const bomLines = selected ? placeholderBomForProduct(selected.productCode) : []
+  const bomLines = selected ? materialsForWorkOrder(mockOps, selected.workOrderId) : []
 
   React.useEffect(() => {
     if (!workOrderId && workOrders[0]) {

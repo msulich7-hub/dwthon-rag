@@ -27,9 +27,10 @@
 
 ## Kiosk (mock-first)
 
-- Default kiosk: `/backend/mes/operator?kiosk=1&nest=WC-ASSY-01` → `MesKioskExperience` + `lib/kiosk-planning-mock.ts`
+- Default kiosk: `/backend/mes/operator?kiosk=1&nest=WC-ASSY-01` → `MesKioskExperience` + `lib/kiosk-planning-mock.ts` + `lib/kiosk-planning-view-model.ts`
 - Spec: `.ai/specs/2026-05-25-mes-kiosk-planning-mock.md`
-- Live dispatch API (dev only): add `&live=1` — do not extend for shop-floor UX until planning API exists
+- Live dispatch API (dev only): `&live=1` on operator page; service link on kiosk only with `&debug=1`
+- Nest persisted in `localStorage` key `mes_kiosk_nest_v1`
 - Do **not** add timesheet / work-schedule reporting in kiosk iterations
 
 ## After changes

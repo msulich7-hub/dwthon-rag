@@ -10,9 +10,15 @@ type MesScanFieldProps = {
   kiosk?: boolean
   onScan: (value: string) => void
   autoFocus?: boolean
+  inputTestId?: string
 }
 
-export function MesScanField({ kiosk = false, onScan, autoFocus = false }: MesScanFieldProps) {
+export function MesScanField({
+  kiosk = false,
+  onScan,
+  autoFocus = false,
+  inputTestId = 'mes-scan-input',
+}: MesScanFieldProps) {
   const t = useT()
   const [value, setValue] = React.useState('')
   const inputRef = React.useRef<HTMLInputElement>(null)
@@ -37,7 +43,8 @@ export function MesScanField({ kiosk = false, onScan, autoFocus = false }: MesSc
       </Label>
       <Input
         ref={inputRef}
-        id="mes-scan-input"
+        id={inputTestId}
+        data-testid={inputTestId}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {

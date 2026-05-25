@@ -17,6 +17,8 @@ import { MesStatusBadge } from '../../../components/MesStatusBadge'
 import { MesScanField } from '../../../components/MesScanField'
 import { MesCameraScanner } from '../../../components/MesCameraScanner'
 import { MesOperatorLotField } from '../../../components/MesOperatorLotField'
+import { MesKioskExperience } from '../../../components/kiosk/MesKioskExperience'
+import { MesKioskRawMaterialsHero } from '../../../components/MesKioskRawMaterialsHero'
 import { MES_ROUTES } from '../../../lib/mes-routes'
 
 type DispatchQueueItem = {
@@ -37,10 +39,19 @@ type DispatchQueueItem = {
 type QueueResponse = { queue: DispatchQueueItem[] }
 
 export default function MesOperatorPage() {
-  const t = useT()
   const searchParams = useSearchParams()
   const kiosk = searchParams.get('kiosk') === '1'
+  const liveQueue = searchParams.get('live') === '1'
 
+  if (kiosk && !liveQueue) {
+    return <MesKioskExperience />
+  }
+
+  return <MesOperatorLivePage kiosk={kiosk} />
+}
+
+function MesOperatorLivePage({ kiosk }: { kiosk: boolean }) {
+  const t = useT()
   const [queue, setQueue] = React.useState<DispatchQueueItem[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
@@ -188,6 +199,7 @@ export default function MesOperatorPage() {
 
   const body = (
     <PageBody className={`space-y-4 ${kiosk ? 'max-w-3xl mx-auto' : ''}`}>
+      {kiosk ? <MesKioskRawMaterialsHero workOrderId={highlightedId ? queue.find((q) => q.operation.id === highlightedId)?.workOrderId : null} /> : null}
       <MesScanField kiosk={kiosk} autoFocus={kiosk} onScan={handleScan} />
       {cameraOn || kiosk ? <MesCameraScanner onScan={handleScan} active /> : null}
       {!kiosk ? (
@@ -319,11 +331,16 @@ export default function MesOperatorPage() {
         <div className="min-h-screen bg-background p-4 md:p-8">
           <PageHeader
             title={t('mes.operator.kioskTitle', 'Shop floor')}
-            description={t('mes.operator.kioskDescription', 'Scan barcodes — camera, lot capture, auto start/complete.')}
+            description={t('mes.operator.kioskDescription', 'Live API queue — scan, lot capture, auto start/complete.')}
             actions={
-              <Button variant="ghost" size="sm" asChild>
-                <Link href={MES_ROUTES.operator}>{t('mes.operator.exitKiosk', 'Exit kiosk')}</Link>
-              </Button>
+              <>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={MES_ROUTES.operatorKiosk()}>{t('mes.kiosk.demoBoard', 'Planning demo')}</Link>
+                </Button>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href={MES_ROUTES.operator}>{t('mes.operator.exitKiosk', 'Exit kiosk')}</Link>
+                </Button>
+              </>
             }
           />
           {body}
@@ -339,9 +356,14 @@ export default function MesOperatorPage() {
           title={t('mes.operator.title', 'Operator queue')}
           description={t('mes.operator.description', 'Shop-floor dispatch — start and complete operations.')}
           actions={
-            <Button variant="outline" size="sm" asChild>
-              <Link href={MES_ROUTES.operatorKiosk}>{t('mes.operator.kiosk', 'Kiosk')}</Link>
-            </Button>
+            <>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={MES_ROUTES.operatorRawMaterials}>{t('mes.operator.rawMaterials', 'Raw materials')}</Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={MES_ROUTES.operatorKiosk()}>{t('mes.operator.kiosk', 'Kiosk')}</Link>
+              </Button>
+            </>
           }
         />
         {body}

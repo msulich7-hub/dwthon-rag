@@ -25,6 +25,28 @@
 - **B (execution):** routing templates, operations, confirmations, dispatch queue, operator POD
 - **C–F:** see `.ai/specs/2026-05-23-mes-phase-*.md` and `2026-05-23-mes-world-class-roadmap.md`
 
+## Kiosk (mock-first)
+
+- Default kiosk: `/backend/mes/operator?kiosk=1&nest=WC-ASSY-01` → `MesKioskExperience` + `lib/kiosk-planning-mock.ts` + `lib/kiosk-planning-view-model.ts`
+- Spec: `.ai/specs/2026-05-25-mes-kiosk-planning-mock.md`
+- Live dispatch API (dev only): `&live=1` on operator page; service link on kiosk only with `&debug=1`
+- Nest persisted in `localStorage` key `mes_kiosk_nest_v1`
+- Do **not** add timesheet / work-schedule reporting in kiosk iterations
+
+## Testing (kiosk)
+
+- Brief for subagents / QA: `.ai/qa/MES-KIOSK-TEST-BRIEF.md`
+- Manual scenarios: `.ai/qa/scenarios/TC-MES-KIOSK-*.md`
+- Playwright: `apps/mercato/src/modules/mes/__integration__/TC-MES-KIOSK-*.spec.ts`
+
+```bash
+cd open-mercato
+# unit
+yarn workspace @open-mercato/app test -- src/modules/mes/lib/__tests__/kiosk-planning-mock.test.ts
+# integration (dev server on :3000)
+OM_INTEGRATION_MODULES=mes yarn test:integration
+```
+
 ## After changes
 
 ```bash

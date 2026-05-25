@@ -1,0 +1,23 @@
+# Module registry for voice / agent scope resolution (Open Mercato app modules)
+
+modules:
+  - id: mes
+    package: "@app"
+    path: apps/mercato/src/modules/mes
+    spec: .ai/specs/2026-05-23-mes-world-class-roadmap.md
+    agents: apps/mercato/src/modules/mes/AGENTS.md
+    status: active
+    aliases_pl:
+      - mes
+      - produkcja
+      - hala
+      - kiosk
+      - operator
+      - surowce
+      - zaopatrzenie
+    aliases_en:
+      - mes
+      - manufacturing
+      - shop floor
+      - kiosk
+      - raw materials

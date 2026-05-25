@@ -1,6 +1,7 @@
 import {
   applyMockConfirmationWithGates,
   enrichOperations,
+  formatMaterialQty,
   getNowOperationView,
   initialMockOperationsForNest,
   promoteNextAfterComplete,
@@ -58,5 +59,19 @@ describe('kiosk-planning-view-model', () => {
     let ops = initialMockOperationsForNest('WC-ASSY-01')
     ops = applyMockConfirmationWithGates(ops, 'plan-op-101', 'complete')
     expect(ops.find((o) => o.id === 'plan-op-102')?.status).toBe('ready')
+  })
+
+  it('blocks second ready op when nest has in_progress', () => {
+    const ops = getPlannedOperationsForNest('WC-ASSY-01').map((o) =>
+      o.id === 'plan-op-103' ? { ...o, status: 'ready' as const } : o,
+    )
+    const views = enrichOperations(ops)
+    const blocked = views.find((o) => o.id === 'plan-op-103')
+    expect(blocked?.displayStatus).toBe('blocked')
+    expect(blocked?.blockedReasonKey).toBe('mes.kiosk.blockedNestBusy')
+  })
+
+  it('formatMaterialQty shows quantity and unit', () => {
+    expect(formatMaterialQty({ code: 'X', name: 'Y', quantity: 12, unit: 'szt.' })).toBe('12 szt.')
   })
 })

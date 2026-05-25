@@ -4,13 +4,11 @@ import { CalendarClock } from 'lucide-react'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { getTimelineForNest } from '../../lib/kiosk-planning-mock'
-import type { KioskOperationView } from '../../lib/kiosk-planning-view-model'
 
 type MesKioskPlanStripProps = {
   nestCode: string
   horizonHours: 8 | 72
   onHorizonChange: (h: 8 | 72) => void
-  operations: KioskOperationView[]
   highlightedId: string | null
   onSelect: (id: string) => void
   nowOperationId: string | null
@@ -30,20 +28,21 @@ export function MesKioskPlanStrip({
   const timeline = getTimelineForNest(nestCode, horizonHours)
   const nowMs = Date.now()
   const rangeStart = timeline[0]?.start.getTime() ?? nowMs
-  const rangeEnd = rangeStart + horizonHours * 3_600_000
-  const nowLinePct =
-    timeline.length === 0
-      ? 50
-      : Math.min(98, Math.max(2, ((nowMs - rangeStart) / (rangeEnd - rangeStart)) * 100))
+  const rangeEnd =
+    timeline.length > 0
+      ? Math.max(...timeline.map((s) => s.end.getTime()), rangeStart + horizonHours * 3_600_000)
+      : rangeStart + horizonHours * 3_600_000
+  const span = Math.max(rangeEnd - rangeStart, 1)
+  const nowLinePct = Math.min(98, Math.max(2, ((nowMs - rangeStart) / span) * 100))
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-semibold flex items-center gap-2 text-muted-foreground">
+        <h2 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
           <CalendarClock className="h-4 w-4" aria-hidden />
           {t('mes.kiosk.planTitle', 'Planned on this nest')}
         </h2>
-        <div className="flex gap-2">
+        <div className="flex gap-1">
           <Button
             type="button"
             size="sm"
@@ -62,39 +61,33 @@ export function MesKioskPlanStrip({
           </Button>
         </div>
       </div>
-      <div className="relative">
-        <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-primary/30 -translate-y-1/2 pointer-events-none" />
+      <div className="relative h-24 rounded-lg border bg-muted/20">
         <div
-          className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10 pointer-events-none"
+          className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10"
           style={{ left: `${nowLinePct}%` }}
-          aria-hidden
+          title={t('mes.kiosk.timelineNow', 'Now')}
         />
-        <div className="flex gap-2 overflow-x-auto pb-2 snap-x relative z-[1]">
-          {timeline.map((slot) => {
-            const isNow = slot.operationId === nowOperationId
-            return (
-              <button
-                key={slot.operationId}
-                type="button"
-                className={`snap-start shrink-0 min-w-[9rem] rounded-lg border px-3 py-2 text-left transition-colors ${
-                  isNow ? 'border-red-500 ring-2 ring-red-500/40 bg-red-50 dark:bg-red-950/30' : ''
-                } ${highlightedId === slot.operationId ? 'border-primary ring-2 ring-primary' : 'bg-card hover:bg-muted/50'}`}
-                onClick={() => onSelect(slot.operationId)}
-              >
-                <p className="text-[10px] uppercase text-muted-foreground">
-                  {isNow ? t('mes.kiosk.timelineNow', 'Now') : ''}
-                </p>
-                <p className="text-xs tabular-nums text-muted-foreground">
-                  {new Intl.DateTimeFormat(locale, { weekday: 'short', hour: '2-digit', minute: '2-digit' }).format(
-                    slot.start,
-                  )}
-                </p>
-                <p className="font-medium text-sm mt-0.5 line-clamp-2">{slot.operationName}</p>
-                <p className="text-xs text-muted-foreground">{slot.orderNumber}</p>
-              </button>
-            )
-          })}
-        </div>
+        {timeline.map((slot) => {
+          const left = ((slot.start.getTime() - rangeStart) / span) * 100
+          const width = Math.max(8, ((slot.end.getTime() - slot.start.getTime()) / span) * 100)
+          const isNow = slot.operationId === nowOperationId
+          return (
+            <button
+              key={slot.operationId}
+              type="button"
+              className={`absolute top-2 bottom-2 rounded border text-left px-1 overflow-hidden ${
+                isNow ? 'border-red-500 bg-red-50 dark:bg-red-950/40 z-[2]' : 'bg-card hover:bg-muted/80'
+              } ${highlightedId === slot.operationId ? 'ring-2 ring-primary' : ''}`}
+              style={{ left: `${Math.min(92, left)}%`, width: `${Math.min(40, width)}%` }}
+              onClick={() => onSelect(slot.operationId)}
+            >
+              <p className="text-[9px] truncate font-medium">{slot.operationName}</p>
+              <p className="text-[8px] text-muted-foreground truncate">
+                {new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(slot.start)}
+              </p>
+            </button>
+          )
+        })}
       </div>
     </section>
   )

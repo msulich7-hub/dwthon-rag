@@ -1,17 +1,23 @@
 "use client"
 
-import { CalendarClock, ArrowRight } from 'lucide-react'
+import Link from 'next/link'
+import { CalendarClock, ArrowRight, Package } from 'lucide-react'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { MesStatusBadge } from '../MesStatusBadge'
-import { getRoutingHintAfter, type KioskOperationView } from '../../lib/kiosk-planning-view-model'
+import {
+  formatMaterialQty,
+  getRoutingHintAfter,
+  type KioskOperationView,
+} from '../../lib/kiosk-planning-view-model'
 
 type MesKioskNowCardProps = {
   op: KioskOperationView
   locale: string
   busyId: string | null
+  rawMaterialsHref: string
   onStart: () => void
-  onComplete: () => void
+  onRequestComplete: () => void
   onAndon: () => void
 }
 
@@ -20,50 +26,50 @@ function formatTimeRange(startIso: string, endIso: string, locale: string): stri
   return `${fmt.format(new Date(startIso))} – ${fmt.format(new Date(endIso))}`
 }
 
-export function MesKioskNowCard({ op, locale, busyId, onStart, onComplete, onAndon }: MesKioskNowCardProps) {
+export function MesKioskNowCard({
+  op,
+  locale,
+  busyId,
+  rawMaterialsHref,
+  onStart,
+  onRequestComplete,
+  onAndon,
+}: MesKioskNowCardProps) {
   const t = useT()
   const routingHint = getRoutingHintAfter(op.id)
 
   return (
-    <section className="rounded-2xl border-4 border-foreground/80 bg-white dark:bg-zinc-950 p-6 md:p-8 shadow-xl space-y-5 min-h-[min(52vh,520px)] flex flex-col justify-between">
+    <section className="rounded-2xl border-4 border-foreground bg-white dark:bg-zinc-950 p-4 md:p-5 shadow-xl space-y-3">
       <div>
-        <p className="text-sm font-bold uppercase tracking-widest text-foreground">
-          {t('mes.kiosk.doNow', 'Do this now')}
+        <p className="text-xs font-bold uppercase tracking-widest">{t('mes.kiosk.doNow', 'Do this now')}</p>
+        <p className="text-2xl md:text-3xl font-bold mt-2 leading-tight">{op.operationName}</p>
+        <p className="text-base text-muted-foreground mt-1">
+          {op.orderNumber} · {op.productCode} · #{op.sequence}
         </p>
-        <p className="text-3xl md:text-4xl font-bold mt-3 leading-tight text-foreground">{op.operationName}</p>
-        <p className="text-xl text-muted-foreground mt-2">
-          {op.orderNumber} · {op.productCode}
-        </p>
-        <p className="text-lg font-mono text-muted-foreground mt-1">
-          {t('mes.kiosk.step', 'Step')} #{op.sequence}
-        </p>
-        <p className="text-base text-muted-foreground mt-3 flex items-center gap-2">
-          <CalendarClock className="h-5 w-5 shrink-0" aria-hidden />
+        <p className="text-sm text-muted-foreground mt-2 flex items-center gap-1">
+          <CalendarClock className="h-4 w-4 shrink-0" aria-hidden />
           {formatTimeRange(op.scheduledStart, op.scheduledEnd, locale)}
         </p>
-        <div className="mt-4">
+        <div className="mt-2">
           <MesStatusBadge status={op.displayStatus} kind="operation" />
         </div>
       </div>
 
-      <div>
-        <p className="text-base font-semibold mb-2">{t('mes.kiosk.materialsNeeded', 'Raw materials for this step')}</p>
-        <ul className="rounded-xl border-2 divide-y-2 bg-zinc-50 dark:bg-zinc-900">
-          {op.materials.map((m) => (
-            <li key={m.code} className="px-4 py-4 flex justify-between gap-3 text-lg">
-              <span>
-                <span className="font-bold">{m.code}</span>
-                <span className="text-muted-foreground"> — {m.name}</span>
-              </span>
-              <span className="text-muted-foreground shrink-0">{m.hint ?? t('mes.kiosk.unitPcs', 'pcs')}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <ul className="rounded-lg border divide-y text-sm max-h-[7.5rem] overflow-y-auto">
+        {op.materials.map((m) => (
+          <li key={m.code} className="px-3 py-2 flex justify-between gap-2">
+            <span className="truncate">
+              <span className="font-semibold">{m.code}</span>
+              <span className="text-muted-foreground"> {m.name}</span>
+            </span>
+            <span className="tabular-nums shrink-0 font-medium">{formatMaterialQty(m)}</span>
+          </li>
+        ))}
+      </ul>
 
       {routingHint ? (
-        <p className="text-sm text-muted-foreground flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
-          <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden />
           {t('mes.kiosk.nextRouting', 'After this: {op} @ {nest}', {
             op: routingHint.operationName,
             nest: routingHint.nestName,
@@ -71,11 +77,11 @@ export function MesKioskNowCard({ op, locale, busyId, onStart, onComplete, onAnd
         </p>
       ) : null}
 
-      <div className="flex flex-col gap-3 pt-2">
+      <div className="flex flex-col gap-2">
         {op.canStart ? (
           <Button
             size="lg"
-            className="min-h-20 w-full text-2xl font-bold"
+            className="min-h-[4.25rem] w-full text-xl font-bold"
             disabled={busyId === op.id}
             onClick={onStart}
           >
@@ -85,15 +91,21 @@ export function MesKioskNowCard({ op, locale, busyId, onStart, onComplete, onAnd
         {op.canComplete ? (
           <Button
             size="lg"
-            className="min-h-20 w-full text-2xl font-bold"
+            className="min-h-[4.25rem] w-full text-xl font-bold"
             disabled={busyId === op.id}
-            onClick={onComplete}
+            onClick={onRequestComplete}
           >
             {t('mes.kiosk.completeDemo', 'Complete (demo)')}
           </Button>
         ) : null}
-        <Button type="button" variant="outline" className="min-h-14 w-full text-lg" onClick={onAndon}>
-          {t('mes.kiosk.andon', 'Report issue / missing material')}
+        <Button type="button" variant="secondary" className="min-h-12 w-full text-base" asChild>
+          <Link href={rawMaterialsHref}>
+            <Package className="h-5 w-5 mr-2 inline" aria-hidden />
+            {t('mes.kiosk.orderMaterials', 'Order raw materials')}
+          </Link>
+        </Button>
+        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={onAndon}>
+          {t('mes.kiosk.andonShort', 'Report issue…')}
         </Button>
       </div>
     </section>

@@ -18,6 +18,8 @@ export type KioskOperator = {
 export type KioskMaterialLine = {
   code: string
   name: string
+  quantity?: number
+  unit?: string
   hint?: string
 }
 
@@ -70,8 +72,8 @@ const ALL_OPERATIONS: KioskPlannedOperation[] = [
     scheduledStart: hoursFromNow(-1),
     scheduledEnd: hoursFromNow(2),
     materials: [
-      { code: 'RM-HOUSING-01', name: 'Housing shell' },
-      { code: 'RM-FAST-M4', name: 'M4 screw kit' },
+      { code: 'RM-HOUSING-01', name: 'Housing shell', quantity: 2, unit: 'szt.' },
+      { code: 'RM-FAST-M4', name: 'M4 screw kit', quantity: 24, unit: 'szt.' },
     ],
   },
   {
@@ -88,8 +90,8 @@ const ALL_OPERATIONS: KioskPlannedOperation[] = [
     scheduledStart: hoursFromNow(2),
     scheduledEnd: hoursFromNow(5),
     materials: [
-      { code: 'RM-CTRL-12', name: 'Control module v12' },
-      { code: 'RM-CABLE-SET', name: 'Cable harness' },
+      { code: 'RM-CTRL-12', name: 'Control module v12', quantity: 1, unit: 'szt.' },
+      { code: 'RM-CABLE-SET', name: 'Cable harness', quantity: 1, unit: 'kpl.' },
     ],
   },
   {
@@ -105,7 +107,7 @@ const ALL_OPERATIONS: KioskPlannedOperation[] = [
     status: 'upcoming',
     scheduledStart: hoursFromNow(6),
     scheduledEnd: hoursFromNow(10),
-    materials: [{ code: 'RM-HOUSING-02', name: 'Housing shell B' }],
+    materials: [{ code: 'RM-HOUSING-02', name: 'Housing shell B', quantity: 2, unit: 'szt.' }],
   },
   {
     id: 'plan-op-201',
@@ -121,8 +123,8 @@ const ALL_OPERATIONS: KioskPlannedOperation[] = [
     scheduledStart: hoursFromNow(0),
     scheduledEnd: hoursFromNow(3),
     materials: [
-      { code: 'RM-PRIMER-5L', name: 'Primer 5L', hint: 'Max 1 pallet / week (future rule)' },
-      { code: 'RM-MASK-TAPE', name: 'Masking tape' },
+      { code: 'RM-PRIMER-5L', name: 'Primer 5L', quantity: 1, unit: 'pal.', hint: 'Max 1 pal. / week (future)' },
+      { code: 'RM-MASK-TAPE', name: 'Masking tape', quantity: 2, unit: 'szt.' },
     ],
   },
   {
@@ -138,7 +140,7 @@ const ALL_OPERATIONS: KioskPlannedOperation[] = [
     status: 'upcoming',
     scheduledStart: hoursFromNow(4),
     scheduledEnd: hoursFromNow(8),
-    materials: [{ code: 'RM-TOPCOAT-5L', name: 'Top coat 5L' }],
+    materials: [{ code: 'RM-TOPCOAT-5L', name: 'Top coat 5L', quantity: 1, unit: 'pal.' }],
   },
   {
     id: 'plan-op-301',
@@ -154,8 +156,8 @@ const ALL_OPERATIONS: KioskPlannedOperation[] = [
     scheduledStart: hoursFromNow(1),
     scheduledEnd: hoursFromNow(4),
     materials: [
-      { code: 'RM-BOX-STD', name: 'Standard carton' },
-      { code: 'RM-LABEL-ROLL', name: 'Label roll' },
+      { code: 'RM-BOX-STD', name: 'Standard carton', quantity: 50, unit: 'szt.' },
+      { code: 'RM-LABEL-ROLL', name: 'Label roll', quantity: 1, unit: 'szt.' },
     ],
   },
   {
@@ -171,7 +173,7 @@ const ALL_OPERATIONS: KioskPlannedOperation[] = [
     status: 'upcoming',
     scheduledStart: hoursFromNow(8),
     scheduledEnd: hoursFromNow(14),
-    materials: [{ code: 'RM-BOX-STD', name: 'Standard carton' }],
+    materials: [{ code: 'RM-BOX-STD', name: 'Standard carton', quantity: 30, unit: 'szt.' }],
   },
 ]
 

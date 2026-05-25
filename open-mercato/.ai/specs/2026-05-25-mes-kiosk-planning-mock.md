@@ -57,6 +57,26 @@ Production planning (separate module) will eventually be the source of truth for
 - Raw materials: `/backend/mes/operator/raw-materials?kiosk=1&nest=…&workOrderId=…`
 - Live API fallback: add `&live=1` on operator kiosk only
 
+## Target score ~9/10 (2026-05-25 round 2)
+
+- `MesKioskShell` fullscreen terminal (no admin nav)
+- Onboarding 3 steps, complete confirmation, Andon reason codes
+- Nest capacity (one `in_progress` per nest), session progress per nest
+- Material quantities in mock; timeline positioned by schedule
+- `fetchKioskNestViewModelFromPlanning` stub for planning module
+- Raw materials page uses kiosk shell when `?kiosk=1`
+
+## Future planning rules (not implemented)
+
+- Voice replenishment: hours + max pallets auto-calc
+- Material cap: e.g. max 1 pallet / week per SKU (see `hint` on mock lines)
+- Planning API replaces `kiosk-planning-mock.ts` via adapter
+
+## Terminal install (IT)
+
+Bookmark per tablet: `/backend/mes/operator?kiosk=1&nest=WC-ASSY-01`  
+Optional QR encodes the same URL for nest assignment.
+
 ## Expert review fixes (2026-05-25)
 
 - Single-nest terminal header; nest change behind **Zmiana gniazda** (service)
@@ -72,3 +92,4 @@ Production planning (separate module) will eventually be the source of truth for
 
 - **2026-05-25** — Spec + mock dataset + `MesKioskExperience` UI.
 - **2026-05-25** — P0/P1 expert panel implementation (view model, terminal UX).
+- **2026-05-25** — Round 2 toward 9/10: shell, onboarding, confirm, andon, nest capacity, qty, timeline, kiosk raw materials skin.

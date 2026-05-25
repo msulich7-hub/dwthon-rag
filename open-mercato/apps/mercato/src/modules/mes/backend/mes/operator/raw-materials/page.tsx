@@ -12,8 +12,15 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { MesShell } from '../../../../components/MesShell'
 import { MesListSkeleton } from '../../../../components/MesListSkeleton'
+import { MesKioskShell } from '../../../../components/kiosk/MesKioskShell'
+import { MesKioskDemoBanner } from '../../../../components/kiosk/MesKioskDemoBanner'
 import { resolveNestCode, uniqueMockWorkOrders } from '../../../../lib/kiosk-planning-mock'
-import { initialMockOperationsForNest, materialsForWorkOrder } from '../../../../lib/kiosk-planning-view-model'
+import {
+  formatMaterialQty,
+  getNestMeta,
+  initialMockOperationsForNest,
+  materialsForWorkOrder,
+} from '../../../../lib/kiosk-planning-view-model'
 import { MES_ROUTES } from '../../../../lib/mes-routes'
 
 type DispatchQueueItem = {
@@ -110,7 +117,7 @@ export default function MesOperatorRawMaterialsPage() {
   }, [nestCode, orderCount, router, selected, t])
 
   const form = (
-    <PageBody className={`space-y-6 ${kiosk ? 'max-w-3xl mx-auto' : 'max-w-2xl'}`}>
+    <div className={`space-y-5 ${kiosk ? '' : 'max-w-2xl'}`}>
       <div className="rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground">
         {useMock
           ? t(
@@ -190,8 +197,10 @@ export default function MesOperatorRawMaterialsPage() {
                       <div className="font-medium">{line.code}</div>
                       <div className="text-muted-foreground">{line.name}</div>
                     </div>
-                    <span className="text-muted-foreground tabular-nums">
-                      {t('mes.rawMaterials.qtyLater', 'Qty — auto')}
+                    <span className="text-muted-foreground tabular-nums font-medium">
+                      {useMock && line.quantity != null
+                        ? formatMaterialQty(line)
+                        : t('mes.rawMaterials.qtyLater', 'Qty — auto')}
                     </span>
                   </li>
                 ))}
@@ -237,27 +246,30 @@ export default function MesOperatorRawMaterialsPage() {
           </div>
         </>
       )}
-    </PageBody>
+    </div>
   )
 
   if (kiosk) {
+    const nest = getNestMeta(nestCode)
     return (
-      <Page>
-        <div className="min-h-screen bg-background p-4 md:p-8">
-          <PageHeader
-            title={t('mes.rawMaterials.kioskTitle', 'Raw materials')}
-            description={t('mes.rawMaterials.kioskDescription', 'Request components for the selected work order.')}
-            actions={
-              <Button variant="ghost" size="sm" asChild>
-                <Link href={MES_ROUTES.operatorKiosk({ nest: nestCode })}>
-                  {t('mes.rawMaterials.backKiosk', 'Shop floor')}
-                </Link>
-              </Button>
-            }
-          />
-          {form}
-        </div>
-      </Page>
+      <MesKioskShell>
+        <MesKioskDemoBanner />
+        <header className="border-b px-4 py-3">
+          <div className="max-w-3xl mx-auto flex items-center justify-between gap-2">
+            <div>
+              <p className="text-xs text-muted-foreground">{nest.line}</p>
+              <h1 className="text-xl font-bold">{t('mes.rawMaterials.kioskTitle', 'Raw materials')}</h1>
+              <p className="text-sm font-mono text-muted-foreground">{nest.code}</p>
+            </div>
+            <Button variant="outline" size="lg" className="min-h-12" asChild>
+              <Link href={MES_ROUTES.operatorKiosk({ nest: nestCode })}>
+                {t('mes.rawMaterials.backKiosk', 'Shop floor')}
+              </Link>
+            </Button>
+          </div>
+        </header>
+        <div className="max-w-3xl mx-auto p-4 pb-8">{form}</div>
+      </MesKioskShell>
     )
   }
 
@@ -273,7 +285,7 @@ export default function MesOperatorRawMaterialsPage() {
             </Button>
           }
         />
-        {form}
+        <PageBody>{form}</PageBody>
       </MesShell>
     </Page>
   )

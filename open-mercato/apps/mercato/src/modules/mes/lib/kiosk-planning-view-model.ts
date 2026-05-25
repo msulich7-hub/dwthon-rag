@@ -10,11 +10,13 @@ import {
 
 export type KioskOperationDisplayStatus = KioskPlannedOperationStatus | 'blocked'
 
+export type KioskBlockReasonKey = 'mes.kiosk.blockedPriorOp' | 'mes.kiosk.blockedNestBusy'
+
 export type KioskOperationView = KioskPlannedOperation & {
   displayStatus: KioskOperationDisplayStatus
   canStart: boolean
   canComplete: boolean
-  blockedReasonKey?: 'mes.kiosk.blockedPriorOp'
+  blockedReasonKey?: KioskBlockReasonKey
 }
 
 export type KioskRoutingHint = {
@@ -27,11 +29,72 @@ const PLAN_PUBLISHED_AT = '2026-05-25T06:00:00.000Z'
 
 /** Next operation on another nest after this step (mock routing handoff). */
 const ROUTING_HANDOFF: Record<string, KioskRoutingHint> = {
+  'plan-op-101': { nestCode: 'WC-ASSY-01', nestName: 'Assembly A', operationName: 'Fit control module' },
   'plan-op-102': { nestCode: 'WC-PAINT-02', nestName: 'Paint cell', operationName: 'Primer coat' },
+  'plan-op-103': { nestCode: 'WC-PAINT-02', nestName: 'Paint cell', operationName: 'Primer coat' },
+  'plan-op-201': { nestCode: 'WC-PAINT-02', nestName: 'Paint cell', operationName: 'Top coat' },
   'plan-op-202': { nestCode: 'WC-PACK-03', nestName: 'Pack-out', operationName: 'Pack & label' },
+  'plan-op-301': { nestCode: 'WC-PACK-03', nestName: 'Pack-out', operationName: 'Pack & label (WO-1062)' },
 }
 
 const NEST_STORAGE_KEY = 'mes_kiosk_nest_v1'
+const OPS_STORAGE_PREFIX = 'mes_kiosk_ops_v1_'
+const ONBOARDING_KEY = 'mes_kiosk_onboarding_v1'
+
+export function formatMaterialQty(line: KioskMaterialLine): string {
+  if (line.quantity != null && line.unit) return `${line.quantity} ${line.unit}`
+  if (line.quantity != null) return String(line.quantity)
+  return '—'
+}
+
+export function isKioskOnboardingDone(): boolean {
+  if (typeof window === 'undefined') return true
+  try {
+    return window.localStorage.getItem(ONBOARDING_KEY) === '1'
+  } catch {
+    return true
+  }
+}
+
+export function markKioskOnboardingDone(): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(ONBOARDING_KEY, '1')
+  } catch {
+    /* ignore */
+  }
+}
+
+function opsStorageKey(nestCode: string): string {
+  return `${OPS_STORAGE_PREFIX}${nestCode}`
+}
+
+export function loadPersistedOps(nestCode: string): KioskPlannedOperation[] | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.sessionStorage.getItem(opsStorageKey(nestCode))
+    if (!raw) return null
+    return JSON.parse(raw) as KioskPlannedOperation[]
+  } catch {
+    return null
+  }
+}
+
+export function persistOps(nestCode: string, ops: KioskPlannedOperation[]): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.sessionStorage.setItem(opsStorageKey(nestCode), JSON.stringify(ops))
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Planning module adapter — returns null until API is wired. */
+export async function fetchKioskNestViewModelFromPlanning(
+  _nestCode: string,
+): Promise<KioskPlannedOperation[] | null> {
+  return null
+}
 
 export function persistNestCode(code: string): void {
   if (typeof window === 'undefined') return
@@ -59,21 +122,27 @@ function predecessorsFor(
 }
 
 export function enrichOperations(ops: KioskPlannedOperation[]): KioskOperationView[] {
+  const inProgress = ops.find((o) => o.status === 'in_progress')
   return ops.map((op) => {
     const preds = predecessorsFor(op, ops)
-    const blocked = preds.some((p) => p.status !== 'completed')
+    const seqBlocked = preds.some((p) => p.status !== 'completed')
+    const nestBusy = inProgress != null && inProgress.id !== op.id && op.status === 'ready'
+    const blocked = seqBlocked || nestBusy
     let displayStatus: KioskOperationDisplayStatus = op.status
     if (blocked && (op.status === 'ready' || op.status === 'upcoming')) {
       displayStatus = 'blocked'
     }
-    const canStart = op.status === 'ready' && !blocked
+    const canStart = op.status === 'ready' && !seqBlocked && !nestBusy
     const canComplete = op.status === 'in_progress'
+    let blockedReasonKey: KioskBlockReasonKey | undefined
+    if (seqBlocked) blockedReasonKey = 'mes.kiosk.blockedPriorOp'
+    else if (nestBusy) blockedReasonKey = 'mes.kiosk.blockedNestBusy'
     return {
       ...op,
       displayStatus,
       canStart,
       canComplete,
-      blockedReasonKey: blocked ? 'mes.kiosk.blockedPriorOp' : undefined,
+      blockedReasonKey,
     }
   })
 }
@@ -171,6 +240,8 @@ export function materialsForWorkOrder(
 }
 
 export function initialMockOperationsForNest(nestCode: string): KioskPlannedOperation[] {
+  const persisted = loadPersistedOps(nestCode)
+  if (persisted?.length) return persisted.map((op) => ({ ...op, materials: [...op.materials] }))
   const ops = cloneOperationsForNest(nestCode)
   return ops.map((op) => {
     if (op.id === 'plan-op-102' && op.status === 'ready') {
@@ -178,6 +249,15 @@ export function initialMockOperationsForNest(nestCode: string): KioskPlannedOper
     }
     return op
   })
+}
+
+export function getNextOperationIdAfterComplete(
+  ops: KioskPlannedOperation[],
+  completedId: string,
+): string | null {
+  const promoted = promoteNextAfterComplete(ops, completedId)
+  const views = enrichOperations(promoted)
+  return getNowOperationView(views)?.id ?? null
 }
 
 export { getPlannedOperationsForNest }

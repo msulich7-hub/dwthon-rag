@@ -33,7 +33,7 @@ export function MesKioskTerminalHeader({
 }: MesKioskTerminalHeaderProps) {
   const t = useT()
   const [changeOpen, setChangeOpen] = React.useState(false)
-  const published = new Intl.DateTimeFormat(undefined, {
+  const published = new Intl.DateTimeFormat('pl-PL', {
     dateStyle: 'short',
     timeStyle: 'short',
   }).format(new Date(planPublishedAt))

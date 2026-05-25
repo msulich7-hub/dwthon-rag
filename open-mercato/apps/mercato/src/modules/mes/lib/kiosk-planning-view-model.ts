@@ -37,9 +37,18 @@ const ROUTING_HANDOFF: Record<string, KioskRoutingHint> = {
   'plan-op-301': { nestCode: 'WC-PACK-03', nestName: 'Pack-out', operationName: 'Pack & label (WO-1062)' },
 }
 
-const NEST_STORAGE_KEY = 'mes_kiosk_nest_v1'
-const OPS_STORAGE_PREFIX = 'mes_kiosk_ops_v1_'
-const ONBOARDING_KEY = 'mes_kiosk_onboarding_v1'
+/** Client storage keys — also used by Playwright kiosk helpers. */
+export const KIOSK_NEST_STORAGE_KEY = 'mes_kiosk_nest_v1'
+export const KIOSK_OPS_STORAGE_PREFIX = 'mes_kiosk_ops_v1_'
+export const KIOSK_ONBOARDING_STORAGE_KEY = 'mes_kiosk_onboarding_v1'
+
+const NEST_STORAGE_KEY = KIOSK_NEST_STORAGE_KEY
+const OPS_STORAGE_PREFIX = KIOSK_OPS_STORAGE_PREFIX
+const ONBOARDING_KEY = KIOSK_ONBOARDING_STORAGE_KEY
+
+export function kioskOpsStorageKey(nestCode: string): string {
+  return `${OPS_STORAGE_PREFIX}${nestCode}`
+}
 
 export function formatMaterialQty(line: KioskMaterialLine): string {
   if (line.quantity != null && line.unit) return `${line.quantity} ${line.unit}`

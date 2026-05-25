@@ -39,7 +39,10 @@ export function MesKioskNowCard({
   const routingHint = getRoutingHintAfter(op.id)
 
   return (
-    <section className="rounded-2xl border-4 border-foreground bg-white dark:bg-zinc-950 p-4 md:p-5 shadow-xl space-y-3">
+    <section
+      data-testid="mes-kiosk-now-card"
+      className="rounded-2xl border-4 border-foreground bg-white dark:bg-zinc-950 p-4 md:p-5 shadow-xl space-y-3"
+    >
       <div>
         <p className="text-xs font-bold uppercase tracking-widest">{t('mes.kiosk.doNow', 'Do this now')}</p>
         <p className="text-2xl md:text-3xl font-bold mt-2 leading-tight">{op.operationName}</p>
@@ -84,6 +87,7 @@ export function MesKioskNowCard({
             className="min-h-[4.25rem] w-full text-xl font-bold"
             disabled={busyId === op.id}
             onClick={onStart}
+            data-testid="mes-kiosk-start-demo"
           >
             {t('mes.kiosk.startDemo', 'Start (demo)')}
           </Button>
@@ -94,17 +98,25 @@ export function MesKioskNowCard({
             className="min-h-[4.25rem] w-full text-xl font-bold"
             disabled={busyId === op.id}
             onClick={onRequestComplete}
+            data-testid="mes-kiosk-complete-demo"
           >
             {t('mes.kiosk.completeDemo', 'Complete (demo)')}
           </Button>
         ) : null}
         <Button type="button" variant="secondary" className="min-h-12 w-full text-base" asChild>
-          <Link href={rawMaterialsHref}>
+          <Link href={rawMaterialsHref} data-testid="mes-kiosk-order-materials">
             <Package className="h-5 w-5 mr-2 inline" aria-hidden />
             {t('mes.kiosk.orderMaterials', 'Order raw materials')}
           </Link>
         </Button>
-        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={onAndon}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground"
+          onClick={onAndon}
+          data-testid="mes-kiosk-andon-short"
+        >
           {t('mes.kiosk.andonShort', 'Report issue…')}
         </Button>
       </div>

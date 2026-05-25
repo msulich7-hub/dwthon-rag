@@ -8,6 +8,7 @@ export function MesKioskDemoBanner() {
   return (
     <div
       role="alert"
+      data-testid="mes-kiosk-demo-banner"
       className="bg-amber-400 text-amber-950 px-4 py-3 text-center font-semibold text-base md:text-lg border-b border-amber-600"
     >
       <span className="inline-flex items-center justify-center gap-2">

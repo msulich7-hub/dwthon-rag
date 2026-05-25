@@ -141,6 +141,7 @@ export default function MesOperatorRawMaterialsPage() {
             </Label>
             <select
               id="mes-rm-wo"
+              data-testid="mes-kiosk-rm-work-order"
               className={`flex w-full rounded-md border border-input bg-background px-3 py-2 ${kiosk ? 'h-12 text-lg' : ''}`}
               value={workOrderId}
               onChange={(e) => setWorkOrderId(e.target.value)}
@@ -233,13 +234,17 @@ export default function MesOperatorRawMaterialsPage() {
               type="button"
               size={kiosk ? 'lg' : 'default'}
               className={kiosk ? 'min-h-16 flex-1 text-lg' : ''}
+              data-testid="mes-kiosk-rm-submit"
               disabled={!selected || submitting}
               onClick={() => handleSubmit()}
             >
               {t('mes.rawMaterials.submit', 'Place replenishment request')}
             </Button>
             <Button type="button" variant="outline" size={kiosk ? 'lg' : 'default'} asChild>
-                <Link href={kiosk ? MES_ROUTES.operatorKiosk({ nest: nestCode }) : MES_ROUTES.operator}>
+                <Link
+                  href={kiosk ? MES_ROUTES.operatorKiosk({ nest: nestCode }) : MES_ROUTES.operator}
+                  data-testid="mes-kiosk-rm-back"
+                >
                 {t('mes.rawMaterials.cancel', 'Back to queue')}
               </Link>
             </Button>
@@ -262,7 +267,7 @@ export default function MesOperatorRawMaterialsPage() {
               <p className="text-sm font-mono text-muted-foreground">{nest.code}</p>
             </div>
             <Button variant="outline" size="lg" className="min-h-12" asChild>
-              <Link href={MES_ROUTES.operatorKiosk({ nest: nestCode })}>
+              <Link href={MES_ROUTES.operatorKiosk({ nest: nestCode })} data-testid="mes-kiosk-rm-back-header">
                 {t('mes.rawMaterials.backKiosk', 'Shop floor')}
               </Link>
             </Button>

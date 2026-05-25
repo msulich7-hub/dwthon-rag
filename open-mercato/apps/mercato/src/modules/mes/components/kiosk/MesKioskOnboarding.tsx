@@ -25,7 +25,10 @@ export function MesKioskOnboarding() {
   }
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4">
+    <div
+      data-testid="mes-kiosk-onboarding"
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4"
+    >
       <div className="max-w-md w-full rounded-2xl bg-card border-2 p-6 space-y-4 shadow-2xl">
         <p className="text-xs font-medium text-muted-foreground">
           {t('mes.kiosk.onboardProgress', 'Step {n} of {total}', { n: String(step + 1), total: String(STEPS.length) })}
@@ -43,12 +46,12 @@ export function MesKioskOnboarding() {
               {t('mes.kiosk.onboardNext', 'Next')}
             </Button>
           ) : (
-            <Button type="button" className="flex-1 min-h-12" onClick={done}>
+            <Button type="button" className="flex-1 min-h-12" data-testid="mes-kiosk-onboard-done" onClick={done}>
               {t('mes.kiosk.onboardDone', 'Start work')}
             </Button>
           )}
         </div>
-        <Button type="button" variant="ghost" size="sm" className="w-full" onClick={done}>
+        <Button type="button" variant="ghost" size="sm" className="w-full" data-testid="mes-kiosk-onboard-skip" onClick={done}>
           {t('mes.kiosk.onboardSkip', 'Skip')}
         </Button>
       </div>

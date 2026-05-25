@@ -33,6 +33,20 @@
 - Nest persisted in `localStorage` key `mes_kiosk_nest_v1`
 - Do **not** add timesheet / work-schedule reporting in kiosk iterations
 
+## Testing (kiosk)
+
+- Brief for subagents / QA: `.ai/qa/MES-KIOSK-TEST-BRIEF.md`
+- Manual scenarios: `.ai/qa/scenarios/TC-MES-KIOSK-*.md`
+- Playwright: `apps/mercato/src/modules/mes/__integration__/TC-MES-KIOSK-*.spec.ts`
+
+```bash
+cd open-mercato
+# unit
+yarn workspace @open-mercato/app test -- src/modules/mes/lib/__tests__/kiosk-planning-mock.test.ts
+# integration (dev server on :3000)
+OM_INTEGRATION_MODULES=mes yarn test:integration
+```
+
 ## After changes
 
 ```bash

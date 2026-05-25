@@ -96,6 +96,7 @@ export function MesKioskExperience() {
           variant="ghost"
           size="sm"
           className="w-full text-muted-foreground h-8"
+          data-testid="mes-kiosk-plan-toggle"
           onClick={() => setPlanOpen((v) => !v)}
         >
           {planOpen ? <ChevronUp className="h-4 w-4 inline" /> : <ChevronDown className="h-4 w-4 inline" />}

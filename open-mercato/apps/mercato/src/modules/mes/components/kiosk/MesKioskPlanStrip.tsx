@@ -36,7 +36,7 @@ export function MesKioskPlanStrip({
   const nowLinePct = Math.min(98, Math.max(2, ((nowMs - rangeStart) / span) * 100))
 
   return (
-    <section className="space-y-2">
+    <section className="space-y-2" data-testid="mes-kiosk-plan-strip">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
           <CalendarClock className="h-4 w-4" aria-hidden />

@@ -50,7 +50,13 @@ export function MesKioskTerminalHeader({
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => setChangeOpen((v) => !v)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            data-testid="mes-kiosk-change-nest"
+            onClick={() => setChangeOpen((v) => !v)}
+          >
             <Settings2 className="h-4 w-4 mr-1" aria-hidden />
             {t('mes.kiosk.changeNest', 'Change nest')}
           </Button>
@@ -70,6 +76,7 @@ export function MesKioskTerminalHeader({
                 key={n.code}
                 type="button"
                 variant={n.code === currentNestCode ? 'default' : 'outline'}
+                data-testid={`mes-kiosk-nest-${n.code}`}
                 onClick={() => {
                   onSelectNest(n.code)
                   setChangeOpen(false)

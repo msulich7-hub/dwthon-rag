@@ -16,3 +16,12 @@ yarn db:migrate
 ```
 
 Spec: `open-mercato/.ai/specs/2026-05-24-sales-forecasting-module-starter-prompt.md`
+
+## Voice-driven module workflow (spec)
+
+Working agreement for creating and changing modules via dictaphone / spoken notes:
+
+- **Spec:** `.ai/specs/2026-05-25-voice-driven-module-creation-workflow.md`
+- **Module registry (aliases for speech):** `.ai/module-registry.yaml`
+
+Copy these into your `open-mercato` clone under `.ai/` when using the upstream repo.

@@ -12,6 +12,11 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { MesShell } from '../../../../components/MesShell'
 import { MesListSkeleton } from '../../../../components/MesListSkeleton'
+import {
+  cloneOperationsForNest,
+  resolveNestCode,
+  uniqueMockWorkOrders,
+} from '../../../../lib/kiosk-planning-mock'
 import { placeholderBomForProduct } from '../../../../lib/raw-materials-placeholders'
 import { MES_ROUTES } from '../../../../lib/mes-routes'
 
@@ -41,15 +46,33 @@ export default function MesOperatorRawMaterialsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const kiosk = searchParams.get('kiosk') === '1'
+  const useMock = kiosk && searchParams.get('live') !== '1'
+  const nestCode = resolveNestCode(searchParams.get('nest'))
   const initialWorkOrderId = searchParams.get('workOrderId') ?? ''
 
   const [queue, setQueue] = React.useState<DispatchQueueItem[]>([])
-  const [loading, setLoading] = React.useState(true)
+  const [loading, setLoading] = React.useState(!useMock)
   const [workOrderId, setWorkOrderId] = React.useState(initialWorkOrderId)
   const [orderCount, setOrderCount] = React.useState<number>(1)
   const [submitting, setSubmitting] = React.useState(false)
 
+  const mockWorkOrders = React.useMemo(
+    () => uniqueMockWorkOrders(cloneOperationsForNest(nestCode)),
+    [nestCode],
+  )
+
   React.useEffect(() => {
+    if (useMock) {
+      setQueue(
+        mockWorkOrders.map((wo) => ({
+          workOrderId: wo.workOrderId,
+          orderNumber: wo.orderNumber,
+          productCode: wo.productCode,
+        })),
+      )
+      setLoading(false)
+      return
+    }
     void (async () => {
       setLoading(true)
       try {
@@ -61,7 +84,7 @@ export default function MesOperatorRawMaterialsPage() {
         setLoading(false)
       }
     })()
-  }, [])
+  }, [mockWorkOrders, useMock])
 
   const workOrders = React.useMemo(() => uniqueWorkOrders(queue), [queue])
   const selected = workOrders.find((wo) => wo.workOrderId === workOrderId) ?? workOrders[0]
@@ -88,17 +111,23 @@ export default function MesOperatorRawMaterialsPage() {
         }),
         'success',
       )
-      router.push(MES_ROUTES.operatorKiosk)
+      router.push(MES_ROUTES.operatorKiosk({ nest: nestCode }))
     }, 400)
-  }, [orderCount, router, selected, t])
+  }, [nestCode, orderCount, router, selected, t])
 
   const form = (
     <PageBody className={`space-y-6 ${kiosk ? 'max-w-3xl mx-auto' : 'max-w-2xl'}`}>
       <div className="rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground">
-        {t(
-          'mes.rawMaterials.formatNote',
-          'Format preview — quantities and voice calculation come in a later phase.',
-        )}
+        {useMock
+          ? t(
+              'mes.rawMaterials.mockNote',
+              'Demo data from planning mock for nest {nest}. Quantities and voice — later.',
+              { nest: nestCode },
+            )
+          : t(
+              'mes.rawMaterials.formatNote',
+              'Format preview — quantities and voice calculation come in a later phase.',
+            )}
       </div>
 
       {loading ? (
@@ -207,7 +236,7 @@ export default function MesOperatorRawMaterialsPage() {
               {t('mes.rawMaterials.submit', 'Place replenishment request')}
             </Button>
             <Button type="button" variant="outline" size={kiosk ? 'lg' : 'default'} asChild>
-              <Link href={kiosk ? MES_ROUTES.operatorKiosk : MES_ROUTES.operator}>
+                <Link href={kiosk ? MES_ROUTES.operatorKiosk({ nest: nestCode }) : MES_ROUTES.operator}>
                 {t('mes.rawMaterials.cancel', 'Back to queue')}
               </Link>
             </Button>
@@ -226,7 +255,9 @@ export default function MesOperatorRawMaterialsPage() {
             description={t('mes.rawMaterials.kioskDescription', 'Request components for the selected work order.')}
             actions={
               <Button variant="ghost" size="sm" asChild>
-                <Link href={MES_ROUTES.operatorKiosk}>{t('mes.rawMaterials.backKiosk', 'Shop floor')}</Link>
+                <Link href={MES_ROUTES.operatorKiosk({ nest: nestCode })}>
+                  {t('mes.rawMaterials.backKiosk', 'Shop floor')}
+                </Link>
               </Button>
             }
           />
@@ -244,7 +275,7 @@ export default function MesOperatorRawMaterialsPage() {
           description={t('mes.rawMaterials.description', 'Shop-floor replenishment form (format preview).')}
           actions={
             <Button variant="outline" size="sm" asChild>
-              <Link href={MES_ROUTES.operatorKiosk}>{t('mes.operator.kiosk', 'Kiosk')}</Link>
+              <Link href={MES_ROUTES.operatorKiosk()}>{t('mes.operator.kiosk', 'Kiosk')}</Link>
             </Button>
           }
         />

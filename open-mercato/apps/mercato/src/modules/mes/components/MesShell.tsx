@@ -39,7 +39,7 @@ export function MesShell({ children }: MesShellProps) {
           )
         })}
         <Button type="button" variant="ghost" size="sm" asChild className="ml-auto">
-          <Link href={MES_ROUTES.operatorKiosk}>{t('mes.shell.kiosk', 'Kiosk mode')}</Link>
+          <Link href={MES_ROUTES.operatorKiosk()}>{t('mes.shell.kiosk', 'Kiosk mode')}</Link>
         </Button>
       </nav>
       {children}

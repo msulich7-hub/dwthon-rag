@@ -25,6 +25,13 @@
 - **B (execution):** routing templates, operations, confirmations, dispatch queue, operator POD
 - **C–F:** see `.ai/specs/2026-05-23-mes-phase-*.md` and `2026-05-23-mes-world-class-roadmap.md`
 
+## Kiosk (mock-first)
+
+- Default kiosk: `/backend/mes/operator?kiosk=1&nest=WC-ASSY-01` → `MesKioskExperience` + `lib/kiosk-planning-mock.ts`
+- Spec: `.ai/specs/2026-05-25-mes-kiosk-planning-mock.md`
+- Live dispatch API (dev only): add `&live=1` — do not extend for shop-floor UX until planning API exists
+- Do **not** add timesheet / work-schedule reporting in kiosk iterations
+
 ## After changes
 
 ```bash

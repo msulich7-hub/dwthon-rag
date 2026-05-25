@@ -11,6 +11,7 @@ export function operationStatusClass(status: string): string {
   if (status === 'in_progress') return 'border-sky-500/40 bg-sky-500/10 text-sky-900 dark:text-sky-100'
   if (status === 'completed') return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100'
   if (status === 'ready') return 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-100'
+  if (status === 'upcoming') return 'border-violet-500/40 bg-violet-500/10 text-violet-900 dark:text-violet-100'
   if (status === 'skipped' || status === 'cancelled') {
     return 'border-muted bg-muted/40 text-muted-foreground'
   }

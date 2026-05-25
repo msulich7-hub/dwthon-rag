@@ -27,3 +27,9 @@
 - BOM z katalogu / ERP
 - Kalkulacja z mowy (godziny, palety)
 - API persistence `mes_raw_material_requests`
+
+## Update 2026-05-25 (kiosk planning mock)
+
+- Pełny kiosk: `MesKioskExperience` + `kiosk-planning-mock.ts`
+- Spec: `.ai/specs/2026-05-25-mes-kiosk-planning-mock.md`
+- Gniazda, operator, „teraz”, plan 8h/3dni, kolejność z planowania, surowce, demo Start/Complete

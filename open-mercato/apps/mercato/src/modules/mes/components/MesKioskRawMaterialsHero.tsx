@@ -8,11 +8,15 @@ import { MES_ROUTES } from '../lib/mes-routes'
 
 type MesKioskRawMaterialsHeroProps = {
   workOrderId?: string | null
+  nestCode?: string | null
 }
 
-export function MesKioskRawMaterialsHero({ workOrderId }: MesKioskRawMaterialsHeroProps) {
+export function MesKioskRawMaterialsHero({ workOrderId, nestCode }: MesKioskRawMaterialsHeroProps) {
   const t = useT()
-  const href = MES_ROUTES.operatorRawMaterialsKiosk(workOrderId ?? undefined)
+  const href = MES_ROUTES.operatorRawMaterialsKiosk({
+    workOrderId: workOrderId ?? undefined,
+    nest: nestCode ?? undefined,
+  })
 
   return (
     <section
